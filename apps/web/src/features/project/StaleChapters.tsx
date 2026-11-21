@@ -64,7 +64,7 @@ export function StaleChapters({
         replace: true,
         ai: aiText().ai ?? null,
       });
-      toast.success(stage === "plan" ? `Re-planning ${c.title}` : `Writing the narration of ${c.title} again`);
+      toast.success(stage === "plan" ? `正在重新规划 ${c.title}` : `正在重写 ${c.title} 的旁白`);
       await done();
     } catch (e) {
       toast.error(e);
@@ -75,15 +75,11 @@ export function StaleChapters({
   };
   if (!chapters.length) return null;
   const work = (c: StaleChapter) =>
-    stage === "plan"
-      ? `${c.pages} page(s), ${c.drawnPanels} of ${c.panels} panel(s) drawn`
-      : `${c.narrationLines} narration line(s)`;
+    stage === "plan" ? `${c.pages} 页，${c.panels} 格中已绘制 ${c.drawnPanels} 格` : `${c.narrationLines} 句旁白`;
   return (
     <div className="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
       <p className="font-medium text-amber-800 dark:text-amber-200">
-        {stage === "plan"
-          ? "Chapters whose text changed after they were planned"
-          : "Chapters that changed after their narration was written"}
+        {stage === "plan" ? "规划后原文发生变化的章节" : "编写旁白后内容发生变化的章节"}
       </p>
       <ul className="space-y-2">
         {chapters.map((c) => (
@@ -97,7 +93,7 @@ export function StaleChapters({
               disabled={busy !== null}
               onClick={() => keep(c)}
             >
-              Keep current
+              保留当前内容
             </button>
             <button
               type="button"
@@ -105,15 +101,15 @@ export function StaleChapters({
               disabled={busy !== null}
               onClick={() => setRedo(c)}
             >
-              {stage === "plan" ? "Re-plan" : "Write again"}
+              {stage === "plan" ? "重新规划" : "重写旁白"}
             </button>
           </li>
         ))}
       </ul>
       <ConfirmDialog
         open={redo !== null}
-        title={stage === "plan" ? "Re-plan this chapter" : "Write this narration again"}
-        confirmLabel={stage === "plan" ? "Re-plan" : "Write again"}
+        title={stage === "plan" ? "重新规划本章" : "重写本章旁白"}
+        confirmLabel={stage === "plan" ? "重新规划" : "重写旁白"}
         danger
         busy={busy !== null}
         onClose={() => setRedo(null)}
@@ -122,15 +118,14 @@ export function StaleChapters({
         {redo &&
           (stage === "plan" ? (
             <p>
-              Re-planning <strong>{redo.title}</strong> replaces its <strong>{redo.pages} page(s)</strong> and{" "}
-              <strong>{redo.panels} panel(s)</strong>, including the artwork of the {redo.drawnPanels} drawn ones and
-              the narration on them, with a new plan from the current text. It uses the text model and spends.
+              重新规划 <strong>{redo.title}</strong> 会根据当前原文替换 <strong>{redo.pages} 页</strong>、
+              <strong>{redo.panels} 格</strong>的规划，包括已绘制的 {redo.drawnPanels}{" "}
+              格画稿及对应旁白。此操作会调用文本模型并产生费用。
             </p>
           ) : (
             <p>
-              Writing the narration of <strong>{redo.title}</strong> again replaces its{" "}
-              <strong>{redo.narrationLines} narration line(s)</strong> and their audio. It uses the text model and
-              spends.
+              重写 <strong>{redo.title}</strong> 的旁白会替换 <strong>{redo.narrationLines} 句旁白</strong>
+              及其音频。此操作会调用文本模型并产生费用。
             </p>
           ))}
       </ConfirmDialog>
@@ -168,7 +163,7 @@ export function PublishingFlags({ projectId, flags }: { projectId: string; flags
         <div key={f.key} className="flex flex-wrap items-center gap-2">
           <span className="mr-auto min-w-0">
             <span className="font-medium text-amber-800 dark:text-amber-200">
-              {f.key === "youtube_text" ? "YouTube text may be out of date" : "Thumbnail headline may be out of date"}
+              {f.key === "youtube_text" ? "YouTube 文案可能已过期" : "缩略图标题可能已过期"}
             </span>
             <span className="muted"> · {f.reasons.join("; ")}</span>
           </span>
@@ -180,26 +175,26 @@ export function PublishingFlags({ projectId, flags }: { projectId: string; flags
               f.key === "youtube_text"
                 ? act(
                     () => post(`/projects/${projectId}/youtube-package`, { ai: aiText().ai ?? null }),
-                    "Writing the YouTube text again",
+                    "正在重新生成 YouTube 文案",
                   )
                 : act(
                     () =>
                       patch(`/projects/${projectId}`, {
                         settings: { thumbnail: { ...thumb, title: project.data?.project.title ?? "" } },
                       }),
-                    "Headline set to the current title",
+                    "缩略图标题已设为当前项目标题",
                   )
             }
           >
-            {f.key === "youtube_text" ? "Regenerate" : "Use the current title"}
+            {f.key === "youtube_text" ? "重新生成" : "使用当前标题"}
           </button>
           <button
             type="button"
             className="btn-secondary px-2 py-1 text-xs"
             disabled={busy}
-            onClick={() => act(() => post(`/projects/${projectId}/keep-current`, { item: f.key }), "Kept as it is")}
+            onClick={() => act(() => post(`/projects/${projectId}/keep-current`, { item: f.key }), "已保留当前内容")}
           >
-            Keep current
+            保留当前内容
           </button>
         </div>
       ))}

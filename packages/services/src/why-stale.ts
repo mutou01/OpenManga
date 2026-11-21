@@ -15,8 +15,33 @@ export type WhyItem = {
 export type WhyStage = { key: PipelineStage; items: WhyItem[]; more: number };
 
 const CAP = 100;
-const n = (k: number, one: string, many = `${one}s`) => `${k} ${k === 1 ? one : many}`;
-const list = (xs: string[]) => xs.filter(Boolean).join(", ");
+const list = (xs: string[]) => xs.filter(Boolean).join("、");
+const panelLabel = (page: number, panel: number) => `第 ${page} 页第 ${panel} 格`;
+const fieldLabels = new Map(
+  Object.entries({
+    beat: "情节节点",
+    shotType: "景别",
+    cameraAngle: "机位角度",
+    characters: "角色",
+    locationId: "地点",
+    composition: "构图",
+    foreground: "前景",
+    midground: "中景",
+    background: "背景",
+    lighting: "光线",
+    emotion: "情绪",
+    action: "动作",
+    continuityRequirements: "连贯性要求",
+    negativeSpace: "留白",
+    propIds: "道具",
+    dialogueIds: "对白",
+    narrationIds: "旁白",
+    sfxIds: "拟声词",
+    height: "高度",
+    seam: "衔接",
+    direction: "镜头调度",
+  }),
+);
 
 /**
  * Why each pipeline stage is out of date, item by item, along story revision → chapter plan → prompts → panel →
@@ -53,14 +78,11 @@ export async function whyStale(
     const added = [...now].filter((p) => !was.has(p)).length;
     const removed = [...was].filter((p) => !now.has(p)).length;
     out.story.push({
-      label: `Story revision ${r?.new_n}`,
-      why: `Newer than revision ${r?.old_n ?? "?"} the project was built from: ${
-        list([
-          added ? `${n(added, "paragraph")} new or changed` : "",
-          removed ? `${n(removed, "paragraph")} removed or changed` : "",
-        ]) || "only spacing changed"
+      label: `故事第 ${r?.new_n ?? "？"} 版`,
+      why: `当前故事相比已分析的第 ${r?.old_n ?? "？"} 版有更新：${
+        list([added ? `新增或修改 ${added} 段` : "", removed ? `删除或修改 ${removed} 段` : ""]) || "仅空白发生变化"
       }`,
-      redo: "Re-analyse it; what it would change waits for your review before anything is applied",
+      redo: "重新分析故事，审核后再应用变更",
     });
   }
 
@@ -68,7 +90,7 @@ export async function whyStale(
   for (const c of await rows<{ id: string; title: string }>(sql`
     select c.id, c.title from chapters c where c.project_id = ${project.id}
       and not exists (select 1 from pages p where p.chapter_id = c.id) order by c."order"`))
-    out.plan.push({ label: c.title, chapterId: c.id, why: "Not planned yet", redo: "Plan it: new pages and panels" });
+    out.plan.push({ label: c.title, chapterId: c.id, why: "尚未规划", redo: "规划章节，生成新页面和画格" });
   for (const c of stale.plans) {
     const t = await chapterTrace(db, c.chapterId, project.language);
     const hit = t?.panels.filter((p) => p.changed) ?? [];
@@ -76,12 +98,12 @@ export async function whyStale(
       label: c.title,
       chapterId: c.chapterId,
       why: hit.length
-        ? `Its text changed after planning: ${hit.length === 1 ? "1 panel tells" : `${hit.length} panels tell`} revised text (${hit
+        ? `规划后原文已修改，涉及 ${hit.length} 个画格（${hit
             .slice(0, 6)
-            .map((p) => `page ${p.page} panel ${p.panel}`)
-            .join(", ")}${hit.length > 6 ? ", …" : ""})`
-        : "Its text changed after planning, but no panel's own text did (text was added, moved or reworded between)",
-      redo: `Re-planning replaces its ${n(c.pages, "page")} and ${n(c.drawnPanels, "drawn panel")}; keeping it marks it current`,
+            .map((p) => panelLabel(p.page, p.panel))
+            .join("、")}${hit.length > 6 ? "、……" : ""}）`
+        : "规划后原文已修改，现有画格对应的原文片段仍相同",
+      redo: `重新规划将替换 ${c.pages} 页和 ${c.drawnPanels} 个已绘制的画格。选择保留可将当前规划标为最新。`,
     });
   }
 
@@ -94,8 +116,8 @@ export async function whyStale(
     out.prompts.push({
       label: c.title,
       chapterId: c.id,
-      why: `${n(c.pages, "page")} with panels to draw and no prepared prompt`,
-      redo: `Prepare prompts: ${n(c.pages, "text request")}, one per page`,
+      why: `${c.pages} 页包含待绘制的画格，但尚未准备提示词`,
+      redo: `为每页准备提示词，共 ${c.pages} 次文本请求`,
     });
 
   // Art: undrawn panels per chapter, and each panel whose spec was edited after its artwork, with the fields.
@@ -107,8 +129,8 @@ export async function whyStale(
     out.art.push({
       label: c.title,
       chapterId: c.id,
-      why: `${n(c.k, "panel")} not drawn yet`,
-      redo: `Draw ${n(c.k, "image")}`,
+      why: `${c.k} 个画格尚未绘制`,
+      redo: `绘制 ${c.k} 张图`,
     });
   for (const p of await rows<{
     id: string;
@@ -133,14 +155,14 @@ export async function whyStale(
     const keys = [...new Set([...Object.keys(p.now ?? {}), ...Object.keys(p.was ?? {})])];
     const fields = keys.filter((k) => stableStringify(p.now?.[k]) !== stableStringify(p.was?.[k]));
     out.art.push({
-      label: `${p.title} · page ${p.page}, panel ${p.panel}`,
+      label: `${p.title} · ${panelLabel(p.page, p.panel)}`,
       chapterId: p.chapter_id,
       pageId: p.page_id,
       panelId: p.id,
       why: fields.length
-        ? `Edited after its artwork was drawn: ${list(fields.slice(0, 8))}${fields.length > 8 ? ", …" : ""}`
-        : "Its spec was saved again after its artwork was drawn",
-      redo: "Draw it again (1 image); the current artwork stays as a version",
+        ? `绘制后修改了画格设定：${list(fields.slice(0, 8).map((field) => fieldLabels.get(field) ?? field))}${fields.length > 8 ? "、……" : ""}`
+        : "绘制后重新保存了画格设定",
+      redo: "重新绘制一张图，当前图片将保存在历史版本中",
     });
   }
 
@@ -153,8 +175,8 @@ export async function whyStale(
     out.narration.push({
       label: c.title,
       chapterId: c.id,
-      why: "Has panels but no narration",
-      redo: "Write its narration",
+      why: "已有画格，尚未编写旁白",
+      redo: "编写旁白",
     });
   for (const c of stale.narration) {
     const touched = await rows<{ page: number; panel: number }>(sql`
@@ -169,12 +191,12 @@ export async function whyStale(
       label: c.title,
       chapterId: c.chapterId,
       why: touched.length
-        ? `Its panels or dialogue changed after it was written: ${touched
+        ? `编写旁白后修改了画格或对白：${touched
             .slice(0, 6)
-            .map((t) => `page ${t.page} panel ${t.panel}`)
-            .join(", ")}${touched.length > 6 ? ", …" : ""}`
-        : "Its panels changed after it was written (panels removed, reordered or moved between pages)",
-      redo: `Writing it again replaces its ${n(c.narrationLines, "line")} and their audio; keeping it marks it current`,
+            .map((t) => panelLabel(t.page, t.panel))
+            .join("、")}${touched.length > 6 ? "、……" : ""}`
+        : "编写旁白后删除、重新排序或跨页移动了画格",
+      redo: `重写将替换 ${c.narrationLines} 条旁白及对应音频。选择保留可将当前旁白标为最新。`,
     });
   }
 
@@ -203,12 +225,12 @@ export async function whyStale(
       label: c.title,
       chapterId: c.id,
       why: list([
-        c.none ? `${n(c.none, "segment")} without audio` : "",
-        c.text ? `${n(c.text, "segment")} whose text or pronunciation changed` : "",
-        c.voice ? `${n(c.voice, "segment")} in another voice` : "",
-        c.speed ? `${n(c.speed, "segment")} at another speed` : "",
+        c.none ? `${c.none} 条旁白缺少音频` : "",
+        c.text ? `${c.text} 条旁白的文本或发音有更新` : "",
+        c.voice ? `${c.voice} 条旁白使用了其他音色` : "",
+        c.speed ? `${c.speed} 条旁白使用了其他语速` : "",
       ]),
-      redo: `Synthesize ${n(k, "segment")}`,
+      redo: `合成 ${k} 条旁白的音频`,
     });
   }
 
@@ -218,7 +240,7 @@ export async function whyStale(
     where j.project_id = ${project.id} and j.kind in ('video_pages', 'video_panels') and j.status = 'completed'
       and j.chapter_id is null and j.options -> 'pageIds' is null and j.options -> 'video' -> 'maxDurationMs' is null
       and exists (select 1 from exports e where e.export_job_id = j.id)`);
-  if (!film?.at) out.render.push({ label: "Video", why: "No whole-project video yet", redo: "Render the whole video" });
+  if (!film?.at) out.render.push({ label: "视频", why: "尚未渲染整部视频", redo: "渲染整部视频" });
   else {
     const [ch] = await rows<Record<string, number>>(sql`
       select
@@ -232,20 +254,20 @@ export async function whyStale(
         (select count(*)::int from sound_effects where project_id = ${project.id} and updated_at > ${film.at}::timestamptz) as sfx,
         (select count(*)::int from projects where id = ${project.id} and updated_at > ${film.at}::timestamptz) as settings`);
     const why = list([
-      ch?.panels ? `${n(ch.panels, "panel")} edited` : "",
-      ch?.artwork ? n(ch.artwork, "new artwork", "new artworks") : "",
-      ch?.pages ? `${n(ch.pages, "page")} changed` : "",
-      ch?.narration ? `${n(ch.narration, "narration line")} changed` : "",
-      ch?.audio ? `${n(ch.audio, "narration segment")} changed` : "",
-      ch?.dialogue ? `${n(ch.dialogue, "dialogue line")} changed` : "",
-      ch?.sfx ? `${n(ch.sfx, "sound effect")} changed` : "",
-      ch?.settings ? "project settings changed" : "",
+      ch?.panels ? `编辑了 ${ch.panels} 个画格` : "",
+      ch?.artwork ? `新增 ${ch.artwork} 张图` : "",
+      ch?.pages ? `修改了 ${ch.pages} 页` : "",
+      ch?.narration ? `修改了 ${ch.narration} 条旁白` : "",
+      ch?.audio ? `修改了 ${ch.audio} 段音频` : "",
+      ch?.dialogue ? `修改了 ${ch.dialogue} 条对白` : "",
+      ch?.sfx ? `修改了 ${ch.sfx} 处拟声词` : "",
+      ch?.settings ? "修改了项目设置" : "",
     ]);
     if (why)
       out.render.push({
-        label: "Video",
-        why: `Since the newest video (${film.at.slice(0, 16)} UTC): ${why}`,
-        redo: "Render it again; sections that did not change come from the render cache",
+        label: "视频",
+        why: `最近一次渲染（${film.at.slice(0, 16)} UTC）后的变更：${why}`,
+        redo: "重新渲染视频，未修改的片段将使用缓存",
       });
   }
 

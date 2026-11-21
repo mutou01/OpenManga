@@ -20,12 +20,12 @@ function TtsBanner({ status }: { status: TtsStatus | undefined }) {
   const s = status.status.state;
   const ok = status.enabled && status.status.ok;
   const msg = !status.enabled
-    ? "Narration synthesis is disabled on this server (TTS_ENABLED=false). You can still write narration."
+    ? "服务器已禁用旁白合成（TTS_ENABLED=false），仍可撰写旁白。"
     : ok
-      ? `Local Kokoro TTS is ready (${status.provider}). Synthesis costs $0 in external API fees.`
+      ? `本地 Kokoro 语音合成已就绪（${status.provider}），无需支付外部 API 费用。`
       : s === "loading"
-        ? "Kokoro is still loading its model. Synthesis requests will wait and retry."
-        : "Kokoro is offline. Queued synthesis will retry; check the kokoro container.";
+        ? "Kokoro 正在加载模型，合成请求将等待并重试。"
+        : "Kokoro 未连接，排队中的合成任务将重试，请检查 kokoro 容器。";
   return (
     <div
       className={`mb-4 flex items-start gap-2 rounded-lg border p-3 text-sm ${ok ? "border-emerald-500/40 bg-emerald-500/10" : "border-amber-500/40 bg-amber-500/10"}`}
@@ -87,7 +87,7 @@ export function NarrationPage() {
   const saveDefaults = useAction(
     (s: { narrationVoice?: string; narrationSpeed?: number; narrationStyle?: string }) =>
       patch(`/projects/${projectId}`, { settings: s }),
-    { invalidate: [qk.project(projectId), ...invalidate], success: "Narration defaults saved" },
+    { invalidate: [qk.project(projectId), ...invalidate], success: "旁白默认设置已保存" },
   );
   const [style, setStyle] = useState<string>();
   const curStyle = style ?? settings?.narrationStyle ?? "";
@@ -97,7 +97,7 @@ export function NarrationPage() {
   const generate = useAction(
     (replace: boolean) =>
       post(`/chapters/${chapterId}/narration/generate`, { ...aiText(), style: curStyle, replace, language: lang }),
-    { success: "Narration writing queued", onSuccess: () => setConfirmReplace(false) },
+    { success: "旁白撰写已排队", onSuccess: () => setConfirmReplace(false) },
   );
   const synthAll = useAction(
     () =>
@@ -108,19 +108,16 @@ export function NarrationPage() {
       }),
     {
       invalidate,
-      success: (r) =>
-        r.queued
-          ? `${r.queued} of ${r.total} segments queued for synthesis`
-          : "All segments already have current audio",
+      success: (r) => (r.queued ? `${r.total} 个片段中有 ${r.queued} 个已排队合成` : "所有片段均已有最新音频"),
     },
   );
   const applyPauses = useAction(
     () => post<{ updated: number }>(`/chapters/${chapterId}/narration/pauses`, { language: lang }),
-    { invalidate, success: (r) => `Pauses updated on ${r.updated} segment(s)` },
+    { invalidate, success: (r) => `已更新 ${r.updated} 个片段的停顿` },
   );
   const cancelSynth = useAction(
     () => post<{ cancelled: number }>(`/chapters/${chapterId}/narration/synthesize/cancel`),
-    { invalidate, success: (r) => `Cancelled ${r.cancelled} queued synthesis job(s)` },
+    { invalidate, success: (r) => `已取消 ${r.cancelled} 个排队中的合成任务` },
   );
   // Deletes audio files from disk; the narration text stays and can be synthesized again.
   const [deleteAudio, setDeleteAudio] = useState<"chapter" | "project" | null>(null);
@@ -134,7 +131,7 @@ export function NarrationPage() {
       ),
     {
       invalidate: [...invalidate, qk.project(projectId), ["narration-progress", projectId]],
-      success: (r) => `Deleted ${r.files} audio file(s), ${fmt.bytes(r.bytes)} freed`,
+      success: (r) => `已删除 ${r.files} 个音频文件，释放 ${fmt.bytes(r.bytes)}`,
       onSuccess: () => setDeleteAudio(null),
     },
   );
@@ -152,7 +149,7 @@ export function NarrationPage() {
         language: lang,
         audio: { format: "mp3", normalize: true },
       }),
-    { success: "Export queued — it will appear on the Exports page" },
+    { success: "导出已排队，可在导出页查看" },
   );
   const [previewing, setPreviewing] = useState(false);
   const [current, setCurrent] = useState<string | null>(null);
@@ -188,8 +185,8 @@ export function NarrationPage() {
   return (
     <div className="mx-auto max-w-5xl p-6">
       <PageHeader
-        title="Narration"
-        subtitle="Structured narration text first, then local Kokoro speech."
+        title="旁白"
+        subtitle="先编写结构化旁白，再通过本地 Kokoro 合成语音。"
         actions={
           <select
             className="input w-auto"
@@ -201,11 +198,11 @@ export function NarrationPage() {
                 search: { chapterId: e.target.value },
               })
             }
-            aria-label="Chapter"
+            aria-label="章节"
           >
             {chapters.data?.chapters.map((c) => (
               <option key={c.id} value={c.id}>
-                Ch. {c.order} — {c.title}
+                第 {c.order} 章 — {c.title}
               </option>
             ))}
           </select>
@@ -214,35 +211,32 @@ export function NarrationPage() {
       <SynthesisProgress projectId={projectId} language={lang} />
       <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
         <label className="flex items-center gap-2">
-          Narration language
+          旁白语言
           <select className="input w-auto" value={lang} onChange={(e) => setLanguage(e.target.value)}>
             {NARRATION_LANGUAGES.map((l) => {
               const n = doc.data?.tracks?.find((t) => t.language === l.code)?.lines;
               return (
                 <option key={l.code} value={l.code}>
-                  {l.name}
-                  {n ? ` (${n} lines)` : ""}
+                  {new Intl.DisplayNames(["zh-CN"], { type: "language" }).of(l.code) ?? l.name}
+                  {n ? `（${n} 行）` : ""}
                 </option>
               );
             })}
           </select>
         </label>
-        <span className="muted text-xs">
-          Each language is its own narration track over the same artwork; write it, then synthesize with a voice for
-          that language.
-        </span>
+        <span className="muted text-xs">每种语言在同一套画稿上使用独立旁白轨道，撰写后请选择对应语言的音色合成。</span>
       </div>
 
       <TtsBanner status={tts.data} />
       {!chapters.isLoading && !chapters.data?.chapters.length && (
-        <EmptyState icon={<Mic className="size-8" />} title="No chapters yet">
-          Create chapters from the Story or Chapters page first.
+        <EmptyState icon={<Mic className="size-8" />} title="暂无章节">
+          请先在故事或章节页创建章节。
         </EmptyState>
       )}
       {chapterId && (
         <>
           <div className="card mb-4 grid gap-3 p-4 md:grid-cols-[1fr_1fr_auto]">
-            <Field label="Default voice">
+            <Field label="默认音色">
               <select
                 className="input"
                 value={curVoice}
@@ -255,12 +249,12 @@ export function NarrationPage() {
                 {voices.map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.name} · {v.language}
-                    {v.gender ? ` · ${v.gender}` : ""}
+                    {v.gender ? ` · ${v.gender === "female" ? "女声" : v.gender === "male" ? "男声" : v.gender}` : ""}
                   </option>
                 ))}
               </select>
             </Field>
-            <Field label={`Default speed ×${curSpeed.toFixed(2)}`}>
+            <Field label={`默认语速 ×${curSpeed.toFixed(2)}`}>
               <input
                 type="range"
                 min={0.5}
@@ -280,17 +274,17 @@ export function NarrationPage() {
                 onClick={preview}
                 disabled={previewing || !tts.data?.enabled}
               >
-                {previewing ? <Spinner /> : <Volume2 className="size-4" />} Preview voice
+                {previewing ? <Spinner /> : <Volume2 className="size-4" />} 试听音色
               </button>
             </div>
           </div>
 
           <div className="card mb-4 flex flex-wrap items-end gap-2 p-4">
             <div className="min-w-60 flex-1">
-              <Field label="Narration style (saved for every chapter)">
+              <Field label="旁白风格（应用于所有章节）">
                 <input
                   className="input"
-                  placeholder="e.g. suspenseful recap, second person"
+                  placeholder="例如：悬疑回顾、第二人称叙述"
                   value={curStyle}
                   maxLength={500}
                   onChange={(e) => setStyle(e.target.value)}
@@ -307,19 +301,19 @@ export function NarrationPage() {
               onClick={() => generate.mutate(false)}
               disabled={generate.isPending}
             >
-              <Wand2 className="size-4" /> Write narration
+              <Wand2 className="size-4" /> 撰写旁白
             </button>
             <button type="button" className="btn-ghost" onClick={() => setConfirmReplace(true)}>
-              Regenerate (replace)
+              重新生成（替换）
             </button>
             <button
               type="button"
               className="btn-ghost"
-              title={`Set every pause to ${settings?.narrationPauseMs ?? 350} ms and scene/chapter ends to ${settings?.sceneBreakPauseMs ?? 700} ms (Project settings). Audio is kept.`}
+              title={`按项目设置将普通停顿设为 ${settings?.narrationPauseMs ?? 350} 毫秒，场景或章节末尾停顿设为 ${settings?.sceneBreakPauseMs ?? 700} 毫秒，保留音频。`}
               onClick={() => applyPauses.mutate()}
               disabled={applyPauses.isPending || !allSegments.length}
             >
-              Apply pause settings
+              应用停顿设置
             </button>
             <AiChip cap="tts" />
             <button
@@ -328,7 +322,7 @@ export function NarrationPage() {
               onClick={() => synthAll.mutate()}
               disabled={synthAll.isPending || !tts.data?.enabled || !allSegments.length}
             >
-              <Mic className="size-4" /> Synthesize all missing
+              <Mic className="size-4" /> 合成所有缺失音频
             </button>
             {allSegments.length > 0 && <ImportRecording projectId={projectId} chapterId={chapterId} language={lang} />}
             {allSegments.some((sg) => sg.job?.status === "queued") && (
@@ -338,19 +332,19 @@ export function NarrationPage() {
                 onClick={() => cancelSynth.mutate()}
                 disabled={cancelSynth.isPending}
               >
-                Cancel queued synthesis
+                取消排队中的合成
               </button>
             )}
             <button
               type="button"
               className="btn-ghost text-red-500"
-              title="Delete narration audio files from disk; the text is kept"
+              title="删除磁盘上的旁白音频文件，保留文字"
               onClick={() => {
                 setAudioScope("chapter");
                 setDeleteAudio("chapter");
               }}
             >
-              <Trash2 className="size-4" /> Delete audio
+              <Trash2 className="size-4" /> 删除音频
             </button>
           </div>
 
@@ -358,19 +352,19 @@ export function NarrationPage() {
             <ChapterPlayer segments={allSegments} onCurrent={setCurrent} />
             <div className="flex flex-wrap gap-2">
               <button type="button" className="btn-secondary" onClick={() => exportKind.mutate("narration_audio")}>
-                <Download className="size-4" /> Download audio
+                <Download className="size-4" /> 下载音频
               </button>
               <Link
                 to="/projects/$projectId/narration/qa"
                 params={{ projectId }}
                 search={{ chapterId }}
                 className="btn-ghost"
-                title="Repetition, restated dialogue, density and pace, with fixes for only the flagged lines"
+                title="检查重复、复述对白、密度和语速，仅修复标记的旁白行"
               >
-                <ListChecks className="size-4" /> Narration QA
+                <ListChecks className="size-4" /> 旁白质检
               </Link>
               <Link to="/projects/$projectId/exports" params={{ projectId }} className="btn-ghost">
-                Exports →
+                导出 →
               </Link>
             </div>
           </div>
@@ -380,14 +374,14 @@ export function NarrationPage() {
             <Spinner />
           ) : !doc.data?.lines.length ? (
             <EmptyState
-              title="No narration yet"
+              title="暂无旁白"
               action={
                 <button type="button" className="btn-primary" onClick={() => addLine.mutate()}>
-                  <Plus className="size-4" /> Add line
+                  <Plus className="size-4" /> 添加旁白行
                 </button>
               }
             >
-              Generate narration with a text model or write it yourself.
+              使用文本模型生成旁白，或手动撰写。
             </EmptyState>
           ) : (
             <div className="space-y-3">
@@ -408,25 +402,25 @@ export function NarrationPage() {
                 onClick={() => addLine.mutate()}
                 disabled={addLine.isPending}
               >
-                <Plus className="size-4" /> Add line
+                <Plus className="size-4" /> 添加旁白行
               </button>
             </div>
           )}
 
           <details className="card mt-4 p-4" onToggle={(e) => setShowTimeline((e.target as HTMLDetailsElement).open)}>
-            <summary className="cursor-pointer font-medium">Timeline manifest</summary>
-            <p className="muted my-2 text-xs">Machine-readable panel/audio timing for future recap video generation.</p>
+            <summary className="cursor-pointer font-medium">时间轴清单</summary>
+            <p className="muted my-2 text-xs">用于后续回顾视频生成的画格与音频时间轴数据。</p>
             {timeline.isLoading ? <Spinner /> : timeline.data ? <JsonBlock value={timeline.data} /> : null}
             <button type="button" className="btn-secondary mt-2" onClick={() => exportKind.mutate("timeline")}>
-              <Download className="size-4" /> Export timeline JSON
+              <Download className="size-4" /> 导出时间轴 JSON
             </button>
           </details>
         </>
       )}
       <ConfirmDialog
         open={deleteAudio !== null}
-        title="Delete narration audio?"
-        confirmLabel="Delete audio"
+        title="删除旁白音频？"
+        confirmLabel="删除音频"
         danger
         busy={removeAudio.isPending}
         onClose={() => setDeleteAudio(null)}
@@ -435,29 +429,25 @@ export function NarrationPage() {
         <div className="space-y-2">
           <label className="flex items-center gap-2">
             <input type="radio" checked={audioScope === "chapter"} onChange={() => setAudioScope("chapter")} />
-            This chapter ({lang})
+            本章（{lang}）
           </label>
           <label className="flex items-center gap-2">
             <input type="radio" checked={audioScope === "project"} onChange={() => setAudioScope("project")} />
-            The whole project: every chapter and language, including audio of deleted lines
+            整个项目的全部章节与语言，包括已删除旁白行的音频
           </label>
-          <p className="muted">
-            The audio files are deleted from disk now. The narration text is kept; synthesize again to get audio back
-            (free with the local voice).
-          </p>
+          <p className="muted">音频文件会立即从磁盘删除，保留旁白文字。重新合成即可恢复音频，使用本地音色免费。</p>
         </div>
       </ConfirmDialog>
       <ConfirmDialog
         open={confirmReplace}
-        title="Replace narration?"
-        confirmLabel="Replace"
+        title="替换旁白？"
+        confirmLabel="替换"
         danger
         busy={generate.isPending}
         onClose={() => setConfirmReplace(false)}
         onConfirm={() => generate.mutate(true)}
       >
-        Existing narration lines that are not shown as on-page captions will be deleted and rewritten. Synthesized audio
-        for them will no longer be linked.
+        未作为页面字幕显示的现有旁白行将被删除并重写，其已合成音频将解除关联。
       </ConfirmDialog>
     </div>
   );

@@ -51,11 +51,11 @@ export function CharacterDetailPage() {
   );
   const restore = useAction(() => post(`/characters/${characterId}/restore`), {
     ...inv,
-    success: "Character restored",
+    success: "角色已恢复",
   });
   const trash = useAction(() => del(`/characters/${characterId}`), {
     ...inv,
-    success: "Character moved to trash",
+    success: "角色已移入回收站",
     onSuccess: () => navigate({ to: "/projects/$projectId/cast", params: { projectId } }),
   });
   const setStatus = useAction(
@@ -66,7 +66,7 @@ export function CharacterDetailPage() {
     (fromVersionId: string) =>
       post<{ version: CharacterVersionRow }>(`/characters/${characterId}/versions`, {
         fromVersionId,
-        changeNote: "New appearance version",
+        changeNote: "新建外观版本",
       }),
     { ...inv, success: (r) => `Created v${r.version.versionNumber}`, onSuccess: (r) => setSelected(r.version.id) },
   );
@@ -94,15 +94,13 @@ export function CharacterDetailPage() {
   return (
     <div className="space-y-5 p-6">
       <Link to="/projects/$projectId/cast" params={{ projectId }} className="muted text-xs hover:underline">
-        ← Cast
+        ← 角色
       </Link>
       {ch.deletedAt && (
         <div className="flex flex-wrap items-center gap-2 rounded-md bg-amber-500/10 p-3 text-sm">
-          <span className="mr-auto">
-            This character is in the trash, with its reference images. Restoring it brings them back.
-          </span>
+          <span className="mr-auto">此角色及其参考图已移入回收站，恢复角色会一并恢复参考图。</span>
           <button type="button" className="btn-secondary" disabled={restore.isPending} onClick={() => restore.mutate()}>
-            <RotateCcw className="size-4" /> Restore
+            <RotateCcw className="size-4" /> 恢复
           </button>
         </div>
       )}
@@ -112,7 +110,7 @@ export function CharacterDetailPage() {
             className="w-full bg-transparent text-xl font-semibold outline-none focus:underline"
             defaultValue={ch.name}
             key={ch.name}
-            aria-label="Character name"
+            aria-label="角色名称"
             onBlur={(e) =>
               e.target.value.trim() && e.target.value !== ch.name && rename.mutate({ name: e.target.value.trim() })
             }
@@ -124,7 +122,7 @@ export function CharacterDetailPage() {
               className="input w-auto"
               value={ch.role}
               onChange={(e) => rename.mutate({ role: e.target.value })}
-              aria-label="Role"
+              aria-label="角色类型"
             >
               {ROLES.map((r) => (
                 <option key={r} value={r}>
@@ -138,13 +136,13 @@ export function CharacterDetailPage() {
               onClick={() => setMigrateOpen(true)}
               disabled={versions.length < 2}
             >
-              <GitBranch className="size-4" /> Migrate panels
+              <GitBranch className="size-4" /> 迁移画格
             </button>
             <button
               type="button"
               className="btn-ghost text-red-500"
               onClick={() => setTrashOpen(true)}
-              aria-label="Trash character"
+              aria-label="将角色移入回收站"
             >
               <Trash2 className="size-4" />
             </button>
@@ -154,16 +152,14 @@ export function CharacterDetailPage() {
       <div className="flex items-start gap-2 rounded-lg border border-accent-500/30 bg-accent-500/10 p-3 text-sm">
         <Info className="mt-0.5 size-4 shrink-0 text-accent-500" />
         <div>
-          The approved canonical reference of each version is the identity source of truth. Previous panels are only
-          used for continuity, never identity. Changing appearance creates a new version; existing panels keep theirs
-          unless you migrate them.
+          每个版本以已审核的标准参考图为身份依据，历史画格用于保持连贯性。修改外观会创建新版本，现有画格在迁移后才会采用新版本。
         </div>
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[18rem_1fr]">
         <aside className="space-y-4">
           <section className="card p-3">
-            <h2 className="mb-2 text-sm font-semibold">Versions</h2>
+            <h2 className="mb-2 text-sm font-semibold">版本</h2>
             <ul className="space-y-1">
               {versions.map((v) => (
                 <li key={v.id} className="group relative">
@@ -176,27 +172,27 @@ export function CharacterDetailPage() {
                       <span className="font-medium">v{v.versionNumber}</span>
                       <StatusChip status={v.status} />
                       {v.id === ch.currentVersionId && (
-                        <span className="chip bg-accent-500/15 text-accent-500">current</span>
+                        <span className="chip bg-accent-500/15 text-accent-500">当前</span>
                       )}
                     </div>
                     <div className="muted mt-0.5 text-xs">
-                      {v.panelCount} panel{v.panelCount === 1 ? "" : "s"} · {v.changeNote || "—"}
+                      {v.panelCount} 个画格 · {v.changeNote || "—"}
                     </div>
                   </button>
                   {v.status === "draft" && versions.length > 1 && v.panelCount === 0 && (
                     <button
                       type="button"
-                      aria-label={`Delete draft v${v.versionNumber}`}
-                      title="Delete this draft version"
+                      aria-label={`删除草稿第 ${v.versionNumber} 版`}
+                      title="删除此草稿版本"
                       className="btn-ghost absolute top-1 right-1 p-1 text-red-500 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                       onClick={async (e) => {
                         e.stopPropagation();
-                        if (!window.confirm(`Delete draft v${v.versionNumber}?`)) return;
+                        if (!window.confirm(`删除草稿 v${v.versionNumber}？`)) return;
                         try {
                           await del(`/character-versions/${v.id}`);
                           if (selected === v.id) setSelected(null);
                           await refresh();
-                          toast.success(`Deleted v${v.versionNumber}`);
+                          toast.success(`已删除 v${v.versionNumber}`);
                         } catch (err) {
                           toast.error(err);
                         }
@@ -210,17 +206,17 @@ export function CharacterDetailPage() {
             </ul>
           </section>
           <section className="card p-3">
-            <h2 className="mb-2 text-sm font-semibold">Aliases</h2>
+            <h2 className="mb-2 text-sm font-semibold">别名</h2>
             <div className="mb-2 flex flex-wrap gap-1">
               {data.aliases.map((a) => (
                 <span key={a.id} className="chip bg-[var(--panel-2)]">
                   {a.alias}
-                  <button type="button" onClick={() => removeAlias.mutate(a.id)} aria-label={`Remove alias ${a.alias}`}>
+                  <button type="button" onClick={() => removeAlias.mutate(a.id)} aria-label={`移除别名“${a.alias}”`}>
                     <X className="size-3" />
                   </button>
                 </span>
               ))}
-              {!data.aliases.length && <span className="muted text-xs">None</span>}
+              {!data.aliases.length && <span className="muted text-xs">无</span>}
             </div>
             <form
               className="flex gap-1"
@@ -233,10 +229,10 @@ export function CharacterDetailPage() {
                 className="input"
                 value={alias}
                 onChange={(e) => setAlias(e.target.value)}
-                placeholder="the boy"
-                aria-label="New alias"
+                placeholder="男孩"
+                aria-label="新别名"
               />
-              <button type="submit" className="btn-secondary" aria-label="Add alias">
+              <button type="submit" className="btn-secondary" aria-label="添加别名">
                 <Plus className="size-4" />
               </button>
             </form>
@@ -254,14 +250,14 @@ export function CharacterDetailPage() {
           <div className="min-w-0 space-y-5">
             <section className="card p-4">
               <div className="mb-3 flex flex-wrap items-center gap-2">
-                <h2 className="mr-auto font-semibold">Appearance v{version.versionNumber}</h2>
+                <h2 className="mr-auto font-semibold">外观版本 v{version.versionNumber}</h2>
                 {version.id !== ch.currentVersionId && (
                   <button
                     type="button"
                     className="btn-secondary"
                     onClick={() => rename.mutate({ currentVersionId: version.id })}
                   >
-                    Make current
+                    设为当前
                   </button>
                 )}
                 {VERSION_ACTIONS[version.status]?.map((a) => (
@@ -281,13 +277,12 @@ export function CharacterDetailPage() {
                   onClick={() => newVersion.mutate(version.id)}
                   disabled={newVersion.isPending}
                 >
-                  <GitBranch className="size-4" /> New appearance version
+                  <GitBranch className="size-4" /> 新建外观版本
                 </button>
               </div>
               {version.status !== "draft" && (
                 <p className="muted mb-3 text-sm">
-                  This version is <b>{version.status}</b> and read-only so historical panels stay reproducible. Create a
-                  new appearance version to change it.
+                  此版本为 <b>{version.status}</b> ，已设为只读以保证历史画格可复现。需要修改时请新建外观版本。
                 </p>
               )}
               <ContentWarnings warnings={version.contentWarnings} />
@@ -309,14 +304,14 @@ export function CharacterDetailPage() {
 
       <ConfirmDialog
         open={trashOpen}
-        title={`Trash ${ch.name}?`}
+        title={`将“${ch.name}”移至回收站？`}
         danger
-        confirmLabel="Move to trash"
+        confirmLabel="移入回收站"
         busy={trash.isPending}
         onClose={() => setTrashOpen(false)}
         onConfirm={() => trash.mutate()}
       >
-        The character can be restored from the cast trash. Panels keep their references.
+        可以从角色回收站恢复此角色，画格会保留原有参考图。
       </ConfirmDialog>
       <MigrateModal
         open={migrateOpen}
@@ -349,8 +344,8 @@ function BibleEditor({ version, onSaved }: { version: CharacterVersionRow; onSav
           <DescribeImageButton
             projectId={projectId}
             aspect="character"
-            label="Fill from image"
-            title="Describe a character from a reference image"
+            label="从图片填写"
+            title="从参考图提取角色描述"
             className="btn-secondary px-2 py-1 text-xs"
             onUse={(d: ImageDescription) => {
               // Merge rather than replace: only fields the image actually described are written, so existing
@@ -360,56 +355,56 @@ function BibleEditor({ version, onSaved }: { version: CharacterVersionRow; onSav
                 Object.entries(from).filter(([, v]) => (Array.isArray(v) ? v.length : String(v ?? "").trim())),
               );
               setBible((b) => ({ ...b, ...filled }) as CharacterBible);
-              toast.info(`Filled ${Object.keys(filled).length} field(s) from the image — review, then it autosaves`);
+              toast.info(`已根据图片填充 ${Object.keys(filled).length} 个字段，请检查内容，修改将自动保存。`);
             }}
           />
         )}
         <SaveIndicator state={state} />
       </div>
-      <TextRow {...p} k="summary" label="Summary" multiline />
-      <FieldGroup title="Identity">
-        <TextRow {...p} k="genderPresentation" label="Gender presentation" />
-        <TextRow {...p} k="ageRange" label="Age / age range" />
-        <TextRow {...p} k="height" label="Height" />
-        <TextRow {...p} k="build" label="Body build" />
+      <TextRow {...p} k="summary" label="摘要" multiline />
+      <FieldGroup title="身份">
+        <TextRow {...p} k="genderPresentation" label="性别表现" />
+        <TextRow {...p} k="ageRange" label="年龄／年龄范围" />
+        <TextRow {...p} k="height" label="身高" />
+        <TextRow {...p} k="build" label="体型" />
       </FieldGroup>
-      <FieldGroup title="Face">
-        <TextRow {...p} k="faceShape" label="Face shape" />
-        <TextRow {...p} k="skinTone" label="Skin tone" />
-        <TextRow {...p} k="eyes" label="Eyes" />
-        <TextRow {...p} k="eyebrows" label="Eyebrows" />
-        <TextRow {...p} k="nose" label="Nose" />
-        <TextRow {...p} k="mouth" label="Mouth" />
-        <ListRow {...p} k="distinctiveFeatures" label="Distinctive features" />
+      <FieldGroup title="面部">
+        <TextRow {...p} k="faceShape" label="脸型" />
+        <TextRow {...p} k="skinTone" label="肤色" />
+        <TextRow {...p} k="eyes" label="眼睛" />
+        <TextRow {...p} k="eyebrows" label="眉毛" />
+        <TextRow {...p} k="nose" label="鼻子" />
+        <TextRow {...p} k="mouth" label="嘴巴" />
+        <ListRow {...p} k="distinctiveFeatures" label="显著特征" />
       </FieldGroup>
-      <FieldGroup title="Hair">
-        <TextRow {...p} k="hair" label="Hair" />
-        <TextRow {...p} k="facialHair" label="Facial hair" />
+      <FieldGroup title="头发">
+        <TextRow {...p} k="hair" label="头发" />
+        <TextRow {...p} k="facialHair" label="面部毛发" />
       </FieldGroup>
-      <FieldGroup title="Wardrobe & equipment">
-        <TextRow {...p} k="wardrobe" label="Default wardrobe" multiline />
-        <ListRow {...p} k="accessories" label="Accessories" />
-        <ListRow {...p} k="weapons" label="Weapons" />
-        <ListRow {...p} k="props" label="Props" />
+      <FieldGroup title="服装与装备">
+        <TextRow {...p} k="wardrobe" label="默认服装" multiline />
+        <ListRow {...p} k="accessories" label="配饰" />
+        <ListRow {...p} k="weapons" label="武器" />
+        <ListRow {...p} k="props" label="道具" />
       </FieldGroup>
-      <FieldGroup title="Personality">
-        <TextRow {...p} k="personality" label="Personality" />
-        <TextRow {...p} k="visualMannerisms" label="Visual mannerisms" />
-        <TextRow {...p} k="defaultExpression" label="Default expression" />
+      <FieldGroup title="性格">
+        <TextRow {...p} k="personality" label="性格" />
+        <TextRow {...p} k="visualMannerisms" label="外在习惯动作" />
+        <TextRow {...p} k="defaultExpression" label="默认表情" />
       </FieldGroup>
-      <FieldGroup title="Consistency">
+      <FieldGroup title="一致性">
         <div className="sm:col-span-2">
-          <ListRow {...p} k="immutableTraits" label="Immutable visual traits (never change)" />
+          <ListRow {...p} k="immutableTraits" label="固定外观特征（始终保持）" />
         </div>
         <div className="space-y-2 sm:col-span-2">
-          <span className="label">Outfit variants (described)</span>
+          <span className="label">服装变体（文字描述）</span>
           {bible.outfitVariants.map((o, i) => (
             <div key={i} className="flex gap-2">
               <input
                 className="input w-40"
                 value={o.name}
                 disabled={!editable}
-                aria-label="Variant name"
+                aria-label="变体名称"
                 onChange={(e) =>
                   setBible({
                     ...bible,
@@ -421,7 +416,7 @@ function BibleEditor({ version, onSaved }: { version: CharacterVersionRow; onSav
                 className="input"
                 value={o.description}
                 disabled={!editable}
-                aria-label="Variant description"
+                aria-label="变体描述"
                 onChange={(e) =>
                   setBible({
                     ...bible,
@@ -435,7 +430,7 @@ function BibleEditor({ version, onSaved }: { version: CharacterVersionRow; onSav
                 <button
                   type="button"
                   className="btn-ghost"
-                  aria-label="Remove variant"
+                  aria-label="移除变体"
                   onClick={() => setBible({ ...bible, outfitVariants: bible.outfitVariants.filter((_, j) => j !== i) })}
                 >
                   <X className="size-4" />
@@ -448,10 +443,10 @@ function BibleEditor({ version, onSaved }: { version: CharacterVersionRow; onSav
               type="button"
               className="btn-ghost text-xs"
               onClick={() =>
-                setBible({ ...bible, outfitVariants: [...bible.outfitVariants, { name: "Variant", description: "" }] })
+                setBible({ ...bible, outfitVariants: [...bible.outfitVariants, { name: "变体", description: "" }] })
               }
             >
-              <Plus className="size-3" /> Add variant
+              <Plus className="size-3" /> 添加变体
             </button>
           )}
         </div>
@@ -466,17 +461,15 @@ function ContentWarnings({ warnings }: { warnings: ContentWarning[] }) {
   return (
     <div className="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
       <div className="mb-1 flex items-center gap-2 font-medium text-amber-700 dark:text-amber-400">
-        <AlertTriangle className="size-4" /> Wording that image moderators often block
+        <AlertTriangle className="size-4" /> 容易触发图像审核的措辞
       </div>
       <p className="muted mb-2 text-xs">
-        These fields are sent with every panel this character appears in. Read together, body and injury words look like
-        malnutrition or harm to a moderator even in harmless scenes. If you change them, regenerate the reference too:
-        the old image still shows the old description.
+        这些字段会随角色出现的每个画格一同发送。体型与伤势描述组合后可能触发图像审核。修改描述后，请重新生成参考图，使图片与新描述一致。
       </p>
       <ul className="space-y-1 text-xs">
         {warnings.map((w, i) => (
           <li key={`${w.field}-${w.match}-${i}`}>
-            <b>{w.field}</b>: “{w.match}” → try “{w.suggestion}”<span className="muted"> · {w.excerpt}</span>
+            <b>{w.field}</b>: “{w.match}” → 可改为“{w.suggestion}”<span className="muted"> · {w.excerpt}</span>
           </li>
         ))}
       </ul>
@@ -528,18 +521,18 @@ function MigrateModal({
   );
   const opt = versions.map((v) => (
     <option key={v.id} value={v.id}>
-      v{v.versionNumber} ({v.status}, {v.panelCount} panels)
+      v{v.versionNumber} ({v.status}, {v.panelCount} 个画格）
     </option>
   ));
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title="Migrate panels to another version"
+      title="将画格迁移到其他版本"
       footer={
         <>
           <button type="button" className="btn-secondary" onClick={onClose}>
-            Cancel
+            取消
           </button>
           <button
             type="button"
@@ -547,28 +540,25 @@ function MigrateModal({
             disabled={!from || !to || from === to || migrate.isPending}
             onClick={() => migrate.mutate(Boolean(blocked))}
           >
-            {blocked ? "Migrate anyway" : "Migrate"}
+            {blocked ? "仍然迁移" : "迁移"}
           </button>
         </>
       }
     >
       {blocked && <p className="mb-3 rounded-lg bg-amber-500/10 p-2 text-sm text-amber-700">{blocked}</p>}
-      <p className="muted mb-3 text-sm">
-        Panels referencing the source version will use the target version's appearance and references on their next
-        generation. Existing artwork is not changed.
-      </p>
+      <p className="muted mb-3 text-sm">引用源版本的画格将在下次生成时采用目标版本的外观和参考图，现有图片会保留。</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <label>
-          <span className="label">From</span>
+          <span className="label">起始</span>
           <select className="input" value={from} onChange={(e) => setFrom(e.target.value)}>
-            <option value="">Select…</option>
+            <option value="">请选择……</option>
             {opt}
           </select>
         </label>
         <label>
-          <span className="label">To</span>
+          <span className="label">目标</span>
           <select className="input" value={to} onChange={(e) => setTo(e.target.value)}>
-            <option value="">Select…</option>
+            <option value="">请选择……</option>
             {opt}
           </select>
         </label>

@@ -2,6 +2,7 @@ import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tansta
 import { useEffect } from "react";
 import { toast } from "../components/ui.tsx";
 import { refreshQueue } from "../lib/coalesce.ts";
+import { kindLabel } from "../lib/locale.ts";
 import { get, post } from "./client.ts";
 import type { Meta, SessionUser } from "./types.ts";
 
@@ -177,8 +178,9 @@ export function useProjectEvents(projectId: string | undefined) {
           const e = JSON.parse(m.data) as ProjectEvent;
           invalidateFor(qc, projectId, e);
           for (const l of listeners) l(e);
+          const jobKind = typeof e.kind === "string" ? kindLabel(e.kind) : "生成任务";
           if (e.type === "job.updated" && e.status === "failed" && e.failureReason)
-            toast.error(`${String(e.kind).replace(/_/g, " ")} failed: ${e.failureReason}`);
+            toast.error(`${jobKind}失败：${e.failureReason}`);
           // A paste-it-yourself run parks silently otherwise, and the only place to answer it is the job's own
           // page — so say where it is. Covers every operation, and each later question of a multi-step one. Not
           // shown on that page itself, where the answer box is already in front of you.
@@ -189,18 +191,18 @@ export function useProjectEvents(projectId: string | undefined) {
           )
             toast.action(
               e.failureReason
-                ? `That answer was rejected — ${String(e.kind).replace(/_/g, " ")} is waiting for a corrected one.`
-                : `${String(e.kind).replace(/_/g, " ")} is waiting for your answer. Copy its prompt into your chat and paste the reply back.`,
-              { label: "Open it in Generation", to: `/projects/${projectId}/generation/${e.jobId}` },
+                ? `回复未通过校验，请修正后提交给「${jobKind}」任务。`
+                : `「${jobKind}」任务正在等待回复。请将提示词复制到对话中，再把回复粘贴回来。`,
+              { label: "在生成任务中打开", to: `/projects/${projectId}/generation/${e.jobId}` },
             );
-          if (e.type === "export.updated" && e.status === "completed") toast.success("Export ready");
+          if (e.type === "export.updated" && e.status === "completed") toast.success("导出已就绪");
           // Removed from the project (or left it in another tab): nothing here is ours to see any more.
           if (
             e.type === "members.updated" &&
             e.removedUserId &&
             e.removedUserId === qc.getQueryData<SessionUser | null>(qk.me)?.id
           ) {
-            toast.error("You no longer have access to this project.");
+            toast.error("你已失去该项目的访问权限。");
             window.location.assign("/app/");
           }
         } catch {}

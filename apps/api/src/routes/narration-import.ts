@@ -26,13 +26,11 @@ const ImportQuery = z.object({
 
 /** Streams the raw request body to `path`, refusing past `maxBytes`. */
 async function receive(c: Context<AppEnv>, path: string, maxBytes: number) {
-  const tooLarge = () =>
-    new ApiError(413, "too_large", `Audio uploads are limited to ${Math.round(maxBytes / 2 ** 20)} MB`);
-  if ((c.req.header("content-type") ?? "").startsWith("multipart/"))
-    throw badRequest("Send the audio file itself as the request body, not as multipart/form-data");
+  const tooLarge = () => new ApiError(413, "too_large", `音频上传大小上限为 ${Math.round(maxBytes / 2 ** 20)} MB`);
+  if ((c.req.header("content-type") ?? "").startsWith("multipart/")) throw badRequest("请直接上传音频文件");
   if (Number(c.req.header("content-length") ?? 0) > maxBytes) throw tooLarge();
   const body = c.req.raw.body;
-  if (!body) throw badRequest("Send the audio file as the request body");
+  if (!body) throw badRequest("请在请求体中上传音频文件");
   const sink = Bun.file(path).writer();
   let bytes = 0;
   try {
@@ -45,7 +43,7 @@ async function receive(c: Context<AppEnv>, path: string, maxBytes: number) {
   } finally {
     await sink.end();
   }
-  if (!bytes) throw badRequest("The upload was empty");
+  if (!bytes) throw badRequest("上传的文件为空");
 }
 
 async function queueImport(c: Context<AppEnv>, project: ProjectRecord, chapterId: string | null) {
@@ -63,7 +61,7 @@ async function queueImport(c: Context<AppEnv>, project: ProjectRecord, chapterId
         chapterId ? eq(narrationLines.chapterId, chapterId) : undefined,
       ),
     );
-  if (!has?.n) throw badRequest(`There is no ${language} narration text to match a recording to; write it first`);
+  if (!has?.n) throw badRequest(`没有可匹配录音的 ${language} 旁白，请先编写旁白`);
   // One at a time per project: each waits on disk until it runs, and the recogniser takes them in turn anyway.
   const [busy] = await deps.db
     .select({ id: generationJobs.id })
@@ -76,7 +74,7 @@ async function queueImport(c: Context<AppEnv>, project: ProjectRecord, chapterId
       ),
     )
     .limit(1);
-  if (busy) throw conflict("A narration recording is already being imported into this project; wait for it to finish");
+  if (busy) throw conflict("此项目正在导入旁白录音，请等待完成");
 
   // ponytail: an import cancelled before it starts leaves its upload here (as a project import does); sweep the folder
   // in maintenance if that happens often.
@@ -161,7 +159,7 @@ narrationImportRoutes.post("/narration-segments/:id/audio", async (c) => {
     try {
       wav = await ffmpegConvert(await Bun.file(path).bytes(), "wav", { tempDir: dir });
     } catch {
-      throw badRequest("The file could not be read as audio");
+      throw badRequest("无法将此文件读取为音频");
     }
     return attachImportedTake(deps.db, deps.assets, {
       projectId: project.id,
@@ -174,6 +172,6 @@ narrationImportRoutes.post("/narration-segments/:id/audio", async (c) => {
       metadata: { sourceName: (c.req.query("name") ?? "").slice(0, 200) || null },
     });
   });
-  if (!audio) throw conflict("The segment's text changed while its audio was uploading; upload it again");
+  if (!audio) throw conflict("上传音频时旁白文字有变更，请重新上传");
   return c.json({ audio });
 });

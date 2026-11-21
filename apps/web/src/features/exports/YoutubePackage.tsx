@@ -19,7 +19,7 @@ type Pkg = {
 const EMPTY: Pkg = { titles: [], description: "", tags: [], pinnedComment: "", thumbnailHeadlines: [] };
 
 /**
- * Publishing text for the video: written once by the text model, then edited here. The "YouTube package" export
+ * Publishing text for the video: written once by the text model, then edited here. The "YouTube 发布包" export
  * zips it with the newest video, its subtitles and chapter timestamps, and the thumbnail.
  */
 export function YoutubePackageCard() {
@@ -52,8 +52,8 @@ export function YoutubePackageCard() {
         ) {
           setWriting(false);
           void qc.invalidateQueries({ queryKey: qk.project(projectId), exact: true });
-          if (e.status === "failed") toast.error("The YouTube package could not be written");
-          if (e.status === "awaiting_input") toast.info("Waiting for your pasted answer on the Generation page");
+          if (e.status === "failed") toast.error("YouTube 发布文案生成失败");
+          if (e.status === "awaiting_input") toast.info("请到生成任务页粘贴回答");
         }
       }),
     [projectId, qc],
@@ -71,18 +71,18 @@ export function YoutubePackageCard() {
     try {
       await patch(`/projects/${projectId}`, { settings: { youtubePackage: next } });
       await qc.invalidateQueries({ queryKey: qk.project(projectId), exact: true });
-      toast.success("Saved");
+      toast.success("已保存");
     } catch (e) {
       toast.error(e);
     }
   };
   const applyHeadline = async (h: string) => {
     const t = data?.project.settings.thumbnail;
-    if (!t) return toast.info("Generate a thumbnail on the overview first");
+    if (!t) return toast.info("请先在概览页生成缩略图");
     try {
       await patch(`/projects/${projectId}`, { settings: { thumbnail: { ...t, title: h } } });
       await qc.invalidateQueries({ queryKey: qk.project(projectId), exact: true });
-      toast.success("Thumbnail headline updated");
+      toast.success("缩略图标题已更新");
     } catch (e) {
       toast.error(e);
     }
@@ -105,60 +105,59 @@ export function YoutubePackageCard() {
     const r = ProjectSettings.shape.youtubePackage.safeParse(current);
     if (r.success) return null;
     const LIMITS: Record<string, string> = {
-      titles: "up to 8 titles of at most 100 characters",
-      thumbnailHeadlines: "up to 8 headlines of at most 60 characters",
-      tags: "up to 30 tags of at most 60 characters",
-      description: "a description of at most 4,500 characters",
-      pinnedComment: "a pinned comment of at most 2,000 characters",
+      titles: "最多 8 个标题，每个不超过 100 个字符",
+      thumbnailHeadlines: "最多 8 个缩略图标题，每个不超过 60 个字符",
+      tags: "最多 30 个标签，每个不超过 60 个字符",
+      description: "简介不超过 4,500 个字符",
+      pinnedComment: "置顶评论不超过 2,000 个字符",
     };
-    return `YouTube allows ${LIMITS[String(r.error.issues[0]?.path[0])] ?? "less than this"}.`;
+    return `YouTube 内容限制为${LIMITS[String(r.error.issues[0]?.path[0])] ?? "请减少内容长度或数量"}。`;
   })();
 
   return (
     <section className="card mb-4 space-y-3 p-4">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="mr-auto flex items-center gap-2 font-medium">
-          <Youtube className="size-4" /> YouTube package
+          <Youtube className="size-4" /> YouTube 发布包
         </h2>
         <AiChip cap="text" />
         <button type="button" className="btn-secondary" disabled={writing} onClick={write}>
-          {writing ? <Spinner /> : <Sparkles className="size-4" />} {saved ? "Rewrite" : "Write"} with AI
+          {writing ? <Spinner /> : <Sparkles className="size-4" />} {saved ? "用 AI 重写" : "用 AI 撰写"}
         </button>
         {dirty && (
           <button type="button" className="btn-primary" disabled={Boolean(problem)} onClick={() => save(current)}>
-            Save
+            保存
           </button>
         )}
       </div>
       <p className="muted text-xs">
-        Titles, description, tags, a pinned comment and thumbnail headlines, written by the text model and yours to
-        edit. The <strong>YouTube package</strong> export zips them with the newest rendered video of the same scope,
-        its subtitles and chapter timestamps (added to the description), and the thumbnail.
+        由文本模型撰写标题、简介、标签、置顶评论与缩略图标题，生成后可编辑。导出<strong>YouTube 发布包</strong>
+        时，会将这些文案与同一范围内最新渲染的视频、字幕、加入简介的章节时间戳及缩略图一起打包。
       </p>
       {dirty && problem && <p className="text-xs text-red-600 dark:text-red-400">{problem}</p>}
       {saved || dirty ? (
         <div className="grid gap-3 md:grid-cols-2">
-          <Field label="Title options (one per line)">
+          <Field label="备选标题（每行一个）">
             <textarea className="input min-h-24" value={titlesText} onChange={(e) => setTitlesText(e.target.value)} />
           </Field>
-          <Field label="Description">
+          <Field label="简介">
             <textarea
               className="input min-h-24"
               value={p.description}
               onChange={(e) => setP({ ...p, description: e.target.value })}
             />
           </Field>
-          <Field label="Tags (comma separated)">
+          <Field label="标签（用英文逗号分隔）">
             <input className="input" value={tagsText} onChange={(e) => setTagsText(e.target.value)} />
           </Field>
-          <Field label="Pinned comment">
+          <Field label="置顶评论">
             <input
               className="input"
               value={p.pinnedComment}
               onChange={(e) => setP({ ...p, pinnedComment: e.target.value })}
             />
           </Field>
-          <Field label="Thumbnail headlines (one per line)">
+          <Field label="缩略图标题（每行一个）">
             <textarea
               className="input min-h-20"
               value={headlinesText}
@@ -168,18 +167,18 @@ export function YoutubePackageCard() {
           <div className="flex items-end">
             <CopyButton
               text={[current.titles[0] ?? "", "", p.description, "", current.tags.join(", ")].join("\n")}
-              label="Copy all"
+              label="复制全部"
             />
           </div>
           <div className="md:col-span-2">
-            <span className="label">Thumbnail variants</span>
+            <span className="label">缩略图变体</span>
             {!thumb ? (
-              <p className="muted text-xs">Generate a thumbnail on the overview to see each headline on it.</p>
+              <p className="muted text-xs">在概览页生成缩略图后，即可预览各个标题的效果。</p>
             ) : (
               <>
                 <p className="muted mb-2 text-xs">
-                  Each headline on the same art, to compare side by side; nothing is generated. The YouTube package
-                  export includes them all as separate images, for YouTube's Test &amp; compare (three at a time).
+                  在同一张原画上预览各个标题，可并排比较。YouTube 发布包会分别导出这些图片，供 YouTube
+                  测试与比较功能使用，每次可比较三张。
                 </p>
                 <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {current.thumbnailHeadlines.map((h, i) => {
@@ -193,29 +192,29 @@ export function YoutubePackageCard() {
                       })}`;
                     return (
                       <li key={`${i}:${h}`} className="overflow-hidden rounded-lg border border-[var(--border)]">
-                        <img src={url(false)} alt={`Thumbnail: ${h}`} className="aspect-video w-full object-cover" />
+                        <img src={url(false)} alt={`缩略图：${h}`} className="aspect-video w-full object-cover" />
                         <div className="flex items-center gap-1 p-1.5 text-xs">
                           <span className="min-w-0 flex-1 truncate" title={h}>
                             {h}
                           </span>
                           {thumb.title === h ? (
                             <span className="chip flex items-center gap-1">
-                              <Check className="size-3" /> In use
+                              <Check className="size-3" /> 使用中
                             </span>
                           ) : (
                             <button
                               type="button"
                               className="btn-ghost px-1.5 py-0.5 text-xs"
-                              title="Use this as the thumbnail's headline"
+                              title="将其用作缩略图标题"
                               onClick={() => applyHeadline(h)}
                             >
-                              Use
+                              使用
                             </button>
                           )}
                           <a
                             className="btn-ghost px-1.5 py-0.5"
                             href={url(true)}
-                            aria-label={`Download the 1280×720 PNG: ${h}`}
+                            aria-label={`下载 1280×720 PNG：${h}`}
                             title="1280×720 PNG"
                           >
                             <Download className="size-3.5" />
@@ -230,7 +229,7 @@ export function YoutubePackageCard() {
           </div>
         </div>
       ) : (
-        <p className="muted text-sm">Nothing written yet.</p>
+        <p className="muted text-sm">暂无文案。</p>
       )}
     </section>
   );

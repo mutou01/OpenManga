@@ -197,7 +197,7 @@ describe("the role matrix", () => {
       .values({ provider: "openai", model: "m", operation: "x", projectId, estimatedCostUsd: "10" });
     const refused = await bob.raw("POST", `/api/panels/${panelId}/generate`, {}, { "x-allow-over-budget": "1" });
     expect(refused.status).toBe(402);
-    expect(((await refused.json()) as { error: { message: string } }).error.message).toContain("owner");
+    expect(((await refused.json()) as { error: { message: string } }).error.message).toContain("项目所有者");
     expect(
       (await alice.raw("POST", `/api/panels/${panelId}/generate`, {}, { "x-allow-over-budget": "1" })).status,
     ).toBe(202);

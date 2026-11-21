@@ -63,15 +63,14 @@ export function OutfitsEditor({
   const generate = useAction(
     (outfitId: string) =>
       post(`/character-versions/${versionId}/references/generate`, { kind: "outfit", outfitId, ...aiImage() }),
-    { onSuccess: onChanged, success: "Outfit reference queued" },
+    { onSuccess: onChanged, success: "服装参考图已加入队列" },
   );
   return (
     <section className="card p-3">
-      <h2 className="mb-2 text-sm font-semibold">Outfits</h2>
+      <h2 className="mb-2 text-sm font-semibold">服装</h2>
       {outfits.length > 0 && !hasApprovedDesign && (
         <p className="mb-2 rounded-md bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-300">
-          Generate and approve a main reference in <strong>Canonical references</strong> first. Outfit references are
-          drawn from it, so the face and build stay identical across every outfit.
+          请先在 <strong>标准参考图</strong> 中生成并审核主参考图。服装参考图会以其为基础绘制，以保持面容和体型一致。
         </p>
       )}
       <ul className="space-y-2">
@@ -81,7 +80,7 @@ export function OutfitsEditor({
               <input
                 className="input py-1 text-sm font-medium"
                 defaultValue={o.name}
-                aria-label="Outfit name"
+                aria-label="服装名称"
                 onBlur={(e) =>
                   e.target.value.trim() &&
                   e.target.value !== o.name &&
@@ -91,8 +90,8 @@ export function OutfitsEditor({
               <button
                 type="button"
                 className="btn-ghost p-1"
-                aria-label={o.isDefault ? "Default outfit" : "Make default"}
-                title={o.isDefault ? "Default" : "Make default"}
+                aria-label={o.isDefault ? "默认服装" : "设为默认"}
+                title={o.isDefault ? "默认" : "设为默认"}
                 onClick={() => !o.isDefault && update.mutate({ id: o.id, body: { isDefault: true } })}
               >
                 <Star className={`size-4 ${o.isDefault ? "fill-amber-400 text-amber-400" : ""}`} />
@@ -100,15 +99,15 @@ export function OutfitsEditor({
               <button
                 type="button"
                 className="btn-ghost p-1"
-                aria-label={`Generate a reference image for ${o.name}`}
+                aria-label={`为“${o.name}”生成参考图`}
                 title={
                   !versionId
-                    ? "No version selected"
+                    ? "尚未选择版本"
                     : !hasApprovedDesign
-                      ? "Generate and approve this character's main reference first — outfits are drawn from it so the face stays the same"
+                      ? "请先生成并审核角色主参考图，服装将以此绘制以保持面容一致"
                       : withReference.has(o.id)
-                        ? `Regenerate the reference for ${o.name}`
-                        : `Generate a reference for ${o.name}`
+                        ? `重新生成“${o.name}”的参考图`
+                        : `生成“${o.name}”的参考图`
                 }
                 disabled={!versionId || !hasApprovedDesign || generate.isPending}
                 onClick={() => generate.mutate(o.id)}
@@ -124,7 +123,7 @@ export function OutfitsEditor({
               <button
                 type="button"
                 className="btn-ghost p-1 text-red-500"
-                aria-label="Delete outfit"
+                aria-label="删除服装"
                 onClick={() => remove.mutate(o.id)}
               >
                 <Trash2 className="size-4" />
@@ -133,7 +132,7 @@ export function OutfitsEditor({
             <textarea
               className="input mt-1 min-h-12 text-xs"
               defaultValue={o.description}
-              aria-label="Outfit description"
+              aria-label="服装描述"
               onBlur={(e) =>
                 e.target.value !== o.description && update.mutate({ id: o.id, body: { description: e.target.value } })
               }
@@ -143,7 +142,7 @@ export function OutfitsEditor({
       </ul>
       {outfits.length > 1 && (
         <div className="mt-3">
-          <h3 className="label">Outfit changes</h3>
+          <h3 className="label">服装变更</h3>
           {timeline.data?.length ? (
             <ul className="space-y-1 text-xs">
               {timeline.data.map((t) => (
@@ -159,12 +158,12 @@ export function OutfitsEditor({
                   </Link>
                   <span className="min-w-0 flex-1 truncate">
                     {t.outfitName}
-                    <span className="muted">{t.scope === "panel" ? " · this panel only" : " · from here on"}</span>
+                    <span className="muted">{t.scope === "panel" ? " · 仅此画格" : " · 从此处开始"}</span>
                   </span>
                   <button
                     type="button"
                     className="btn-ghost p-0.5"
-                    aria-label={`Remove the change to ${t.outfitName} at ${changePlace(t)}`}
+                    aria-label={`移除${changePlace(t)}换成“${t.outfitName}”的记录`}
                     disabled={removeChange.isPending}
                     onClick={() => removeChange.mutate(t.id)}
                   >
@@ -175,8 +174,7 @@ export function OutfitsEditor({
             </ul>
           ) : (
             <p className="muted text-xs">
-              None yet: every panel wears the default. Switch outfits on a panel in the page editor, from that panel on
-              or for that panel only.
+              暂无变更，所有画格均使用默认服装。可在页面编辑器中切换某个画格的服装，并选择仅作用于该画格或从该画格开始生效。
             </p>
           )}
         </div>
@@ -190,20 +188,20 @@ export function OutfitsEditor({
       >
         <input
           className="input"
-          placeholder="New outfit name"
+          placeholder="新服装名称"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          aria-label="New outfit name"
+          aria-label="新服装名称"
         />
         <textarea
           className="input min-h-12 text-xs"
-          placeholder="Description"
+          placeholder="描述"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          aria-label="New outfit description"
+          aria-label="新服装描述"
         />
         <button type="submit" className="btn-secondary w-full" disabled={!name.trim() || add.isPending}>
-          <Plus className="size-4" /> Add outfit
+          <Plus className="size-4" /> 添加服装
         </button>
       </form>
     </section>

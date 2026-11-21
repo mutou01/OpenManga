@@ -89,16 +89,15 @@ coverageRoutes.post("/coverage-sheets/:jobId/use", async (c) => {
   if (job?.kind !== "coverage_sheet" || !job.targetId) throw notFound("Coverage sheet");
   const project = await entityAccess(c, "panel", job.targetId, "write");
   const assetId = (job.result as { assetId?: string } | null)?.assetId;
-  if (job.status !== "completed" || !assetId) throw conflict(`This coverage sheet is ${job.status}`);
+  if (job.status !== "completed" || !assetId) throw conflict(`此镜头覆盖任务当前状态为 ${job.status}`);
   const input = await body(c, UseInput);
   const cells = [...new Set(input.cells)];
-  if (input.mode === "this" && cells.length !== 1) throw badRequest("Pick one cell to reframe this panel");
+  if (input.mode === "this" && cells.length !== 1) throw badRequest("请选择一格替换此画格的构图");
   const paged = project.settings.format !== "film" && project.settings.format !== "vertical";
-  if (input.mode === "new" && paged && cells.length > 5)
-    throw badRequest("A page holds at most 5 panels: pick 5 or fewer");
+  if (input.mode === "new" && paged && cells.length > 5) throw badRequest("单页最多容纳 5 格，请选择不超过 5 格");
   const [src] = await deps.db.select().from(panels).where(eq(panels.id, job.targetId));
   if (!src) throw notFound("Panel");
-  if (input.mode === "this" && src.approvalStatus === "locked") throw conflict("Panel is locked");
+  if (input.mode === "this" && src.approvalStatus === "locked") throw conflict("画格已锁定");
   const sheet = await deps.assets.get(assetId);
   if (!sheet || sheet.deletedAt || !sheet.width || !sheet.height) throw notFound("Coverage sheet image");
   const data = await deps.assets.read(sheet);

@@ -99,8 +99,8 @@ export function ReaderPage() {
   if (error || !data)
     return (
       <div className="mx-auto max-w-md p-6">
-        <ErrorBox error={error ?? new Error("This link is not available.")} />
-        <p className="muted mt-2 text-sm">The link may have been revoked. Ask whoever shared it for a new one.</p>
+        <ErrorBox error={error ?? new Error("此链接不可用。")} />
+        <p className="muted mt-2 text-sm">链接可能已被撤销，请联系分享者获取新链接。</p>
       </div>
     );
 
@@ -110,12 +110,12 @@ export function ReaderPage() {
       <header className="sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b border-[var(--border)] bg-[var(--panel)] px-4 py-2">
         <div className="mr-auto min-w-0">
           <h1 className="truncate text-sm font-semibold">{data.project.title}</h1>
-          {data.project.author && <p className="muted truncate text-xs">by {data.project.author}</p>}
+          {data.project.author && <p className="muted truncate text-xs">作者 {data.project.author}</p>}
         </div>
         {data.chapters.length > 1 && (
           <select
             className="input w-auto max-w-[50vw] text-sm"
-            aria-label="Chapter"
+            aria-label="章节"
             value={chapterIdx}
             onChange={(e) => {
               setChapterIdx(Number(e.target.value));
@@ -134,8 +134,8 @@ export function ReaderPage() {
           type="button"
           className="btn-secondary"
           onClick={() => setMode(scroll ? "pages" : "scroll")}
-          aria-label={scroll ? "Read page by page" : "Read as a scroll"}
-          title={scroll ? "Read page by page" : "Read as a scroll"}
+          aria-label={scroll ? "逐页阅读" : "滚动阅读"}
+          title={scroll ? "逐页阅读" : "滚动阅读"}
         >
           {scroll ? <Columns2 className="size-4" /> : <Rows3 className="size-4" />}
         </button>
@@ -145,8 +145,8 @@ export function ReaderPage() {
             className="btn-secondary"
             aria-pressed={commenting}
             onClick={() => setCommenting((v) => !v)}
-            aria-label="Comments"
-            title="Comments"
+            aria-label="评论"
+            title="评论"
           >
             <MessageSquare className="size-4" />
           </button>
@@ -156,8 +156,8 @@ export function ReaderPage() {
             type="button"
             className="btn-secondary"
             onClick={() => setPlaying(true)}
-            aria-label="Play this chapter as a video preview"
-            title="Play this chapter as a video preview"
+            aria-label="预览本章视频"
+            title="预览本章视频"
           >
             <Play className="size-4" />
           </button>
@@ -187,14 +187,14 @@ export function ReaderPage() {
         />
       )}
       {!pageList.length ? (
-        <p className="muted p-6 text-center">This chapter has no pages yet.</p>
+        <p className="muted p-6 text-center">本章暂无页面。</p>
       ) : scroll ? (
         <main className="mx-auto flex max-w-3xl flex-col">
           {pageList.map((pg) => (
             <img
               key={pg.id}
               src={src(pg.id)}
-              alt={pg.alt || `Page ${pg.order}`}
+              alt={pg.alt || `第 ${pg.order} 页`}
               loading="lazy"
               width={pg.width}
               height={pg.height}
@@ -210,7 +210,7 @@ export function ReaderPage() {
                 window.scrollTo(0, 0);
               }}
             >
-              Next chapter: {data.chapters[chapterIdx + 1]!.title}
+              下一章 · {data.chapters[chapterIdx + 1]!.title}
             </button>
           )}
         </main>
@@ -220,14 +220,14 @@ export function ReaderPage() {
             <img
               key={page.id}
               src={src(page.id)}
-              alt={page.alt || `Page ${page.order}`}
+              alt={page.alt || `第 ${page.order} 页`}
               className="max-h-full max-w-full object-contain"
             />
             {/* The two halves turn the page; which half is "forward" follows the reading direction. */}
             <button
               type="button"
               className="absolute inset-y-0 left-0 flex w-1/2 cursor-w-resize items-center"
-              aria-label={rtl ? "Next page" : "Previous page"}
+              aria-label={rtl ? "下一页" : "上一页"}
               onClick={() => step(rtl ? 1 : -1)}
             >
               <ChevronLeft className="ml-1 size-6 opacity-30" />
@@ -235,7 +235,7 @@ export function ReaderPage() {
             <button
               type="button"
               className="absolute inset-y-0 right-0 flex w-1/2 cursor-e-resize items-center justify-end"
-              aria-label={rtl ? "Previous page" : "Next page"}
+              aria-label={rtl ? "上一页" : "下一页"}
               onClick={() => step(rtl ? -1 : 1)}
             >
               <ChevronRight className="mr-1 size-6 opacity-30" />

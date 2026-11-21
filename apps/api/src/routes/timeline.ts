@@ -88,14 +88,14 @@ async function checkRefs(db: DbOrTx, projectId: string, chapterId?: string | nul
       .select({ id: chapters.id })
       .from(chapters)
       .where(and(eq(chapters.id, chapterId), eq(chapters.projectId, projectId)));
-    if (!ch) throw badRequest("That chapter is not in this project");
+    if (!ch) throw badRequest("该章节不属于此项目");
   }
   if (characterIds?.length) {
     const found = await db
       .select({ id: characters.id })
       .from(characters)
       .where(and(eq(characters.projectId, projectId), inArray(characters.id, characterIds)));
-    if (found.length !== new Set(characterIds).size) throw badRequest("A character is not in this project");
+    if (found.length !== new Set(characterIds).size) throw badRequest("所选角色不属于此项目");
   }
 }
 
@@ -191,7 +191,7 @@ timelineRoutes.post("/projects/:projectId/timeline/events", async (c) => {
   const { db } = c.get("deps");
   await checkRefs(db, p.id, input.chapterId, input.characterIds);
   const list = await events(db, p.id);
-  if (list.length >= 2000) throw badRequest("A timeline holds at most 2000 events");
+  if (list.length >= 2000) throw badRequest("时间线最多保存 2000 个事件");
   if (after && !list.some((e) => e.id === after)) throw notFound("Event");
   const [row] = await db
     .insert(timelineEvents)
@@ -257,7 +257,7 @@ timelineRoutes.post("/projects/:projectId/timeline/order", async (c) => {
   const { db } = c.get("deps");
   const have = (await events(db, p.id)).map((e) => e.id);
   if (ids.length !== have.length || new Set(ids).size !== ids.length || ids.some((id) => !have.includes(id)))
-    throw badRequest("Send every event of the timeline exactly once");
+    throw badRequest("请为时间线的每个事件提供一次且仅一次排序值");
   await renumber(db, ids);
   return c.json({ ok: true });
 });
@@ -276,7 +276,7 @@ timelineRoutes.post("/projects/:projectId/timeline/extract", async (c) => {
   const input = await body(c, ExtractInput);
   const deps = c.get("deps");
   const chs = await deps.db.select({ id: chapters.id }).from(chapters).where(eq(chapters.projectId, p.id));
-  if (!chs.length) throw conflict("The project has no chapters yet: analyse and apply the story first");
+  if (!chs.length) throw conflict("项目尚无章节，请先分析故事并应用结果");
   if (input.chapterId && !chs.some((x) => x.id === input.chapterId)) throw notFound("Chapter");
   await assertBudget(c, p.id);
   const run = await textRun(c, input.ai);
@@ -329,8 +329,7 @@ timelineRoutes.post("/timeline-extractions/:id/apply", async (c) => {
     .where(eq(generationJobs.id, uuidParam(c, "id")));
   if (job?.kind !== "timeline_extract" || !job.projectId) throw notFound("Extraction");
   const p = await projectAccess(c, job.projectId, "write");
-  if (job.status !== "completed")
-    throw conflict(`This extraction is ${job.status}; only a completed one can be applied`);
+  if (job.status !== "completed") throw conflict(`提取任务当前状态为 ${job.status}，完成后才可应用`);
   const input = await body(c, ApplyInput);
   const proposed =
     input.events ?? TimelineExtraction.parse((job.result as { data?: unknown } | null)?.data ?? {}).events;
@@ -393,12 +392,7 @@ timelineRoutes.post("/timeline-extractions/:id/apply", async (c) => {
         and(eq(generationJobs.id, job.id), input.again ? undefined : sql`${generationJobs.result}->'applied' is null`),
       )
       .returning({ id: generationJobs.id });
-    if (!claimed)
-      throw new ApiError(
-        409,
-        "already_applied",
-        "This extraction was already applied. Apply it again only on purpose: pass again=true.",
-      );
+    if (!claimed) throw new ApiError(409, "already_applied", "这次提取的结果已应用。如需再次应用，请传入 again=true。");
     if (!rows.length) return;
     const inserted = await tx.insert(timelineEvents).values(rows).returning({ id: timelineEvents.id });
     // Merge into story-time order: a dated proposal before the first existing event with a later day.

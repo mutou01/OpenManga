@@ -4,6 +4,7 @@ import { CheckCircle2, Circle, CircleDot, Loader2, PauseCircle, Rocket, XCircle 
 import { useState } from "react";
 import { get, post } from "../../api/client.ts";
 import { ConfirmDialog, fmt, toast } from "../../components/ui.tsx";
+import { statusLabel } from "../../lib/locale.ts";
 import { AiChip, useAiBody } from "../ai/AiPicker.tsx";
 import { AnalysisDiff } from "../story/AnalysisDiff.tsx";
 import { CostPlan } from "./CostPlan.tsx";
@@ -38,13 +39,13 @@ type Warnings = {
 };
 
 const STAGE_LABEL: Record<string, string> = {
-  story: "Story",
-  plan: "Plan",
-  prompts: "Prompts",
-  art: "Art",
-  narration: "Narration",
-  audio: "Audio",
-  render: "Video",
+  story: "故事",
+  plan: "规划",
+  prompts: "提示词",
+  art: "画面",
+  narration: "旁白",
+  audio: "音频",
+  render: "视频",
 };
 
 const ICON: Record<string, typeof Circle> = {
@@ -104,7 +105,7 @@ export function ProductionRunCard({ projectId, format }: { projectId: string; fo
     <div className="card space-y-3 p-4">
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="mr-auto flex items-center gap-2 text-sm font-medium">
-          <Rocket className="size-4" /> Production run
+          <Rocket className="size-4" /> 制作任务
         </h3>
         {!active && (
           <>
@@ -112,13 +113,13 @@ export function ProductionRunCard({ projectId, format }: { projectId: string; fo
               type="button"
               className="btn-secondary"
               disabled={!updatable}
-              title={updatable ? "Run only the out-of-date steps below" : "Nothing is out of date"}
+              title={updatable ? "只运行下方需要更新的步骤" : "所有步骤均为最新"}
               onClick={() => {
                 setUpdate(true);
                 setOpen(true);
               }}
             >
-              Update production
+              更新制作
             </button>
             <button
               type="button"
@@ -128,14 +129,14 @@ export function ProductionRunCard({ projectId, format }: { projectId: string; fo
                 setOpen(true);
               }}
             >
-              Produce
+              一键制作
             </button>
           </>
         )}
       </div>
       {staleness.data && (
         // What is out of date, in the order each stage is made from the one before it.
-        <ol className="flex flex-wrap items-center gap-1 text-xs" aria-label="What is out of date">
+        <ol className="flex flex-wrap items-center gap-1 text-xs" aria-label="待更新步骤">
           {staleness.data.stages.map((s, i) => (
             <li key={s.key} className="flex items-center gap-1">
               {i > 0 && <span className="muted">→</span>}
@@ -144,7 +145,7 @@ export function ProductionRunCard({ projectId, format }: { projectId: string; fo
                 <button
                   type="button"
                   className={`chip bg-amber-500/15 text-amber-700 dark:text-amber-300 ${why === s.key ? "ring-1 ring-amber-500" : ""}`}
-                  title={`${s.note} (click for why)`}
+                  title={`${s.note}（点击查看原因）`}
                   aria-expanded={why === s.key}
                   onClick={() => setWhy(why === s.key ? null : s.key)}
                 >
@@ -152,7 +153,7 @@ export function ProductionRunCard({ projectId, format }: { projectId: string; fo
                   {s.key !== "render" && s.key !== "story" ? ` ${s.count}` : " !"}
                 </button>
               ) : (
-                <span className="chip bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" title="Up to date">
+                <span className="chip bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" title="已是最新">
                   {STAGE_LABEL[s.key] ?? s.key} ✓
                 </span>
               )}
@@ -163,7 +164,7 @@ export function ProductionRunCard({ projectId, format }: { projectId: string; fo
             .map((f) => (
               <li key={f.key}>
                 <span className="chip bg-amber-500/15 text-amber-700 dark:text-amber-300" title={f.reasons.join("; ")}>
-                  {f.key === "youtube_text" ? "YouTube text !" : "Thumbnail !"}
+                  {f.key === "youtube_text" ? "YouTube 文案 !" : "缩略图 !"}
                 </span>
               </li>
             ))}
@@ -174,15 +175,14 @@ export function ProductionRunCard({ projectId, format }: { projectId: string; fo
       )}
       {!run && (
         <p className="muted text-xs">
-          One button for the whole pipeline: analysis, references, chapter plans, prompts, artwork, narration, audio,
-          thumbnail and the video, skipping whatever already exists.
+          一键完成故事分析、参考图、章节规划、提示词、画面、旁白、音频、缩略图和视频，自动跳过已完成的步骤。
         </p>
       )}
       {run && (
         <>
           <p className="text-xs">
-            <span className="inline-block font-medium first-letter:uppercase">{run.status.replaceAll("_", " ")}</span>
-            <span className="muted"> · started {fmt.ago(run.createdAt)}</span>
+            <span className="inline-block font-medium first-letter:uppercase">{statusLabel(run.status)}</span>
+            <span className="muted"> · 开始于 {fmt.ago(run.createdAt)}</span>
             {run.reason && <span className="muted"> · {run.reason}</span>}
             {run.openComments > 0 && (
               <>
@@ -192,7 +192,7 @@ export function ProductionRunCard({ projectId, format }: { projectId: string; fo
                   params={{ projectId }}
                   className="text-amber-700 underline dark:text-amber-300"
                 >
-                  {run.openComments} open comment thread{run.openComments === 1 ? "" : "s"}
+                  {run.openComments} 条未解决的评论
                 </Link>
               </>
             )}
@@ -217,7 +217,7 @@ export function ProductionRunCard({ projectId, format }: { projectId: string; fo
                   />
                   <span className={s.status === "skipped" ? "muted" : ""}>
                     {s.label}
-                    {s.status === "skipped" && " (skipped)"}
+                    {s.status === "skipped" && "（已跳过）"}
                     {s.note && <span className="muted"> — {s.note}</span>}
                   </span>
                 </li>
@@ -233,7 +233,7 @@ export function ProductionRunCard({ projectId, format }: { projectId: string; fo
                 params={{ projectId }}
                 className="text-xs text-accent-500 hover:underline"
               >
-                Review it on the Story page, where you can also choose what to remove →
+                在故事页审核，也可以选择要移除的内容 →
               </Link>
             </div>
           )}
@@ -261,7 +261,7 @@ export function ProductionRunCard({ projectId, format }: { projectId: string; fo
                   disabled={busy}
                   onClick={() => act(`/production-runs/${run.id}/continue`)}
                 >
-                  {run.status === "waiting" ? "Continue" : run.status === "failed" ? "Retry the failed step" : "Resume"}
+                  {run.status === "waiting" ? "继续" : run.status === "failed" ? "重试失败步骤" : "恢复"}
                 </button>
               )}
               <button
@@ -273,7 +273,7 @@ export function ProductionRunCard({ projectId, format }: { projectId: string; fo
                   setStopping(true);
                 }}
               >
-                Stop
+                停止
               </button>
             </div>
           )}
@@ -282,8 +282,8 @@ export function ProductionRunCard({ projectId, format }: { projectId: string; fo
       {run && (
         <ConfirmDialog
           open={stopping}
-          title="Stop the production run"
-          confirmLabel="Stop"
+          title="停止制作任务"
+          confirmLabel="停止"
           danger
           busy={busy}
           onClose={() => setStopping(false)}
@@ -293,7 +293,7 @@ export function ProductionRunCard({ projectId, format }: { projectId: string; fo
           }}
         >
           <fieldset className="space-y-2">
-            <legend className="sr-only">What to stop</legend>
+            <legend className="sr-only">停止范围</legend>
             <label className="flex items-start gap-2">
               <input
                 type="radio"
@@ -303,10 +303,9 @@ export function ProductionRunCard({ projectId, format }: { projectId: string; fo
                 onChange={() => setCancelJobs(true)}
               />
               <span>
-                Stop and cancel its queued jobs (recommended)
+                停止制作并取消排队任务（推荐）
                 <span className="muted block text-xs">
-                  {run.pendingJobs === 1 ? "1 job" : `${run.pendingJobs} jobs`} not started yet would be cancelled. Jobs
-                  already running at a provider finish, and nothing further happens with them.
+                  将取消 {run.pendingJobs} 个尚未开始的任务。服务商已开始处理的任务会继续完成，之后不会启动后续步骤。
                 </span>
               </span>
             </label>
@@ -319,10 +318,8 @@ export function ProductionRunCard({ projectId, format }: { projectId: string; fo
                 onChange={() => setCancelJobs(false)}
               />
               <span>
-                Stop the run only
-                <span className="muted block text-xs">
-                  Its queued jobs still run and spend; cancel them in Generation.
-                </span>
+                仅停止制作流程
+                <span className="muted block text-xs">排队任务仍会运行并产生费用，可在「生成任务」中取消。</span>
               </span>
             </label>
           </fieldset>
@@ -330,8 +327,8 @@ export function ProductionRunCard({ projectId, format }: { projectId: string; fo
       )}
       <ConfirmDialog
         open={open}
-        title={update ? "Update the production" : "Produce this project"}
-        confirmLabel="Start"
+        title={update ? "更新制作" : "一键制作此项目"}
+        confirmLabel="开始"
         busy={busy}
         onClose={() => setOpen(false)}
         onConfirm={async () => {
@@ -346,10 +343,10 @@ export function ProductionRunCard({ projectId, format }: { projectId: string; fo
         <div className="space-y-3 text-sm">
           <p>
             {update
-              ? "Runs only what is out of date, from the first stale stage on: a revised story is analysed again and waits for your review before it is applied, then missing plans, prompts and artwork, artwork whose panel was edited after it was drawn, narration, audio and the video, which reuses every unchanged section of the last render."
-              : "Runs every step that still has work to do."}{" "}
-            Either way it spends up to the project's <strong>budget cap</strong> without asking again, and pauses there;
-            the batch setting in Project settings → Production decides what waits for a half-price provider batch.
+              ? "从最早需要更新的阶段开始。更新后的故事会重新分析并等待审核，再补齐规划、提示词和画面，重绘修改过的画格，更新旁白、音频和视频。视频会复用上一版中未变化的片段。"
+              : "运行所有尚未完成的步骤。"}{" "}
+            两种方式都会在项目<strong>预算上限</strong>内自动运行，达到上限后暂停。可在「项目设置 →
+            制作」中选择哪些步骤使用服务商的半价批处理。
           </p>
           <div className="flex flex-wrap gap-2">
             <AiChip cap="text" />
@@ -357,10 +354,10 @@ export function ProductionRunCard({ projectId, format }: { projectId: string; fo
           </div>
           {(
             [
-              ["reviewGates", "Pause for my review after the analysis, the references and before the final render"],
-              ["preparePrompts", "Prepare panel prompts with the text model before drawing"],
-              ["render", "Render the video at the end"],
-              ["youtube", "Write the YouTube package and export it"],
+              ["reviewGates", "在故事分析后、参考图生成后和最终渲染前暂停，等待审核"],
+              ["preparePrompts", "绘制前使用文本模型准备画格提示词"],
+              ["render", "制作完成后渲染视频"],
+              ["youtube", "生成并导出 YouTube 发布包"],
             ] as const
           ).map(([k, label]) => (
             <label key={k} className="flex items-start gap-2">
@@ -424,7 +421,7 @@ function RunWarnings({
       }
     }
     setBusy(false);
-    if (ok) toast.success(`${ok} job${ok === 1 ? "" : "s"} queued again`);
+    if (ok) toast.success(`已重新排队 ${ok} 个任务`);
     if (firstError) toast.error(firstError);
     onChanged();
   };
@@ -435,7 +432,7 @@ function RunWarnings({
         kind: format === "film" ? "video_panels" : "video_pages",
         acknowledgeIssues: true,
       });
-      toast.success("Render queued");
+      toast.success("渲染已加入队列");
     } catch (e) {
       toast.error(e);
     } finally {
@@ -443,38 +440,36 @@ function RunWarnings({
     }
   };
   const items: { n: number; text: string; to: string; search?: Record<string, string> }[] = [
-    { n: w.failedJobCount, text: "failed generation job(s)", to: "/projects/$projectId/generation" },
+    { n: w.failedJobCount, text: "个生成任务失败", to: "/projects/$projectId/generation" },
     {
       n: w.panelsWithoutArt,
-      text: "panel(s) without artwork",
+      text: "个画格缺少画面",
       to: "/projects/$projectId/storyboard",
       search: { filter: "noArt" },
     },
     {
       n: w.panelsNeedingReview,
-      text: "panel(s) needing review",
+      text: "个画格待审核",
       to: "/projects/$projectId/storyboard",
       search: { filter: "review" },
     },
     {
       n: w.segmentsWithoutAudio,
-      text: "narration segment(s) without current audio",
+      text: "段旁白缺少最新音频",
       to: "/projects/$projectId/narration",
     },
-    { n: w.failedExports.length, text: "failed export(s)", to: "/projects/$projectId/exports" },
-    { n: w.chaptersWithoutNarration ?? 0, text: "chapter(s) without narration", to: "/projects/$projectId/narration" },
+    { n: w.failedExports.length, text: "个导出任务失败", to: "/projects/$projectId/exports" },
+    { n: w.chaptersWithoutNarration ?? 0, text: "个章节缺少旁白", to: "/projects/$projectId/narration" },
     {
       n: w.failedChecks ?? 0,
-      text: "panel(s) that failed a visual check",
+      text: "个画格未通过画面检查",
       to: "/projects/$projectId/storyboard",
       search: { filter: "mismatch" },
     },
   ];
   return (
     <div className="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
-      <p className="font-medium text-amber-800 dark:text-amber-200">
-        Finished with {total} unresolved item{total === 1 ? "" : "s"}
-      </p>
+      <p className="font-medium text-amber-800 dark:text-amber-200">制作已结束，仍有 {total} 项待处理</p>
       <ul className="space-y-1">
         {items
           .filter((i) => i.n > 0)
@@ -494,14 +489,14 @@ function RunWarnings({
         )}
         {w.failedExports.map((e) => (
           <li key={e.id} className="muted">
-            {e.kind}: {e.reason ?? "failed"}
+            {e.kind}: {e.reason ?? "失败"}
           </li>
         ))}
       </ul>
       <div className="flex flex-wrap gap-2">
         {w.failedJobs.length > 0 && (
           <button type="button" className="btn-secondary" disabled={busy} onClick={retry}>
-            Retry failed ({w.failedJobs.length})
+            重试失败任务（{w.failedJobs.length}）
           </button>
         )}
         {(w.panelsWithoutArt > 0 || w.panelsNeedingReview > 0) && (
@@ -511,12 +506,12 @@ function RunWarnings({
             search={{ filter: w.panelsNeedingReview > 0 ? "review" : "noArt" }}
             className="btn-secondary"
           >
-            Review
+            审核
           </Link>
         )}
         {failedVideo && (
           <button type="button" className="btn-secondary" disabled={busy} onClick={render}>
-            Render anyway
+            仍然渲染
           </button>
         )}
       </div>

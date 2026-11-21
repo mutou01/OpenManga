@@ -313,7 +313,7 @@ expertRoutes.post("/expert-chats/:id/messages", async (c) => {
   // Checked on every message, not only when the chat was linked: a member whose role changed or who left stops here.
   if (chat.projectId) await projectAccess(c, chat.projectId, "generate");
   const input = await body(c, Send);
-  if (!input.text.trim() && !input.attachments.length) throw badRequest("Write a message or attach an image");
+  if (!input.text.trim() && !input.attachments.length) throw badRequest("请输入消息或附上图片");
   const deps = c.get("deps");
   if (input.attachments.length) {
     const mine = await deps.db
@@ -327,7 +327,7 @@ expertRoutes.post("/expert-chats/:id/messages", async (c) => {
     .from(expertMessages)
     .where(and(eq(expertMessages.chatId, chat.id), inArray(expertMessages.status, ["pending", "awaiting_input"])))
     .limit(1);
-  if (busy.length) throw conflict("The expert is still answering the last message");
+  if (busy.length) throw conflict("专家仍在回答上一条消息");
   const choices = await replyChoices(c, input, input.generateImage);
   await assertChatRoom(c, chat, spends(choices, input.generateImage));
   const [sent] = await deps.db
@@ -381,7 +381,7 @@ expertRoutes.get("/expert-chats/:id/stream", async (c) => {
   const userId = user(c).id;
   const open = chatStreams.get(userId) ?? 0;
   if (open >= MAX_CHAT_STREAMS_PER_USER)
-    throw new ApiError(429, "too_many_streams", "Too many chats are streaming. Close a tab and try again.");
+    throw new ApiError(429, "too_many_streams", "正在回复的对话过多，请关闭一个标签页后重试。");
   chatStreams.set(userId, open + 1);
   const stillValid = sessionStillValid(c);
   c.header("x-accel-buffering", "no");
@@ -451,8 +451,8 @@ expertRoutes.post("/expert-chats/:id/retry", async (c) => {
     .where(eq(expertMessages.chatId, chat.id))
     .orderBy(desc(expertMessages.createdAt))
     .limit(1);
-  if (last?.role !== "assistant") throw badRequest("There is no reply to write again");
-  if (last.status === "pending") throw conflict("The expert is still answering");
+  if (last?.role !== "assistant") throw badRequest("没有可重新生成的回复");
+  if (last.status === "pending") throw conflict("专家正在回答");
   const generateImage = input.generateImage ?? Boolean(last.options.generateImage);
   const choices = await replyChoices(c, input, generateImage);
   await assertChatRoom(c, chat, spends(choices, generateImage));
@@ -495,7 +495,7 @@ expertRoutes.post("/expert-messages/:id/answer", async (c) => {
   const chat = await ownChat(c, m.chatId);
   // As on send and retry: the reply draws with the project's references, so a member who left or lost the role stops.
   if (chat.projectId) await projectAccess(c, chat.projectId, "generate");
-  if (m.status !== "awaiting_input") throw conflict("This reply is not waiting for an answer");
+  if (m.status !== "awaiting_input") throw conflict("这条回复无需继续回答");
   const input = await body(c, Answer);
   if (input.images.length) {
     const mine = await deps.db
@@ -573,11 +573,9 @@ expertRoutes.post("/expert-messages/:id/extract", async (c) => {
   if (!m) throw notFound("Message");
   const chat = await ownChat(c, m.chatId);
   const input = await body(c, Extract);
-  if (m.role !== "assistant" || m.status !== "done" || !m.content.trim())
-    throw conflict("Only a finished reply from the expert can be turned into something");
+  if (m.role !== "assistant" || m.status !== "done" || !m.content.trim()) throw conflict("专家回复完成后才可提取内容");
   const spec = EXPERT_ACTIONS[input.action];
-  if (spec.needsProject && !chat.projectId)
-    throw badRequest("This chat is not about a project. Choose the project it is about first.");
+  if (spec.needsProject && !chat.projectId) throw badRequest("请先为对话选择关联项目。");
   // Run inside the chat's project when it has one (its budget, its Generation page); a concept from a chat about
   // no project is the user's own job.
   if (chat.projectId) {
@@ -657,12 +655,11 @@ expertRoutes.post("/expert-extractions/:id/apply", async (c) => {
   const { db } = c.get("deps");
   const [job] = await db.select().from(generationJobs).where(eq(generationJobs.id, id));
   if (job?.kind !== "expert_extract" || job.userId !== user(c).id) throw notFound("Extraction");
-  if (job.status !== "completed")
-    throw conflict(`This extraction is ${job.status}; only a completed one can be applied`);
+  if (job.status !== "completed") throw conflict(`提取任务当前状态为 ${job.status}，完成后才可应用`);
   const action = String(job.input.action) as keyof typeof EXPERT_ACTIONS;
   const parsed = EXPERT_ACTIONS[action].schema.safeParse(input.data ?? (job.result as { data?: unknown }).data);
-  if (!parsed.success) throw new ApiError(422, "validation_error", "Invalid data for this action", parsed.error.issues);
-  if (action !== "concept" && !job.projectId) throw conflict("This extraction belongs to no project");
+  if (!parsed.success) throw new ApiError(422, "validation_error", "操作数据无效", parsed.error.issues);
+  if (action !== "concept" && !job.projectId) throw conflict("提取结果尚未关联项目");
   const before = (job.result as { applied?: Applied }).applied ?? null;
   // Claimed before anything changes, in one statement: two clicks (or an agent retrying) cannot both apply it.
   const [claimed] = await db
@@ -693,8 +690,8 @@ expertRoutes.post("/expert-extractions/:id/apply", async (c) => {
       409,
       "already_applied",
       was?.pending
-        ? "This extraction is being applied right now."
-        : `This extraction was already applied (${was?.at ?? "earlier"}). Apply it again only on purpose: pass again=true.`,
+        ? "正在应用这次提取的结果。"
+        : `这次提取的结果已于 ${was?.at ?? "此前"} 应用。如需再次应用，请传入 again=true。`,
       { applied: was ?? null },
     );
   }

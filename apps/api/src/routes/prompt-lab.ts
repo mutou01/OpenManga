@@ -189,12 +189,12 @@ promptLabRoutes.post("/projects/:projectId/prompt-lab/:name/preview", async (c) 
     const system = rules === b.rules ? b.system : overrideSystem(b.system, rules);
     return c.json({ system, diff: lineDiff(b.rules, rules) });
   }
-  if (!input.panelIds.length) throw badRequest("Pick up to 3 panels to preview");
+  if (!input.panelIds.length) throw badRequest("请选择 1 至 3 个画格预览");
   const own = await deps.db
     .select({ id: panels.id })
     .from(panels)
     .where(and(eq(panels.projectId, p.id), inArray(panels.id, input.panelIds)));
-  if (own.length !== input.panelIds.length) throw badRequest("A panel is not in this project");
+  if (own.length !== input.panelIds.length) throw badRequest("所选画格不属于此项目");
   const out = [];
   for (const id of input.panelIds) {
     const ctx = await deps.planner.panelContext(id);

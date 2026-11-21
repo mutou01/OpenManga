@@ -24,12 +24,9 @@ export function WhyStale({ projectId, stage, label }: { projectId: string; stage
   });
   const s = q.data?.stages.find((x) => x.key === stage);
   return (
-    <section
-      className="rounded-md border border-[var(--border)] p-3 text-xs"
-      aria-label={`Why ${label} is out of date`}
-    >
+    <section className="rounded-md border border-[var(--border)] p-3 text-xs" aria-label={`${label}过期原因`}>
       {q.isLoading && <Spinner />}
-      {s && !s.items.length && <p className="muted">Up to date.</p>}
+      {s && !s.items.length && <p className="muted">已是最新状态。</p>}
       {s && s.items.length > 0 && (
         <ul className="space-y-2">
           {s.items.map((it) => (
@@ -62,10 +59,10 @@ export function WhyStale({ projectId, stage, label }: { projectId: string; stage
                 )}
               </div>
               <div>{it.why}</div>
-              <div className="muted">Update: {it.redo}</div>
+              <div className="muted">更新后将 · {it.redo}</div>
             </li>
           ))}
-          {s.more > 0 && <li className="muted">and {s.more} more</li>}
+          {s.more > 0 && <li className="muted">另有 {s.more} 项</li>}
         </ul>
       )}
     </section>

@@ -72,8 +72,7 @@ async function notify(
 /** A member of the project to assign a thread to, or a refusal. */
 async function assigneeIn(c: Context<AppEnv>, projectId: string, userId: string | null) {
   if (userId === null) return null;
-  if (!(await membersOf(c, projectId)).some((m) => m.id === userId))
-    throw badRequest("Assign a thread to a member of the project");
+  if (!(await membersOf(c, projectId)).some((m) => m.id === userId)) throw badRequest("请选择本项目的成员处理评论");
   return userId;
 }
 
@@ -201,14 +200,14 @@ commentRoutes.post("/panels/:id/comments", commentLimit, async (c) => {
       );
     const root = thread.find((t) => t.id === input.threadId);
     if (!root) throw notFound("Thread");
-    if (root.threadId) throw badRequest("Reply to the thread's first comment");
+    if (root.threadId) throw badRequest("请回复该讨论的第一条评论");
     participants = thread.map((t) => t.author).filter((a): a is string => Boolean(a));
   }
   const members = await membersOf(c, p.id);
   const mentions = mentionsIn(input.body, members);
   const root = !input.threadId;
   if (!root && (input.anchor || input.timecodeMs !== undefined || input.assigneeUserId))
-    throw badRequest("A spot, a moment or an assignee belongs on a thread's first comment");
+    throw badRequest("画面位置、时间点和处理人只能设置在讨论的首条评论上");
   const assignee = root ? await assigneeIn(c, p.id, input.assigneeUserId ?? null) : null;
   const [art] = root
     ? await db.select({ id: panels.activeArtworkAssetId }).from(panels).where(eq(panels.id, panelId))

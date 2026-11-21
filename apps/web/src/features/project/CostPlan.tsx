@@ -38,7 +38,7 @@ export type CostPlanData = {
   warnings: string[];
 };
 
-const usd = (v: Usd) => (v === null ? "price unknown" : fmt.usd(v));
+const usd = (v: Usd) => (v === null ? "价格未知" : fmt.usd(v));
 
 /**
  * What a production run with these options would still do and cost, before it starts: totals, what runs now and
@@ -53,7 +53,7 @@ export function CostPlan({ projectId, body }: { projectId: string; body: Record<
   if (plan.isLoading)
     return (
       <p className="muted flex items-center gap-2 text-xs">
-        <Spinner className="size-3" /> Pricing the run…
+        <Spinner className="size-3" /> 正在估算本次制作费用…
       </p>
     );
   if (plan.error) return <ErrorBox error={plan.error} onRetry={() => plan.refetch()} />;
@@ -61,25 +61,24 @@ export function CostPlan({ projectId, body }: { projectId: string; body: Record<
   const t = d.totals;
   const over = t.usd !== null && d.budget.remainingUsd !== null && t.usd > d.budget.remainingUsd;
   return (
-    <section aria-label="Cost plan" className="space-y-2 rounded-lg border border-[var(--border)] p-3">
+    <section aria-label="费用预估" className="space-y-2 rounded-lg border border-[var(--border)] p-3">
       <p className="text-sm">
-        About <strong>{usd(t.usd)}</strong>
+        约 <strong>{usd(t.usd)}</strong>
         {t.batchedUsd ? (
           <>
             {" "}
-            · {usd(t.nowUsd)} now, {usd(t.batchedUsd)} in a half-price batch (results can take up to a day)
+            · {usd(t.nowUsd)} 立即执行，{usd(t.batchedUsd)} 半价批处理（结果最多需要一天）
           </>
         ) : null}{" "}
-        · {fmt.bytes(t.storageBytes)} of new files · {t.panelsToDraw} panel(s) to draw
+        · 新增文件 {fmt.bytes(t.storageBytes)} · 待绘制 {t.panelsToDraw} 格
       </p>
       <p className={over ? "text-xs text-amber-700 dark:text-amber-300" : "muted text-xs"}>
-        Budget:{" "}
+        预算{" "}
         {d.budget.limitUsd === null
-          ? "no cap"
-          : `${fmt.usd(d.budget.remainingUsd)} left of ${fmt.usd(d.budget.limitUsd)}`}
-        {t.estimatedChapters > 0 &&
-          ` · ${t.estimatedChapters} chapter(s) not planned yet: their panels are estimated, so the total is too`}
-        {d.models.text?.free && " · text answers pasted by you: free"}
+          ? "不设上限"
+          : `剩余 ${fmt.usd(d.budget.remainingUsd)}，上限 ${fmt.usd(d.budget.limitUsd)}`}
+        {t.estimatedChapters > 0 && ` · 尚有 ${t.estimatedChapters} 章未规划，分镜数和总费用均为估算值`}
+        {d.models.text?.free && " · 手动粘贴文本结果，无费用"}
       </p>
       {d.warnings.map((w) => (
         <p key={w} className="text-xs text-amber-700 dark:text-amber-300">
@@ -87,30 +86,30 @@ export function CostPlan({ projectId, body }: { projectId: string; body: Record<
         </p>
       ))}
       <details>
-        <summary className="cursor-pointer text-xs font-medium">By chapter</summary>
+        <summary className="cursor-pointer text-xs font-medium">按章节查看</summary>
         <div className="mt-2 overflow-x-auto">
           <table className="w-full min-w-[34rem] text-xs">
             <thead className="muted text-left">
               <tr>
-                <th className="py-1 pr-2">Chapter</th>
-                <th className="py-1 pr-2 text-right">Plan</th>
-                <th className="py-1 pr-2 text-right">Prompts</th>
-                <th className="py-1 pr-2 text-right">Art</th>
-                <th className="py-1 pr-2 text-right">Narration</th>
-                <th className="py-1 pr-2 text-right">Audio</th>
-                <th className="py-1 text-right">Total</th>
+                <th className="py-1 pr-2">章节</th>
+                <th className="py-1 pr-2 text-right">规划</th>
+                <th className="py-1 pr-2 text-right">提示词</th>
+                <th className="py-1 pr-2 text-right">画稿</th>
+                <th className="py-1 pr-2 text-right">旁白</th>
+                <th className="py-1 pr-2 text-right">音频</th>
+                <th className="py-1 text-right">合计</th>
               </tr>
             </thead>
             <tbody>
               {[
-                ["Analysis", d.project.analysis.needed, d.project.analysis.usd],
+                ["分析", d.project.analysis.needed, d.project.analysis.usd],
                 [
-                  `References (${d.project.references.count}${d.project.references.estimated ? ", estimated" : ""})`,
+                  `参考图（${d.project.references.count}${d.project.references.estimated ? "，估算" : ""}）`,
                   d.project.references.count > 0,
                   d.project.references.usd,
                 ],
-                ["Thumbnail", d.project.thumbnail.needed, d.project.thumbnail.usd],
-                ["YouTube text", d.project.youtube.needed, d.project.youtube.usd],
+                ["缩略图", d.project.thumbnail.needed, d.project.thumbnail.usd],
+                ["YouTube 文案", d.project.youtube.needed, d.project.youtube.usd],
               ]
                 .filter(([, needed]) => needed)
                 .map(([label, , v]) => (
@@ -124,21 +123,21 @@ export function CostPlan({ projectId, body }: { projectId: string; body: Record<
               {d.chapters.map((c) => (
                 <tr key={c.id} className="border-t border-[var(--border)]">
                   <td className="py-1 pr-2">
-                    Ch. {c.order} {c.title}
-                    {c.estimated && <span className="muted"> · estimated</span>}
+                    第 {c.order} 章 {c.title}
+                    {c.estimated && <span className="muted"> · 估算</span>}
                   </td>
                   <td className="py-1 pr-2 text-right tabular-nums">{c.plan.needed ? usd(c.plan.usd) : "—"}</td>
                   <td className="py-1 pr-2 text-right tabular-nums">
-                    {c.prompts.pages ? `${c.prompts.pages} pg · ${usd(c.prompts.usd)}` : "—"}
+                    {c.prompts.pages ? `${c.prompts.pages} 页 · ${usd(c.prompts.usd)}` : "—"}
                   </td>
                   <td className="py-1 pr-2 text-right tabular-nums">
-                    {c.art.panels ? `${c.art.panels} · ${usd(c.art.usd)}${c.art.batched ? " (batch)" : ""}` : "—"}
+                    {c.art.panels ? `${c.art.panels} · ${usd(c.art.usd)}${c.art.batched ? "（批处理）" : ""}` : "—"}
                   </td>
                   <td className="py-1 pr-2 text-right tabular-nums">
                     {c.narration.needed ? usd(c.narration.usd) : "—"}
                   </td>
-                  <td className="py-1 pr-2 text-right tabular-nums" title="Voiced locally: nothing is spent">
-                    {c.audio.segments ? `${Math.round(c.audio.seconds / 60)} min` : "—"}
+                  <td className="py-1 pr-2 text-right tabular-nums" title="本地配音，不产生费用">
+                    {c.audio.segments ? `${Math.round(c.audio.seconds / 60)} 分钟` : "—"}
                   </td>
                   <td className="py-1 text-right font-medium tabular-nums">{usd(c.usd)}</td>
                 </tr>

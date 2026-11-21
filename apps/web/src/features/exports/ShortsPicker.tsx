@@ -26,6 +26,18 @@ type Candidate = {
   picked: boolean;
 };
 
+const SHOT_LABELS: Record<string, string> = {
+  "extreme-wide": "大远景",
+  wide: "远景",
+  full: "全景",
+  medium: "中景",
+  "medium-close": "中近景",
+  close: "特写",
+  "extreme-close": "大特写",
+  insert: "插入镜头",
+};
+const shotTypeLabel = (type: string) => SHOT_LABELS[type] ?? type;
+
 const secs = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
 
 /**
@@ -35,10 +47,10 @@ const secs = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
  */
 /** Captions drawn into a Shorts cut, from its narration. */
 const CAPTION_OPTIONS: { value: ShortsCaptions; label: string }[] = [
-  { value: "off", label: "Off (.srt file only)" },
-  { value: "bottom", label: "Clean, at the bottom" },
-  { value: "center", label: "Large, in the centre" },
-  { value: "two_line", label: "Two lines, at the bottom" },
+  { value: "off", label: "关闭（仅提供 .srt 文件）" },
+  { value: "bottom", label: "底部简洁字幕" },
+  { value: "center", label: "居中大字字幕" },
+  { value: "two_line", label: "底部双行字幕" },
 ];
 
 /** The captions a Shorts cut gets; off, and not offered, for a narration language the render has no font for. */
@@ -53,10 +65,7 @@ export function CaptionsField({
 }) {
   const ok = captionsSupported(language);
   return (
-    <Field
-      label="Captions"
-      hint={ok ? undefined : "Not available for this narration language yet: the render has no font for its script."}
-    >
+    <Field label="字幕" hint={ok ? undefined : "尚不支持此旁白语言的字幕，渲染器缺少对应文字的字体。"}>
       <select
         className="input"
         value={ok ? value : "off"}
@@ -128,8 +137,8 @@ export function ShortsPicker({
   return (
     <div className="space-y-2">
       <Field
-        label="Length (seconds)"
-        hint={`The pick fills up to this; ${YOUTUBE_SHORTS_MAX_MS / 1000} s is YouTube's Shorts limit.`}
+        label="时长（秒）"
+        hint={`自动选择的总时长以此为上限，当前 YouTube Shorts 预设上限为 ${YOUTUBE_SHORTS_MAX_MS / 1000} 秒。`}
       >
         <input
           className="input"
@@ -153,17 +162,17 @@ export function ShortsPicker({
       )}
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <span className={clsx("font-medium tabular-nums", tone)}>
-          {value.length} shot(s) · {secs(total)}
+          {value.length} 个镜头 · {secs(total)}
         </span>
         <span className="muted">
           {total > maxMs
-            ? `Over ${secs(maxMs)}: the render stops before the shot that passes it.`
+            ? `超过 ${secs(maxMs)}，渲染将在超出时长的镜头之前停止。`
             : total < SHORTS_MIN_MS
-              ? "Under 30 s: add a few shots."
-              : `Within 30 s – ${secs(maxMs)}.`}
+              ? "不足 30 秒，请添加一些镜头。"
+              : `处于 30 秒至 ${secs(maxMs)} 范围内。`}
         </span>
         <button type="button" className="btn-ghost ml-auto py-0.5 text-xs" onClick={auto}>
-          <Wand2 className="size-3.5" /> Auto-pick
+          <Wand2 className="size-3.5" /> 自动选择
         </button>
       </div>
       <ul className="max-h-72 divide-y divide-[var(--border)] overflow-y-auto rounded-lg border border-[var(--border)] text-xs">
@@ -187,10 +196,10 @@ export function ShortsPicker({
               )}
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium">
-                  {s.label} · {s.shotType}
+                  {s.label} · {shotTypeLabel(s.shotType)}
                 </span>
                 <span className="muted block truncate" title={s.text || undefined}>
-                  {s.hasArt ? s.text || "— no narration —" : "No artwork"}
+                  {s.hasArt ? s.text || "— 无旁白 —" : "暂无原画"}
                 </span>
               </span>
               <span className="muted shrink-0 tabular-nums">{secs(s.holdMs)}</span>
@@ -202,8 +211,8 @@ export function ShortsPicker({
         <PreviewVideoButton
           projectId={projectId}
           scope={{ panelIds: shots.filter((s) => chosen.has(s.id)).map((s) => s.id) }}
-          label="Preview the Short"
-          title="Preview — Shorts cut"
+          label="预览短视频"
+          title="预览短视频剪辑"
           className="btn-secondary w-full"
           defaultAspect={aspect}
           defaultMinHoldMs={minHoldMs}

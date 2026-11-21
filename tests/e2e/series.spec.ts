@@ -37,7 +37,7 @@ test("series: a library character follows into an episode, falls behind, and syn
   const { episodes } = await a.get<{ episodes: { id: string }[] }>(`/series/${seriesId}`);
   await page.goto(`/app/projects/${episodes[0]!.id}/cast`);
   await expect(page.getByText("from series")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Series · episode 1" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "系列 · 第 1 集" })).toBeVisible();
 
   // A new approved version in the library: the episode is one behind until synced from its row.
   const { version } = await a.post<{ version: { id: string } }>(`/characters/${character.id}/versions`, {

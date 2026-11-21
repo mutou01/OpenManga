@@ -138,7 +138,7 @@ export const csrf: MiddlewareHandler<AppEnv> = async (c, next) => {
     const header = c.req.header(CSRF_HEADER) ?? "";
     const cookie = getCookie(c, CSRF_COOKIE) ?? "";
     if (!cookie || !header || !safeEqual(header, cookie))
-      throw new ApiError(403, "csrf_failed", "Security token missing or invalid. Reload the page and try again.");
+      throw new ApiError(403, "csrf_failed", "安全令牌缺失或无效，请刷新页面后重试。");
   }
   await next();
 };
@@ -164,7 +164,7 @@ export function rateLimit(opts: {
       c.header("x-ratelimit-remaining", String(Math.max(0, limit - n)));
       if (n > limit) {
         c.header("retry-after", String(opts.windowSec));
-        throw new ApiError(429, "rate_limited", "Too many requests. Please slow down.");
+        throw new ApiError(429, "rate_limited", "请求过于频繁，请稍后重试。");
       }
     } catch (e) {
       if (e instanceof ApiError) throw e;
@@ -185,7 +185,7 @@ export async function failureGuard(c: Context<AppEnv>, scope: string, max: numbe
   if (n >= max) {
     const ttl = await deps.redis.ttl(key).catch(() => windowSec);
     c.header("retry-after", String(Math.max(1, ttl)));
-    throw new ApiError(429, "rate_limited", "Too many failed attempts. Please wait and try again later.");
+    throw new ApiError(429, "rate_limited", "尝试失败次数过多，请稍后重试。");
   }
   return {
     async fail() {
@@ -218,7 +218,7 @@ export async function checkLoginThrottle(c: Context<AppEnv>, identifier: string,
       throw new ApiError(
         429,
         "login_throttled",
-        `Too many failed sign-in attempts. Try again in ${Math.max(1, Math.ceil(ttl / 60))} minute(s).`,
+        `登录失败次数过多，请在 ${Math.max(1, Math.ceil(ttl / 60))} 分钟后重试。`,
       );
     }
   }

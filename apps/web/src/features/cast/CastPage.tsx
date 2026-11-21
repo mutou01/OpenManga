@@ -15,10 +15,20 @@ import {
   StatusChip,
   TagInput,
 } from "../../components/ui.tsx";
+import { statusLabel } from "../../lib/locale.ts";
 import { BulkGenerateButton } from "../pages/BulkGenerate.tsx";
 import { useProjectId } from "../project/ProjectLayout.tsx";
 
-const ROLES = ["protagonist", "antagonist", "supporting", "minor"] as const;
+const ROLES = {
+  protagonist: "主角",
+  antagonist: "反派",
+  supporting: "配角",
+  minor: "次要角色",
+};
+
+function roleLabel(role: string) {
+  return Object.hasOwn(ROLES, role) ? ROLES[role as keyof typeof ROLES] : role;
+}
 
 export function CastPage() {
   const projectId = useProjectId();
@@ -33,7 +43,7 @@ export function CastPage() {
   });
   const restore = useAction((id: string) => post(`/characters/${id}/restore`), {
     invalidate: [qk.cast(projectId)],
-    success: "Character restored",
+    success: "角色已恢复",
   });
   const q = text.trim().toLowerCase();
   const list = (data?.characters ?? []).filter(
@@ -45,34 +55,34 @@ export function CastPage() {
   return (
     <div className="p-6">
       <PageHeader
-        title="Cast"
-        subtitle="Canonical characters, their appearance versions and identity references."
+        title="角色"
+        subtitle="管理角色、外观版本及身份参考图。"
         actions={
           <>
             <button type="button" className="btn-secondary" onClick={() => setTrash(!trash)}>
-              {trash ? "Show active" : "Trash"}
+              {trash ? "显示使用中" : "回收站"}
             </button>
             {!trash && (
               <BulkGenerateButton
                 projectId={projectId}
                 scope={{ references: "character" }}
-                label="Generate all character references"
+                label="生成所有角色参考图"
                 className="btn-secondary"
                 noun={{
-                  one: "character reference",
-                  many: "character references",
-                  missing: "Only characters without this kind of reference",
+                  one: "角色参考图",
+                  many: "角色参考图",
+                  missing: "仅处理缺少此类参考图的角色",
                 }}
                 kinds={[
-                  { value: "full_body", label: "Full body" },
-                  { value: "portrait", label: "Portrait" },
-                  { value: "multi_angle", label: "Turnaround" },
-                  { value: "expression_sheet", label: "Expression sheet" },
+                  { value: "full_body", label: "全身" },
+                  { value: "portrait", label: "肖像" },
+                  { value: "multi_angle", label: "多角度视图" },
+                  { value: "expression_sheet", label: "表情设定图" },
                 ]}
               />
             )}
             <button type="button" className="btn-primary" onClick={() => setAdding(true)}>
-              <Plus className="size-4" /> Add character
+              <Plus className="size-4" /> 添加角色
             </button>
           </>
         }
@@ -80,21 +90,21 @@ export function CastPage() {
       <div className="mb-4 flex flex-wrap gap-2">
         <input
           className="input max-w-xs"
-          placeholder="Filter by name or alias"
+          placeholder="按姓名或别名筛选"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          aria-label="Filter characters"
+          aria-label="筛选角色"
         />
         <select
           className="input w-auto"
           value={role}
           onChange={(e) => setRole(e.target.value)}
-          aria-label="Filter by role"
+          aria-label="按角色类型筛选"
         >
-          <option value="">All roles</option>
-          {ROLES.map((r) => (
+          <option value="">所有角色类型</option>
+          {Object.entries(ROLES).map(([r, label]) => (
             <option key={r} value={r}>
-              {r}
+              {label}
             </option>
           ))}
         </select>
@@ -102,8 +112,8 @@ export function CastPage() {
       <ErrorBox error={error} onRetry={() => refetch()} />
       {isLoading && <Spinner className="size-6" />}
       {data && !list.length && (
-        <EmptyState icon={<Users className="size-8" />} title={trash ? "Trash is empty" : "No characters yet"}>
-          {trash ? null : "Analyze your story to extract the cast automatically, or add characters manually."}
+        <EmptyState icon={<Users className="size-8" />} title={trash ? "回收站为空" : "暂无角色"}>
+          {trash ? null : "分析故事以自动提取角色，或手动添加角色。"}
         </EmptyState>
       )}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
@@ -116,7 +126,7 @@ export function CastPage() {
             >
               <AssetImage
                 assetId={c.portraitAssetId}
-                alt={`${c.name} portrait`}
+                alt={`${c.name}的肖像`}
                 className="aspect-[3/4] w-full"
                 trashed={trash}
               />
@@ -130,43 +140,35 @@ export function CastPage() {
                 {c.name}
               </Link>
               <div className="muted flex items-center gap-2 text-xs capitalize">
-                {c.role}
+                {roleLabel(c.role)}
                 {c.currentVersion && (
                   <span>
-                    · v{c.currentVersion.versionNumber} {c.currentVersion.status}
+                    · 第 {c.currentVersion.versionNumber} 版 {statusLabel(c.currentVersion.status)}
                   </span>
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-1 text-xs">
-                <StatusChip status={c.referenceStatus} label={`ref: ${c.referenceStatus}`} />
+                <StatusChip status={c.referenceStatus} label={`参考图：${statusLabel(c.referenceStatus)}`} />
                 {c.sourceId && (
-                  <span className="chip" title="Follows the series library: change it there, then sync">
-                    from series
+                  <span className="chip" title="关联系列素材库，请在系列中修改后同步">
+                    来自系列
                   </span>
                 )}
                 {c.staleReferences > 0 && (
-                  <span
-                    className="chip bg-amber-500/15 text-amber-600"
-                    title="Reference made from an older description"
-                  >
-                    stale ref
+                  <span className="chip bg-amber-500/15 text-amber-600" title="参考图基于旧版描述生成">
+                    参考图已过时
                   </span>
                 )}
                 {c.contentWarnings > 0 && (
-                  <span
-                    className="chip bg-amber-500/15 text-amber-600"
-                    title="Description wording that image moderators often block"
-                  >
-                    {c.contentWarnings} wording warning{c.contentWarnings === 1 ? "" : "s"}
+                  <span className="chip bg-amber-500/15 text-amber-600" title="描述中包含容易触发图像审核的措辞">
+                    {c.contentWarnings} 条措辞提示{c.contentWarnings === 1 ? "" : "s"}
                   </span>
                 )}
-                <span className="muted">
-                  {c.appearances} panel{c.appearances === 1 ? "" : "s"}
-                </span>
+                <span className="muted">{c.appearances} 个画格</span>
               </div>
               {c.aliases.length > 0 && (
                 <div className="muted truncate text-xs" title={c.aliases.map((a) => a.alias).join(", ")}>
-                  aka {c.aliases.map((a) => a.alias).join(", ")}
+                  别名 {c.aliases.map((a) => a.alias).join(", ")}
                 </div>
               )}
               {trash && (
@@ -175,7 +177,7 @@ export function CastPage() {
                   className="btn-secondary mt-1 w-full text-xs"
                   onClick={() => restore.mutate(c.id)}
                 >
-                  <RotateCcw className="size-3" /> Restore
+                  <RotateCcw className="size-3" /> 恢复
                 </button>
               )}
             </div>
@@ -219,7 +221,7 @@ function AddCharacterModal({ open, onClose, projectId }: { open: boolean; onClos
       }),
     {
       invalidate: [qk.cast(projectId)],
-      success: "Character added",
+      success: "角色已添加",
       onSuccess: () => {
         setF(empty);
         onClose();
@@ -236,11 +238,11 @@ function AddCharacterModal({ open, onClose, projectId }: { open: boolean; onClos
     <Modal
       open={open}
       onClose={onClose}
-      title="Add character"
+      title="添加角色"
       footer={
         <>
           <button type="button" className="btn-secondary" onClick={onClose}>
-            Cancel
+            取消
           </button>
           <button
             type="button"
@@ -248,39 +250,35 @@ function AddCharacterModal({ open, onClose, projectId }: { open: boolean; onClos
             disabled={!f.name.trim() || create.isPending}
             onClick={() => create.mutate()}
           >
-            {create.isPending && <Spinner />} Create
+            {create.isPending && <Spinner />} 创建
           </button>
         </>
       }
     >
       <div className="grid gap-3 sm:grid-cols-2">
-        {text("name", "Name")}
+        {text("name", "名称")}
         <label className="block">
-          <span className="label">Role</span>
+          <span className="label">角色类型</span>
           <select className="input" value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })}>
-            {ROLES.map((r) => (
+            {Object.entries(ROLES).map(([r, label]) => (
               <option key={r} value={r}>
-                {r}
+                {label}
               </option>
             ))}
           </select>
         </label>
-        {text("genderPresentation", "Gender presentation")}
-        {text("ageRange", "Age range")}
-        {text("hair", "Hair")}
-        {text("eyes", "Eyes")}
-        {text("build", "Build")}
-        {text("wardrobe", "Default wardrobe")}
+        {text("genderPresentation", "性别表现")}
+        {text("ageRange", "年龄范围")}
+        {text("hair", "头发")}
+        {text("eyes", "眼睛")}
+        {text("build", "体型")}
+        {text("wardrobe", "默认服装")}
         <div className="sm:col-span-2">
-          <span className="label">Aliases</span>
-          <TagInput
-            value={f.aliases}
-            onChange={(aliases) => setF({ ...f, aliases })}
-            placeholder="the boy, the student…"
-          />
+          <span className="label">别名</span>
+          <TagInput value={f.aliases} onChange={(aliases) => setF({ ...f, aliases })} placeholder="男孩、学生……" />
         </div>
         <label className="block sm:col-span-2">
-          <span className="label">Summary</span>
+          <span className="label">摘要</span>
           <textarea
             className="input min-h-16"
             value={f.summary}

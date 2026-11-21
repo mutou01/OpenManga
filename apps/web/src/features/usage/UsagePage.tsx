@@ -30,8 +30,8 @@ function UsageView({
 export function UsagePage() {
   return (
     <UsageView
-      title="API usage & cost"
-      subtitle="Across all your projects. Estimates use recorded provider token usage and rate snapshots."
+      title="API 用量与费用"
+      subtitle="统计所有项目。费用根据已记录的供应商用量和费率快照估算。"
       queryKey={["usage", "me"]}
       path="/usage"
     />
@@ -42,8 +42,8 @@ export function ProjectUsagePage() {
   const projectId = useProjectId();
   return (
     <UsageView
-      title="Project cost"
-      subtitle="Recorded provider usage for this project."
+      title="项目费用"
+      subtitle="此项目已记录的供应商用量。"
       queryKey={qk.usage(projectId)}
       path={`/projects/${projectId}/usage`}
     />

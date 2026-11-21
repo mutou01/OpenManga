@@ -39,10 +39,10 @@ const RECLAIM_AFTER_MS = 10 * 60_000;
 /** Final/visible failure message: never a stack trace. */
 export function userFacingError(e: unknown): { code: string; message: string } {
   if (e instanceof ProviderError)
-    return { code: e.code, message: `${e.userMessage}${e.requestId ? ` (request ${e.requestId})` : ""}` };
-  if (e instanceof JobCancelledError) return { code: "cancelled", message: "Cancelled" };
+    return { code: e.code, message: `${e.userMessage}${e.requestId ? `（请求 ${e.requestId}）` : ""}` };
+  if (e instanceof JobCancelledError) return { code: "cancelled", message: "已取消" };
   if (e instanceof Error && e.name === "InputError") return { code: "invalid_input", message: e.message };
-  return { code: "internal", message: "Unexpected processing error. The details were logged for administrators." };
+  return { code: "internal", message: "任务处理时发生错误，详情已记录供管理员查看。" };
 }
 
 export class InputError extends Error {
@@ -54,7 +54,7 @@ export class InputError extends Error {
  * runner reads back what a handler records on it (the prompt a manual run last asked).
  */
 export function inProject(job: GenerationJob): ProjectJob {
-  if (!job.projectId) throw new InputError(`A ${job.kind} job needs a project`);
+  if (!job.projectId) throw new InputError(`任务 ${job.kind} 需要关联项目`);
   return job as ProjectJob;
 }
 
@@ -329,7 +329,7 @@ export async function runGenerationJob(
         .set({
           status: "queued",
           failureCode: code,
-          failureReason: `${message} Retrying…`,
+          failureReason: `${message} 正在重试…`,
           // What the handler last stored (a clip's provider request it resumes), not what the job started with.
           providerRequestId: requestId ?? sql`${generationJobs.providerRequestId}`,
         })
@@ -400,13 +400,13 @@ export async function pausedByBudget(deps: WorkerDeps, job: GenerationJob) {
   if (!reason && job.projectId && !(job.parameters as { allowOverBudget?: boolean } | null)?.allowOverBudget) {
     const project = await projectBudget(deps.db, job.projectId);
     if (project.exceeded)
-      reason = `project budget of $${project.limitUsd!.toFixed(2)} reached ($${project.spentUsd.toFixed(2)} spent)`;
+      reason = `项目预算已达到 $${project.limitUsd!.toFixed(2)}（已用 $${project.spentUsd.toFixed(2)}）`;
     budget = project;
   }
   if (!reason) return false;
   const [paused] = await deps.db
     .update(generationJobs)
-    .set({ status: "paused", failureReason: `Paused: ${reason}` })
+    .set({ status: "paused", failureReason: `已暂停：${reason}` })
     .where(eq(generationJobs.id, job.id))
     .returning();
   await publishJob(deps, paused);

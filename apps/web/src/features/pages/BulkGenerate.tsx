@@ -19,7 +19,7 @@ type Scope = {
 
 /** What the run makes, in the words the dialog uses. */
 type Noun = { one: string; many: string; missing: string };
-const PANELS: Noun = { one: "panel", many: "panels", missing: "Only panels without artwork" };
+const PANELS: Noun = { one: "个分镜", many: "个分镜", missing: "仅生成无图片的分镜" };
 type Estimate = {
   confirmRequired?: boolean;
   count: number;
@@ -63,34 +63,29 @@ export function PreflightNotes({ preflight: f }: { preflight: Preflight }) {
   const notes: string[] = [];
   for (const c of f.characterWarnings)
     notes.push(
-      `${c.name} v${c.versionNumber} (in ${c.panels} panel${c.panels === 1 ? "" : "s"}) is described with ${c.terms.map((t) => `“${t}”`).join(", ")}`,
+      `${c.name} v${c.versionNumber}（用于 ${c.panels} 个分镜）的描述包含 ${c.terms.map((t) => `“${t}”`).join("、")}`,
     );
   const panelTerms = f.harmVocabulary.terms.filter((t) => !f.characterWarnings.some((c) => c.terms.includes(t.term)));
-  if (panelTerms.length) notes.push(`Panel text uses ${panelTerms.map((t) => `“${t.term}” (${t.panels})`).join(", ")}`);
+  if (panelTerms.length)
+    notes.push(`分镜文本包含 ${panelTerms.map((t) => `“${t.term}”（${t.panels} 个分镜）`).join("、")}`);
   if (f.distress.panels)
-    notes.push(
-      `${f.distress.panels} panel${f.distress.panels === 1 ? "" : "s"} combine a lone figure with dark or underlit lighting and a distressed mood or high/tilted camera`,
-    );
+    notes.push(`${f.distress.panels} 个分镜同时包含孤立人物、昏暗光照，以及痛苦情绪或俯视、倾斜机位`);
   for (const r of f.staleReferences)
-    notes.push(
-      `${r.name} v${r.versionNumber}'s approved reference was made from an older description (${r.panels} panels)`,
-    );
+    notes.push(`${r.name} v${r.versionNumber} 的已审核参考图基于旧版描述生成（${r.panels} 个分镜）`);
   for (const r of f.missingReferences)
-    notes.push(
-      `${r.name} v${r.versionNumber} has no approved reference, so identity isn't pinned (${r.panels} panels)`,
-    );
+    notes.push(`${r.name} v${r.versionNumber} 没有已审核参考图，人物身份尚未固定（${r.panels} 个分镜）`);
   if (!notes.length) return null;
   return (
     <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs">
-      <p className="mb-1 font-medium text-amber-700 dark:text-amber-300">Likely to be blocked or drift</p>
+      <p className="mb-1 font-medium text-amber-700 dark:text-amber-300">可能被拦截或出现一致性偏差</p>
       <ul className="list-disc space-y-0.5 pl-4">
         {notes.map((n) => (
           <li key={n}>{n}</li>
         ))}
       </ul>
       <p className="muted mt-1">
-        Image content filters (Meta Muse especially) block these combinations some of the time even in harmless scenes.
-        Fix the wording or regenerate the reference first, or generate anyway.
+        图片内容过滤器（尤其是 Meta
+        Muse）有时会拦截这些组合，即使场景本身无害。可先修改措辞或重新生成参考图，也可继续生成。
       </p>
     </div>
   );
@@ -98,16 +93,16 @@ export function PreflightNotes({ preflight: f }: { preflight: Preflight }) {
 
 function skippedText(e: Estimate) {
   const r = e.skippedReasons;
-  if (!r) return e.skipped ? `${e.skipped} skipped` : "";
+  if (!r) return e.skipped ? `跳过 ${e.skipped} 个` : "";
   return [
-    r.inProgress && `${r.inProgress} already queued or generating`,
-    r.hasArtwork && `${r.hasArtwork} already have artwork`,
-    r.hasReference && `${r.hasReference} already have a reference`,
-    r.minor && `${r.minor} minor or used once (main-only reference policy)`,
-    r.locked && `${r.locked} locked`,
+    r.inProgress && `${r.inProgress} 个已排队或正在生成`,
+    r.hasArtwork && `${r.hasArtwork} 个已有图片`,
+    r.hasReference && `${r.hasReference} 个已有参考图`,
+    r.minor && `${r.minor} 个为次要或仅出现一次的对象（仅主要对象生成参考图）`,
+    r.locked && `${r.locked} 个已锁定`,
   ]
     .filter(Boolean)
-    .join(", ");
+    .join("，");
 }
 
 /** Bulk generation with count/cost confirmation. Progress is shown by the shared, server-backed batch status. */
@@ -162,17 +157,16 @@ export function BulkGenerateButton({
         { ...aiImage(), scope: kind ? { ...scope, referenceKind: kind } : scope, onlyMissing, confirm: true, batch },
       );
       setEstimate(null);
-      if (!r.batchId) toast.info("Nothing to generate");
+      if (!r.batchId) toast.info("暂无可生成内容");
       else {
         await invalidateBatches();
         toast.success(
           batch
-            ? `Sent ${r.jobs.length} ${r.jobs.length === 1 ? noun.one : noun.many} to a provider batch — results within 24h`
-            : `Queued ${r.jobs.length} ${r.jobs.length === 1 ? noun.one : noun.many}`,
+            ? `已将 ${r.jobs.length} ${r.jobs.length === 1 ? noun.one : noun.many}发送到提供商批处理，预计 24 小时内返回结果`
+            : `已将 ${r.jobs.length} ${r.jobs.length === 1 ? noun.one : noun.many}加入队列`,
         );
       }
-      if (r.failures?.length)
-        toast.error(`${r.failures.length} ${noun.many} could not be queued: ${r.failures[0]!.error}`);
+      if (r.failures?.length) toast.error(`${r.failures.length} ${noun.many}加入队列失败，${r.failures[0]!.error}`);
     } catch (e) {
       toast.error(e);
     } finally {
@@ -190,7 +184,7 @@ export function BulkGenerateButton({
       <ConfirmDialog
         open={Boolean(estimate)}
         title={label}
-        confirmLabel={nothing ? "Nothing to queue" : `Generate ${estimate?.count ?? 0}`}
+        confirmLabel={nothing ? "暂无可排队任务" : `生成 ${estimate?.count ?? 0} 个`}
         busy={busy}
         disabled={nothing}
         onClose={() => setEstimate(null)}
@@ -201,7 +195,7 @@ export function BulkGenerateButton({
             {kinds && (
               <div className="space-y-1 rounded-md bg-[var(--panel-2)] p-2 text-sm">
                 <label className="flex items-center gap-2">
-                  <span className="shrink-0">Draw</span>
+                  <span className="shrink-0">生成范围</span>
                   <select
                     className="input"
                     value={kind}
@@ -220,46 +214,39 @@ export function BulkGenerateButton({
                 </label>
                 {estimate.existing && (
                   <p className="muted text-xs">
-                    Already have:{" "}
-                    {kinds
-                      .map((k) => `${estimate.existing?.[k.value] ?? 0} with a ${k.label.toLowerCase()}`)
-                      .join(", ")}
-                    {estimate.total != null ? ` (of ${estimate.total})` : ""}.
+                    已有参考图 {kinds.map((k) => `${estimate.existing?.[k.value] ?? 0} 个已有${k.label}`).join(", ")}
+                    {estimate.total != null ? `（共 ${estimate.total} 个）` : ""}.
                   </p>
                 )}
               </div>
             )}
             {nothing ? (
               <p>
-                <strong>Nothing to generate.</strong> All {estimate.total ?? estimate.skipped} {noun.many} are skipped
-                {skippedText(estimate) ? `: ${skippedText(estimate)}` : ""}.
-                {estimate.skippedReasons?.inProgress
-                  ? " Their progress is shown in the batch status on this screen and at the bottom of the window."
-                  : ""}
+                <strong>暂无可生成内容。</strong> 全部 {estimate.total ?? estimate.skipped} {noun.many} 已跳过
+                {skippedText(estimate) ? `：${skippedText(estimate)}` : ""}。
+                {estimate.skippedReasons?.inProgress ? " 进度显示在当前界面及窗口底部的批次状态中。" : ""}
               </p>
             ) : (
               <>
                 <p>
-                  This will queue <strong>{estimate.count}</strong> individual image generation
-                  {estimate.count === 1 ? "" : "s"}
-                  {skippedText(estimate) ? ` (skipped: ${skippedText(estimate)})` : ""}.
+                  将加入队列 <strong>{estimate.count}</strong> 次独立图片生成
+                  {skippedText(estimate) ? `（已跳过 ${skippedText(estimate)}）` : ""}.
                 </p>
                 <p>
-                  Estimated cost:{" "}
+                  预计费用{" "}
                   <strong>
                     {/* The response says which mode it priced, so a price is never shown against the other one. */}
                     {estimate.batch !== batch
-                      ? "re-pricing…"
+                      ? "正在重新估价…"
                       : estimate.estimatedUsd === null
-                        ? "unknown (no rate snapshot)"
+                        ? "未知（缺少计费记录）"
                         : `≈ ${fmt.usd(estimate.estimatedUsd)}`}
                   </strong>
-                  <span className="muted"> — rough estimate; actual provider usage is recorded per job.</span>
+                  <span className="muted"> （仅为估算，实际提供商用量按任务记录。）</span>
                 </p>
                 {estimate.credentials && !estimate.credentials.image && !estimate.credentials.mockMode && (
                   <p className="rounded-md bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-300">
-                    You have no image-capable API key saved. This server has no shared keys, so these jobs will fail
-                    until you add one in Account → AI providers.
+                    尚未保存支持图片生成的 API 密钥。服务器没有共享密钥，请先到“账户 → AI 提供商”添加，否则任务会失败。
                   </p>
                 )}
                 <label className="flex items-start gap-2 rounded-md bg-[var(--panel-2)] p-2 text-sm">
@@ -277,18 +264,18 @@ export function BulkGenerateButton({
                     }}
                   />
                   <span>
-                    <strong>Send as a provider batch</strong> — half price, results within 24h (often sooner).
+                    <strong>发送为提供商批处理</strong> ，费用减半，通常在 24 小时内返回结果。
                     <span className="muted">
                       {" "}
-                      {noun.many[0]!.toUpperCase() + noun.many.slice(1)} wait at the provider instead of generating now.
-                      OpenAI and Google keys only.
+                      {noun.many[0]!.toUpperCase() + noun.many.slice(1)} 将在提供商侧等待处理，仅支持 OpenAI 和 Google
+                      密钥。
                     </span>
                   </span>
                 </label>
                 {estimate.preflight && <PreflightNotes preflight={estimate.preflight} />}
                 {estimate.provider && (
                   <p className="muted text-xs">
-                    Using {estimate.provider.provider} · {estimate.provider.model}
+                    使用 {estimate.provider.provider} · {estimate.provider.model}
                   </p>
                 )}
                 {estimate.budget?.limitUsd != null && (
@@ -299,17 +286,17 @@ export function BulkGenerateButton({
                         : "muted text-sm"
                     }
                   >
-                    Project budget: {fmt.usd(estimate.budget.spentUsd)} of {fmt.usd(estimate.budget.limitUsd)} spent
+                    项目预算 {fmt.usd(estimate.budget.spentUsd)} / {fmt.usd(estimate.budget.limitUsd)} 已使用
                     {estimate.budget.spentUsd + (estimate.estimatedUsd ?? 0) >= estimate.budget.limitUsd
-                      ? " — this batch would go over; you'll be asked to confirm."
-                      : ` — ${fmt.usd(estimate.budget.remainingUsd ?? 0)} left.`}
+                      ? "。本批次将超出预算，继续前需要确认。"
+                      : `，剩余 ${fmt.usd(estimate.budget.remainingUsd ?? 0)}。`}
                   </p>
                 )}
                 {!!estimate.budget?.unpricedCalls && (
                   <p className="muted text-sm">
-                    {estimate.budget.unpricedCalls} earlier call
-                    {estimate.budget.unpricedCalls === 1 ? "" : "s"} could not be priced (no rate snapshot for that
-                    model), so spend so far is understated.
+                    {estimate.budget.unpricedCalls} 次历史调用
+                    {estimate.budget.unpricedCalls === 1 ? "" : "s"}{" "}
+                    无法计价（缺少对应模型的费率快照），因此当前费用统计偏低。
                   </p>
                 )}
               </>

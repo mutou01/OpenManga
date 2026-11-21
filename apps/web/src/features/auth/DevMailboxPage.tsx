@@ -22,15 +22,13 @@ export function DevMailboxPage() {
       <div className="mb-4 flex items-center justify-between gap-2">
         <div>
           <h1 className="flex items-center gap-2 text-xl font-semibold">
-            <Inbox className="size-5" /> Dev mailbox
+            <Inbox className="size-5" /> 开发邮箱
           </h1>
-          <p className="muted text-sm">
-            Email delivery is mocked. Messages sent by the app are stored here instead of being delivered.
-          </p>
+          <p className="muted text-sm">应用发送的测试邮件保存在这里。</p>
         </div>
         <div className="flex gap-2">
           <Link to="/login" search={{}} className="btn-secondary">
-            Sign in
+            登录
           </Link>
           <button
             type="button"
@@ -38,13 +36,13 @@ export function DevMailboxPage() {
             onClick={() => setConfirmClear(true)}
             disabled={!list.data?.emails.length}
           >
-            <Trash2 className="size-4" /> Clear
+            <Trash2 className="size-4" /> 清空
           </button>
         </div>
       </div>
       {list.isLoading && <Spinner />}
-      <ErrorBox error={list.error} title="Mailbox unavailable" />
-      {list.data && !list.data.emails.length && <EmptyState title="No emails yet" />}
+      <ErrorBox error={list.error} title="邮箱不可用" />
+      {list.data && !list.data.emails.length && <EmptyState title="暂无邮件" />}
       {list.data && list.data.emails.length > 0 && (
         <div className="grid gap-4 md:grid-cols-[320px_1fr]">
           <ul className="card divide-y divide-[var(--border)] overflow-hidden">
@@ -68,26 +66,26 @@ export function DevMailboxPage() {
               <>
                 <h2 className="font-semibold">{email.subject}</h2>
                 <div className="muted mb-3 text-xs">
-                  To {email.to} · {fmt.date(email.createdAt)}
+                  收件人 {email.to} · {fmt.date(email.createdAt)}
                 </div>
                 <pre className="whitespace-pre-wrap break-words text-sm">{email.textBody}</pre>
                 {links.map((l) => (
                   <a key={l} href={l} className="btn-primary mt-3">
-                    Open link
+                    打开链接
                   </a>
                 ))}
               </>
             ) : (
-              <p className="muted text-sm">Select an email.</p>
+              <p className="muted text-sm">请选择邮件。</p>
             )}
           </div>
         </div>
       )}
       <ConfirmDialog
         open={confirmClear}
-        title="Clear mailbox?"
+        title="清空邮箱？"
         danger
-        confirmLabel="Clear"
+        confirmLabel="清空"
         onClose={() => setConfirmClear(false)}
         onConfirm={async () => {
           try {
@@ -100,7 +98,7 @@ export function DevMailboxPage() {
           setConfirmClear(false);
         }}
       >
-        All stored development emails will be deleted.
+        将删除所有已保存的开发邮件。
       </ConfirmDialog>
     </div>
   );

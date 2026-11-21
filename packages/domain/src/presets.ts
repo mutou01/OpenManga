@@ -21,9 +21,8 @@ export type ProductionPreset = {
 export const PRODUCTION_PRESETS: ProductionPreset[] = [
   {
     key: "youtube-recap-30",
-    name: "YouTube recap, 30 min",
-    description:
-      "16:9 shots narrated over a Ken Burns video, about 30 minutes. Low image quality, references for the main cast only.",
+    name: "YouTube 剧情解说（30 分钟）",
+    description: "约 30 分钟的 16:9 旁白视频，带平移和缩放运镜。使用低画质，仅为主要角色生成参考图。",
     projectType: "manhwa",
     format: "film",
     stylePresetKey: "manhwa",
@@ -37,9 +36,8 @@ export const PRODUCTION_PRESETS: ProductionPreset[] = [
   },
   {
     key: "youtube-recap-60",
-    name: "YouTube recap, 1 hour",
-    description:
-      "The 30-minute recap at twice the length, with longer shots, and its images through half-price provider batches.",
+    name: "YouTube 剧情解说（1 小时）",
+    description: "30 分钟方案的加长版。镜头更长，图像使用服务商的半价批处理。",
     projectType: "manhwa",
     format: "film",
     stylePresetKey: "manhwa",
@@ -53,9 +51,8 @@ export const PRODUCTION_PRESETS: ProductionPreset[] = [
   },
   {
     key: "youtube-recap-120",
-    name: "YouTube recap, 2 hours",
-    description:
-      "A long-form recap: about 2 hours in some 20 chapters, 5–10 s shots, main-cast references only, images batched.",
+    name: "YouTube 剧情解说（2 小时）",
+    description: "约 2 小时、20 个章节的长篇解说。镜头长 5–10 秒，仅为主要角色生成参考图，图像批量生成。",
     projectType: "manhwa",
     format: "film",
     stylePresetKey: "manhwa",
@@ -69,9 +66,9 @@ export const PRODUCTION_PRESETS: ProductionPreset[] = [
   },
   {
     key: "youtube-recap-180",
-    name: "YouTube recap, 3 hours",
+    name: "YouTube 剧情解说（3 小时）",
     description:
-      "The longest recap: about 3 hours in some 25 chapters, 6–12 s shots so the image count stays near 1,200, main-cast references only, images batched.",
+      "约 3 小时、25 个章节的解说。镜头长 6–12 秒，将图像数量控制在约 1,200 张。仅为主要角色生成参考图，图像批量生成。",
     projectType: "manhwa",
     format: "film",
     stylePresetKey: "manhwa",
@@ -85,8 +82,8 @@ export const PRODUCTION_PRESETS: ProductionPreset[] = [
   },
   {
     key: "manga-chapter",
-    name: "Manga chapters",
-    description: "Black-and-white manga pages read right to left, every character and place drawn from a reference.",
+    name: "日式漫画章节",
+    description: "从右到左阅读的黑白漫画，每个角色和场景都根据参考图绘制。",
     projectType: "manga",
     format: "comic",
     stylePresetKey: "shonen",
@@ -95,8 +92,8 @@ export const PRODUCTION_PRESETS: ProductionPreset[] = [
   },
   {
     key: "webtoon-episode",
-    name: "Webtoon episodes",
-    description: "A vertical scrolling strip for phones, in full colour, generated as it is reviewed.",
+    name: "条漫分集",
+    description: "适合手机竖向滚动阅读的彩色条漫，支持边生成边审核。",
     projectType: "webtoon",
     format: "vertical",
     stylePresetKey: "modern-webtoon",
@@ -105,9 +102,8 @@ export const PRODUCTION_PRESETS: ProductionPreset[] = [
   },
   {
     key: "ai-video-ad",
-    name: "AI video ad, 60 s (realistic)",
-    description:
-      "A one-minute ad in live-action look: write the script from a brief (Story → Ad from a brief), then animate the 4–6 s shots into video clips.",
+    name: "AI 视频广告（60 秒，写实）",
+    description: "一分钟真人电影风广告。先在「故事」中根据需求写出广告脚本，再将每个 4–6 秒镜头制成视频片段。",
     projectType: "illustrated_story",
     format: "film",
     stylePresetKey: "realistic",
@@ -121,8 +117,8 @@ export const PRODUCTION_PRESETS: ProductionPreset[] = [
   },
   {
     key: "ai-video-ad-cartoon",
-    name: "AI video ad, 60 s (cartoon)",
-    description: "The one-minute ad as a bright 2D cartoon: script from a brief, then each shot animated into a clip.",
+    name: "AI 视频广告（60 秒，卡通）",
+    description: "一分钟明快的二维卡通广告。先根据需求写脚本，再将每个镜头制作成动画片段。",
     projectType: "illustrated_story",
     format: "film",
     stylePresetKey: "cartoon",
@@ -136,9 +132,8 @@ export const PRODUCTION_PRESETS: ProductionPreset[] = [
   },
   {
     key: "ai-video-story",
-    name: "AI video story, 3 min (anime)",
-    description:
-      "A short narrated story in anime look whose shots are animated into video clips instead of panned stills.",
+    name: "AI 视频故事（3 分钟，动漫）",
+    description: "带旁白的动漫风格短故事，将镜头制作成动态视频片段。",
     projectType: "manhwa",
     format: "film",
     stylePresetKey: "minimal-anime",
@@ -152,9 +147,8 @@ export const PRODUCTION_PRESETS: ProductionPreset[] = [
   },
   {
     key: "economy",
-    name: "Economy draft",
-    description:
-      "The cheapest way to see a whole story: low quality, main-cast references only, and everything that can wait sent as a half-price batch.",
+    name: "低成本草稿",
+    description: "低成本预览完整故事。使用低画质，仅为主要角色生成参考图，将可延后的步骤交给半价批处理。",
     projectType: "manhwa",
     format: "comic",
     stylePresetKey: "manhwa",

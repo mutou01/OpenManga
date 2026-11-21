@@ -30,7 +30,7 @@ export type PanelOutfits = {
     outfits: (CharacterOutfitRow & { referenceAssetId: string | null })[];
     worn: {
       outfitId: string;
-      source: "panel" | "onward" | "text" | "bible" | "default";
+      source: "panel" | "onward" | "text" | "bible" | "默认";
       since: OutfitChange | null;
     } | null;
     here: { id: string; scope: "onward" | "panel"; outfitId: string }[];
@@ -38,7 +38,7 @@ export type PanelOutfits = {
 };
 
 /** "Ch.2 p.4 panel 1": where an outfit change was set, in reading order. */
-export const changePlace = (c: OutfitChange) => `Ch.${c.chapterOrder} p.${c.pageOrder} panel ${c.panelOrder}`;
+export const changePlace = (c: OutfitChange) => `第 ${c.chapterOrder} 章第 ${c.pageOrder} 页分镜 ${c.panelOrder}`;
 
 /**
  * Picks what a character wears on a panel, like picking the character itself: one chip per outfit, with its reference
@@ -75,16 +75,16 @@ export function OutfitPicker({
     <div className="mt-2 space-y-1">
       <div className="flex items-center gap-1">
         <span className="label mb-0 mr-auto flex items-center gap-1">
-          <Shirt className="size-3.5" /> Outfit
+          <Shirt className="size-3.5" /> 服装
         </span>
         <fieldset
           className="flex overflow-hidden rounded-md border border-[var(--border)] text-[11px]"
-          aria-label="How long the pick holds"
+          aria-label="服装选择的生效范围"
         >
           {(
             [
-              ["onward", "From this panel on"],
-              ["panel", "Only this panel"],
+              ["onward", "从当前分镜起"],
+              ["panel", "仅当前分镜"],
             ] as const
           ).map(([k, label]) => (
             <button
@@ -99,7 +99,7 @@ export function OutfitPicker({
           ))}
         </fieldset>
       </div>
-      <fieldset className="flex flex-wrap gap-1" aria-label={`${entry.name} outfit`}>
+      <fieldset className="flex flex-wrap gap-1" aria-label={`${entry.name}的服装`}>
         {entry.outfits.map((o) => {
           const on = w?.outfitId === o.id;
           return (
@@ -123,7 +123,7 @@ export function OutfitPicker({
                 </span>
               )}
               {o.name}
-              {o.isDefault && <Star className="size-3 fill-amber-400 text-amber-400" aria-label="default" />}
+              {o.isDefault && <Star className="size-3 fill-amber-400 text-amber-400" aria-label="默认" />}
             </button>
           );
         })}
@@ -132,17 +132,17 @@ export function OutfitPicker({
         <span className="mr-auto">
           {!w ? (
             entry.text ? (
-              "Wearing what the outfit text says"
+              "按服装文本穿着"
             ) : (
-              "Wearing the wardrobe from the character's design"
+              "穿着角色设定中的服装"
             )
           ) : w.source === "panel" ? (
-            <>Wearing {wornName} on this panel only</>
+            <>穿着 {wornName} ，仅当前分镜</>
           ) : w.source === "onward" && w.since?.panelId === panelId ? (
-            <>Wearing {wornName} from this panel on</>
+            <>穿着 {wornName} ，从当前分镜起</>
           ) : w.source === "onward" && w.since ? (
             <>
-              Wearing {wornName} since{" "}
+              穿着 {wornName} ，始于{" "}
               <Link
                 to="/projects/$projectId/pages/$pageId"
                 params={{ projectId, pageId: w.since.pageId }}
@@ -153,11 +153,11 @@ export function OutfitPicker({
               </Link>
             </>
           ) : w.source === "text" ? (
-            <>Wearing {wornName}, named in the outfit text</>
+            <>穿着 {wornName}，来自服装文本</>
           ) : w.source === "bible" ? (
-            <>Wearing {wornName}, from the story bible</>
+            <>穿着 {wornName}，来自故事设定</>
           ) : (
-            <>Wearing {wornName}, the default outfit</>
+            <>穿着 {wornName}，默认服装</>
           )}
         </span>
         {entry.here.length > 0 && (
@@ -165,10 +165,10 @@ export function OutfitPicker({
             type="button"
             className="btn-ghost px-1 py-0 text-[11px]"
             disabled={locked || reset.isPending}
-            title="Remove the outfit change set on this panel; it goes back to what it inherits"
+            title="移除当前分镜的服装变更，恢复继承的服装"
             onClick={() => reset.mutate()}
           >
-            <RotateCcw className="size-3" /> Reset
+            <RotateCcw className="size-3" /> 重置
           </button>
         )}
       </div>

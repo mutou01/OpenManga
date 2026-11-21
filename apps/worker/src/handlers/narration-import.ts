@@ -14,7 +14,7 @@ const SAMPLE_RATE = 24_000;
 /** Reads the recogniser's NDJSON answer: the timed words, the recording's length and the language it heard. */
 async function transcribe(deps: WorkerDeps, job: ProjectJob, path: string, language: string) {
   const base = deps.config.WHISPER_URL.replace(/\/$/, "");
-  if (!base) throw new InputError("Speech recognition is not set up on this server (WHISPER_URL is empty)");
+  if (!base) throw new InputError("服务器尚未配置语音识别（WHISPER_URL 为空）");
   const abort = new AbortController();
   let res: Response;
   try {
@@ -27,13 +27,11 @@ async function transcribe(deps: WorkerDeps, job: ProjectJob, path: string, langu
       timeout: false,
     } as RequestInit);
   } catch (e) {
-    throw new InputError(
-      `Speech recognition is not reachable at ${base} (start the whisper service: compose profile "stt"): ${String(e)}`,
-    );
+    throw new InputError(`无法连接 ${base} 的语音识别服务，请通过 Compose 的 stt 配置启动 Whisper：${String(e)}`);
   }
   if (!res.ok || !res.body) {
     const detail = await res.text().catch(() => "");
-    throw new InputError(`Speech recognition refused the recording (${res.status}): ${detail.slice(0, 300)}`);
+    throw new InputError(`语音识别服务拒绝了录音（${res.status}）：${detail.slice(0, 300)}`);
   }
   const words: SpokenWord[] = [];
   let durationS = 0;
@@ -51,7 +49,7 @@ async function transcribe(deps: WorkerDeps, job: ProjectJob, path: string, langu
       language?: string;
       words?: [number, number, string][];
     };
-    if (m.error) throw new InputError(`Speech recognition failed: ${m.error}`);
+    if (m.error) throw new InputError(`语音识别失败：${m.error}`);
     if (m.done) done = true;
     if (m.duration !== undefined) durationS = m.duration;
     if (m.language) heard = m.language;
@@ -74,9 +72,9 @@ async function transcribe(deps: WorkerDeps, job: ProjectJob, path: string, langu
     onLine(buffered);
   } catch (e) {
     if (e instanceof InputError || e instanceof JobCancelledError) throw e;
-    throw new InputError(`Speech recognition stopped before the end of the recording: ${String(e)}`);
+    throw new InputError(`语音识别在录音结束前中断: ${String(e)}`);
   }
-  if (!done) throw new InputError("Speech recognition stopped before the end of the recording");
+  if (!done) throw new InputError("语音识别在录音结束前中断");
   return { words, durationMs: Math.round(durationS * 1000), language: heard };
 }
 
@@ -94,7 +92,7 @@ export async function narrationImport(deps: WorkerDeps, job: ProjectJob) {
       !uploadPath.startsWith(join(deps.config.TEMP_ROOT, "narration-imports")) ||
       !(await Bun.file(uploadPath).exists())
     )
-      throw new InputError("The uploaded recording is gone; upload it again");
+      throw new InputError("找不到上传的录音，请重新上传");
     const segments = [
       ...(await deps.db.execute<{ id: string; text: string; text_sha256: string; chapter_id: string }>(sql`
         select s.id, s.text, s.text_sha256, nl.chapter_id
@@ -112,7 +110,7 @@ export async function narrationImport(deps: WorkerDeps, job: ProjectJob) {
           }
         order by ch."order", nl."order", s."order"`)),
     ];
-    if (!segments.length) throw new InputError("There is no narration text to match the recording to");
+    if (!segments.length) throw new InputError("没有可与录音对齐的旁白文本");
 
     return await withTempDir(deps.config.TEMP_ROOT, async (dir) => {
       // The whole recording as 16-bit mono at the narration's rate, in memory: what every take is cut from.
@@ -137,7 +135,7 @@ export async function narrationImport(deps: WorkerDeps, job: ProjectJob) {
         ],
         "Decoding the recording",
       ).catch((e) => {
-        throw new InputError(`The file could not be read as audio: ${String(e).slice(0, 300)}`);
+        throw new InputError(`无法将文件读取为音频：${String(e).slice(0, 300)}`);
       });
       const wav = await Bun.file(wavPath).bytes();
       const info = parseWav(wav);

@@ -133,7 +133,7 @@ adminRoutes.patch("/users/:id", async (c) => {
   const id = uuidParam(c, "id");
   const input = await body(c, PatchUser);
   if (id === user(c).id && (input.status === "disabled" || input.role === "user"))
-    throw conflict("You cannot disable or demote yourself");
+    throw conflict("无法停用自己的账号或降低自己的权限");
   const deps = c.get("deps");
   const [row] = await deps.db.update(users).set(input).where(eq(users.id, id)).returning();
   if (!row) throw notFound("User");
@@ -212,14 +212,14 @@ adminRoutes.get("/jobs/:id", async (c) => {
 doc({ method: "POST", path: "/api/admin/jobs/:id/retry", summary: "Retry job", tag: "admin" });
 adminRoutes.post("/jobs/:id/retry", async (c) => {
   const created = await c.get("deps").jobs.retryGeneration(uuidParam(c, "id"), user(c).id);
-  if (!created) throw conflict("Only failed or cancelled jobs can be retried");
+  if (!created) throw conflict("只有失败或已取消的任务可以重试");
   return c.json({ job: created }, 202);
 });
 
 doc({ method: "POST", path: "/api/admin/jobs/:id/cancel", summary: "Cancel job", tag: "admin" });
 adminRoutes.post("/jobs/:id/cancel", async (c) => {
   const result = await c.get("deps").jobs.cancelGeneration(uuidParam(c, "id"));
-  if (result === "not_cancellable") throw conflict("Job cannot be cancelled");
+  if (result === "not_cancellable") throw conflict("此任务无法取消");
   return c.json({ result });
 });
 
@@ -488,7 +488,7 @@ doc({
 });
 adminRoutes.post("/storage/approve", async (c) => {
   const deps = c.get("deps");
-  if (!(await getStoragePending(deps.db))?.files) throw conflict("Nothing is waiting to be deleted");
+  if (!(await getStoragePending(deps.db))?.files) throw conflict("没有待删除的文件");
   await queueStorageApply(deps, user(c).id);
   await recordAudit(deps.db, {
     userId: user(c).id,

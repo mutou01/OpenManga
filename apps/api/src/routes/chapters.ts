@@ -267,8 +267,7 @@ chapterRoutes.delete("/chapters/:id", async (c) => {
           join narration_lines l on l.id = s.narration_line_id
         where a.status in ('queued','processing') and l.chapter_id = ${id})
     )::int as n`);
-  if ((busy?.n ?? 0) > 0)
-    throw conflict(`This chapter has ${busy!.n} generation(s) in progress. Cancel them or wait before deleting.`);
+  if ((busy?.n ?? 0) > 0) throw conflict(`此章有 ${busy!.n} 项生成任务正在运行，请等待完成或取消任务后再删除。`);
   await db.transaction(async (tx) => {
     await tx.delete(chapters).where(eq(chapters.id, id));
     await tx.execute(sql`
@@ -387,9 +386,8 @@ chapterRoutes.post("/chapters/:id/plan", async (c) => {
   const deps = c.get("deps");
   const [ch] = await deps.db.select().from(chapters).where(eq(chapters.id, id));
   if (!ch) throw notFound("Chapter");
-  if (ch.planStatus === "locked") throw conflict("The chapter plan is locked");
-  if (!ch.sourceExcerpt.trim() && !ch.summary.trim())
-    throw badRequest("Chapter has no source text or summary to plan from");
+  if (ch.planStatus === "locked") throw conflict("章节规划已锁定");
+  if (!ch.sourceExcerpt.trim() && !ch.summary.trim()) throw badRequest("缺少章节原文或摘要，无法规划此章");
   // A plan queued while another is still running has no pages to see yet, so both applied and the panels doubled
   // (47 panels against a 14-30 norm, all paid for). One plan per chapter at a time.
   const [running] = await deps.db
@@ -403,7 +401,7 @@ chapterRoutes.post("/chapters/:id/plan", async (c) => {
       ),
     )
     .limit(1);
-  if (running) throw conflict("This chapter is already being planned. Wait for that plan to finish or cancel it.");
+  if (running) throw conflict("此章正在规划，请等待完成或取消任务。");
   const [existing] = await deps.db.select({ n: sql<number>`count(*)::int` }).from(pages).where(eq(pages.chapterId, id));
   if ((existing?.n ?? 0) > 0 && !input.replace)
     throw conflict(
@@ -507,7 +505,7 @@ async function checkLocationState(db: DbOrTx, projectId: string, stateId: string
     .select({ id: locationStates.id })
     .from(locationStates)
     .where(and(eq(locationStates.id, stateId), eq(locationStates.projectId, projectId)));
-  if (!s) throw badRequest("That location state is not in this project");
+  if (!s) throw badRequest("该地点状态不属于此项目");
 }
 
 export const SceneInput = z.object({

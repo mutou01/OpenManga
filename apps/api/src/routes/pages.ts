@@ -122,21 +122,21 @@ async function checkRefs(
           scope.pageId ? eq(panels.pageId, scope.pageId) : eq(panels.projectId, scope.projectId),
         ),
       );
-    if (!p) throw badRequest("That panel is not on this page");
+    if (!p) throw badRequest("所选画格不在此页");
   }
   if (ids.characterId) {
     const [ch] = await db
       .select({ id: characters.id })
       .from(characters)
       .where(and(eq(characters.id, ids.characterId), eq(characters.projectId, scope.projectId)));
-    if (!ch) throw badRequest("That character is not in this project");
+    if (!ch) throw badRequest("该角色不属于此项目");
   }
   if (ids.sceneId) {
     const [sc] = await db
       .select({ id: scenes.id })
       .from(scenes)
       .where(and(eq(scenes.id, ids.sceneId), eq(scenes.projectId, scope.projectId)));
-    if (!sc) throw badRequest("That scene is not in this project");
+    if (!sc) throw badRequest("所选场景不属于此项目");
   }
 }
 
@@ -161,7 +161,7 @@ const reopens = (from: string, to: string | undefined) =>
 /** Lettering on a locked page is final, as the document save and the bulk lettering passes already enforce. */
 async function assertPageOpen(db: DbOrTx, pageId: string) {
   const [pg] = await db.select({ status: pages.status }).from(pages).where(eq(pages.id, pageId));
-  if (pg?.status === "locked") throw conflict("Page is locked");
+  if (pg?.status === "locked") throw conflict("页面已锁定");
 }
 
 async function loadPanel(
@@ -198,7 +198,7 @@ pageRoutes.post("/chapters/:id/pages", async (c) => {
   const input = await body(c, CreatePage);
   await checkRefs(c.get("deps").db, { projectId: project.id }, { sceneId: input.sceneId });
   const layoutFramesNew = layoutFrames(input.layoutTemplate, project, user(c), project.readingDirection);
-  if (!layoutFramesNew) throw badRequest("Unknown layout template");
+  if (!layoutFramesNew) throw badRequest("找不到所选布局模板");
   const { db } = c.get("deps");
   const s = project.settings;
   const page = await db.transaction(async (tx) => {
@@ -348,7 +348,7 @@ pageRoutes.patch("/pages/:id", async (c) => {
   const input = await body(c, PatchPage);
   await checkRefs(c.get("deps").db, { projectId: page.projectId }, { sceneId: input.sceneId });
   if (page.status === "locked" && input.status !== "superseded" && Object.keys(input).some((k) => k !== "status"))
-    throw conflict("Page is locked");
+    throw conflict("页面已锁定");
   if (reopens(page.status, input.status)) await projectAccess(c, page.projectId, "manage");
   const { db } = c.get("deps");
   const row = await db.transaction(async (tx) => {
@@ -406,7 +406,7 @@ pageRoutes.post("/pages/:id/layout", async (c) => {
   const { layoutTemplate } = await body(c, SwapLayout);
   const dir = page.readingDirection ?? project.readingDirection;
   const frames = layoutFrames(layoutTemplate, project, user(c), dir);
-  if (!frames) throw badRequest("Unknown layout template");
+  if (!frames) throw badRequest("找不到所选布局模板");
   const { db } = c.get("deps");
   await db.transaction(async (tx) => {
     await lockPage(tx, page.id);
@@ -468,7 +468,7 @@ doc({
 });
 pageRoutes.patch("/pages/:id/document", async (c) => {
   const { page } = await loadPageProject(c, uuidParam(c, "id"), "write");
-  if (page.status === "locked") throw conflict("Page is locked");
+  if (page.status === "locked") throw conflict("页面已锁定");
   const input = await body(c, DocumentPatch);
   const { db } = c.get("deps");
   await db.transaction(async (tx) => {
@@ -799,7 +799,7 @@ pageRoutes.patch("/panels/:id", async (c) => {
   // Describing a finished panel is not changing it: alt text stays editable when the panel is locked.
   const changes = Object.keys(input).filter((k) => k !== "altText");
   if (panel.approvalStatus === "locked" && changes.length && (input.approvalStatus === undefined || changes.length > 1))
-    throw conflict("Panel is locked");
+    throw conflict("画格已锁定");
   if (reopens(panel.approvalStatus, input.approvalStatus)) await projectAccess(c, project.id, "manage");
   const { db } = c.get("deps");
   if (input.characterVersionIds?.length) {
@@ -808,7 +808,7 @@ pageRoutes.patch("/panels/:id", async (c) => {
       .from(characterVersions)
       .innerJoin(characters, eq(characters.id, characterVersions.characterId))
       .where(and(inArray(characterVersions.id, input.characterVersionIds), eq(characters.projectId, project.id)));
-    if (found.length !== new Set(input.characterVersionIds).size) throw badRequest("Unknown character version");
+    if (found.length !== new Set(input.characterVersionIds).size) throw badRequest("找不到所选角色版本");
   }
   // Same check for the other two: an unscoped id here ends up in the compiled prompt (and in the references sent
   // to the model), which would read another project's location or prop description back to the caller.
@@ -818,7 +818,7 @@ pageRoutes.patch("/panels/:id", async (c) => {
       .from(locationVersions)
       .innerJoin(locations, eq(locations.id, locationVersions.locationId))
       .where(and(eq(locationVersions.id, input.locationVersionId), eq(locations.projectId, project.id)));
-    if (!found) throw badRequest("Unknown location version");
+    if (!found) throw badRequest("找不到所选地点版本");
   }
   if (input.propVersionIds?.length) {
     const found = await db
@@ -826,7 +826,7 @@ pageRoutes.patch("/panels/:id", async (c) => {
       .from(propVersions)
       .innerJoin(props, eq(props.id, propVersions.propId))
       .where(and(inArray(propVersions.id, input.propVersionIds), eq(props.projectId, project.id)));
-    if (found.length !== new Set(input.propVersionIds).size) throw badRequest("Unknown prop version");
+    if (found.length !== new Set(input.propVersionIds).size) throw badRequest("找不到所选道具版本");
   }
   // The guide is sent to the image model, so it must be an image of this project that is not in the trash.
   if (input.guide) {
@@ -841,12 +841,12 @@ pageRoutes.patch("/panels/:id", async (c) => {
           inArray(assets.type, [...GUIDE_ASSET_TYPES]),
         ),
       );
-    if (!a) throw badRequest("Unknown guide image: use an image asset of this project");
+    if (!a) throw badRequest("找不到所选布局参考图，请使用此项目的图片素材");
   }
   if (input.video?.clipAssetId) {
     const a = await c.get("deps").assets.get(input.video.clipAssetId);
     if (!a || a.deletedAt || a.type !== "panel_clip" || (a.metadata as { panelId?: string }).panelId !== panel.id)
-      throw badRequest("Unknown clip: use one of this panel's clips (GET /api/panels/:id/clips)");
+      throw badRequest("找不到所选视频片段，请使用此画格的片段");
   }
   const set: Partial<typeof panels.$inferInsert> = {
     ...input,
@@ -872,7 +872,7 @@ doc({
 });
 pageRoutes.put("/panels/:id/spec", async (c) => {
   const { panel } = await loadPanel(c, uuidParam(c, "id"), "write");
-  if (panel.approvalStatus === "locked") throw conflict("Panel is locked");
+  if (panel.approvalStatus === "locked") throw conflict("画格已锁定");
   const { spec } = await body(c, PutSpec);
   const { db } = c.get("deps");
   const row = await db.transaction(async (tx) => {
@@ -971,7 +971,7 @@ doc({
 });
 pageRoutes.put("/panels/:id/outfits", async (c) => {
   const { panel } = await loadPanel(c, uuidParam(c, "id"), "write");
-  if (panel.approvalStatus === "locked") throw conflict("Panel is locked");
+  if (panel.approvalStatus === "locked") throw conflict("画格已锁定");
   const input = await body(c, SetOutfit);
   const { db } = c.get("deps");
   const [o] = await db
@@ -1023,7 +1023,7 @@ pageRoutes.delete("/outfit-assignments/:id", async (c) => {
   const [a] = await db.select().from(outfitAssignments).where(eq(outfitAssignments.id, id));
   if (!a) throw notFound("Outfit change");
   const { panel } = await loadPanel(c, a.panelId, "write");
-  if (panel.approvalStatus === "locked") throw conflict("Panel is locked");
+  if (panel.approvalStatus === "locked") throw conflict("画格已锁定");
   await db.delete(outfitAssignments).where(eq(outfitAssignments.id, id));
   return c.json({ ok: true });
 });
@@ -1189,7 +1189,7 @@ pageRoutes.post("/panels/:id/generate", async (c) => {
   const { panel } = await loadPanel(c, uuidParam(c, "id"), "generate");
   // Invariant: an approved/locked panel is immutable. Bulk generation already filters these out; these routes
   // wrote new artwork over a locked panel and reset its review state while it still read as locked.
-  if (panel.approvalStatus === "locked") throw conflict("Panel is locked");
+  if (panel.approvalStatus === "locked") throw conflict("画格已锁定");
   const input = await body(c, GenerateInput);
   const deps = c.get("deps");
   // Keyed on a job that is actually in flight rather than the panel's status column, which stays behind when a
@@ -1206,7 +1206,7 @@ pageRoutes.post("/panels/:id/generate", async (c) => {
       ),
     )
     .limit(1);
-  if (inFlight) throw conflict("This panel is already generating; wait for it or cancel that job");
+  if (inFlight) throw conflict("此画格正在生成，请等待完成或取消任务");
   await assertBudget(c, panel.projectId);
   await checkImageChoice(c, input.ai);
   let override = input.promptOverride ?? null;
@@ -1237,7 +1237,7 @@ doc({
 pageRoutes.post("/panels/:id/mask", async (c) => {
   const { panel, project } = await loadPanel(c, uuidParam(c, "id"), "write");
   const up = await readImageUpload(c);
-  if (up.mime !== "image/png") throw badRequest("Mask must be a PNG");
+  if (up.mime !== "image/png") throw badRequest("蒙版必须为 PNG 图片");
   const deps = c.get("deps");
   const asset = await deps.assets.store({
     projectId: project.id,
@@ -1272,10 +1272,10 @@ doc({
 });
 pageRoutes.post("/panels/:id/guide", async (c) => {
   const { panel, project } = await loadPanel(c, uuidParam(c, "id"), "write");
-  if (panel.approvalStatus === "locked") throw conflict("Panel is locked");
+  if (panel.approvalStatus === "locked") throw conflict("画格已锁定");
   const up = await readImageUpload(c);
   const strength = PanelGuide.shape.strength.safeParse(up.form.get("strength") ?? undefined);
-  if (!strength.success) throw badRequest("strength must be loose or strict");
+  if (!strength.success) throw badRequest("强度参数须为 loose 或 strict");
   const deps = c.get("deps");
   const asset = await deps.assets.store({
     projectId: project.id,
@@ -1323,7 +1323,7 @@ pageRoutes.post("/panels/:id/edit", async (c) => {
   const { panel } = await loadPanel(c, uuidParam(c, "id"), "generate");
   // Invariant: an approved/locked panel is immutable. Bulk generation already filters these out; these routes
   // wrote new artwork over a locked panel and reset its review state while it still read as locked.
-  if (panel.approvalStatus === "locked") throw conflict("Panel is locked");
+  if (panel.approvalStatus === "locked") throw conflict("画格已锁定");
   const input = await body(c, EditInput);
   const deps = c.get("deps");
   await assertBudget(c, panel.projectId);
@@ -1341,7 +1341,7 @@ doc({
 });
 pageRoutes.post("/panels/:id/artwork/upload", async (c) => {
   const { panel, project } = await loadPanel(c, uuidParam(c, "id"), "write");
-  if (panel.approvalStatus === "locked") throw conflict("Panel is locked");
+  if (panel.approvalStatus === "locked") throw conflict("画格已锁定");
   const up = await readImageUpload(c);
   const deps = c.get("deps");
   const asset = await deps.assets.store({
@@ -1396,7 +1396,7 @@ doc({
 });
 pageRoutes.post("/panels/:id/versions/:assetId/activate", async (c) => {
   const { panel, project } = await loadPanel(c, uuidParam(c, "id"), "write");
-  if (panel.approvalStatus === "locked") throw conflict("Panel is locked");
+  if (panel.approvalStatus === "locked") throw conflict("画格已锁定");
   const assetId = uuidParam(c, "assetId");
   const { db } = c.get("deps");
   const [a] = await db
@@ -1440,7 +1440,7 @@ doc({
 pageRoutes.delete("/panels/:id/versions/:assetId", async (c) => {
   const { panel, project } = await loadPanel(c, uuidParam(c, "id"), "write");
   const assetId = uuidParam(c, "assetId");
-  if (panel.activeArtworkAssetId === assetId) throw conflict("Activate another version before deleting the active one");
+  if (panel.activeArtworkAssetId === assetId) throw conflict("请先启用其他版本，再删除当前版本");
   const { db } = c.get("deps");
   const [a] = await db
     .update(assets)
@@ -1471,7 +1471,7 @@ doc({
 });
 pageRoutes.post("/pages/:id/dialogue", async (c) => {
   const { page, project } = await loadPageProject(c, uuidParam(c, "id"), "write");
-  if (page.status === "locked") throw conflict("Page is locked");
+  if (page.status === "locked") throw conflict("页面已锁定");
   const input = await body(c, NewDialogue);
   const { db } = c.get("deps");
   await checkRefs(db, { projectId: project.id, pageId: page.id }, input);
@@ -1649,7 +1649,7 @@ doc({
 });
 pageRoutes.post("/pages/:id/sfx", async (c) => {
   const { page, project } = await loadPageProject(c, uuidParam(c, "id"), "write");
-  if (page.status === "locked") throw conflict("Page is locked");
+  if (page.status === "locked") throw conflict("页面已锁定");
   const input = await body(c, NewSfx);
   const { db } = c.get("deps");
   await checkRefs(db, { projectId: project.id, pageId: page.id }, input);
@@ -1721,7 +1721,7 @@ doc({
  * Asked for one locked page, that is a refusal; across a chapter or the project, locked pages are left as they are.
  */
 function unlocked<P extends { status: string }>(scope: string, page: P, scoped: P[]) {
-  if (scope === "page" && page.status === "locked") throw conflict("Page is locked");
+  if (scope === "page" && page.status === "locked") throw conflict("页面已锁定");
   return scoped.filter((p) => p.status !== "locked");
 }
 
@@ -2007,7 +2007,7 @@ function createCheckJob(
 pageRoutes.post("/panels/:id/check", async (c) => {
   const { panel, project } = await loadPanel(c, uuidParam(c, "id"), "generate");
   const { ai, batch } = await body(c, CheckInput);
-  if (!panel.activeArtworkAssetId) throw conflict("Panel has no artwork to check");
+  if (!panel.activeArtworkAssetId) throw conflict("画格没有可检查的图片");
   // The project's own vision key wins: it was picked for this job, while `ai` is whatever the page's text picker
   // happens to hold, which may well be a model that cannot read images.
   const choice = await checkChoice(c, project, ai);
@@ -2095,7 +2095,7 @@ pageRoutes.post("/projects/:projectId/checks", async (c) => {
       : [],
   );
   const eligible = withArt.filter((r) => !inFlight.has(r.id) && (!input.onlyUnchecked || !current(r)));
-  if (eligible.length > MAX_BULK_CHECKS) throw badRequest(`Check at most ${MAX_BULK_CHECKS} panels at a time.`);
+  if (eligible.length > MAX_BULK_CHECKS) throw badRequest(`每次最多检查 ${MAX_BULK_CHECKS} 个画格。`);
   const choice = await checkChoice(c, project, input.ai);
   const run = await textRun(c, choice ?? null);
   assertBatchable(c, input.batch, run.provider);

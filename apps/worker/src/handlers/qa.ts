@@ -92,9 +92,9 @@ export async function panelCheck(deps: WorkerDeps, job: ProjectJob) {
   const panelId = String(job.input.panelId);
   const assetId = String(job.input.assetId);
   const [pn] = await deps.db.select().from(panels).where(eq(panels.id, panelId));
-  if (!pn) throw new InputError("Panel no longer exists");
+  if (!pn) throw new InputError("画格已不存在");
   const asset = await deps.assets.get(assetId);
-  if (!asset) throw new InputError("Artwork no longer exists");
+  if (!asset) throw new InputError("画格图片已不存在");
   const preview = await deps.assets.ensureResized(asset, "preview");
   const image = preview
     ? { mime: preview.mimeType, data: await deps.assets.readVariant(preview), assetId: asset.id }

@@ -96,11 +96,11 @@ async function checkRange(db: DbOrTx, projectId: string, from: string | null, un
   const order = (id: string | null) => {
     if (!id) return null;
     const ch = chs.find((c) => c.id === id);
-    if (!ch) throw badRequest("That chapter is not in this project");
+    if (!ch) throw badRequest("该章节不属于此项目");
     return ch.order;
   };
   const [a, b] = [order(from), order(until)];
-  if (a !== null && b !== null && b < a) throw badRequest("The range ends before it starts");
+  if (a !== null && b !== null && b < a) throw badRequest("结束位置早于起始位置");
 }
 
 async function checkState(
@@ -118,15 +118,15 @@ async function checkState(
     .select({ id: characters.id })
     .from(characters)
     .where(and(eq(characters.id, s.characterId), eq(characters.projectId, projectId), isNull(characters.deletedAt)));
-  if (!ch) throw badRequest("That character is not in this project");
-  if (s.sceneNumber !== null && !s.chapterId) throw badRequest("A scene number needs a chapter");
+  if (!ch) throw badRequest("该角色不属于此项目");
+  if (s.sceneNumber !== null && !s.chapterId) throw badRequest("填写场景编号前请先选择章节");
   await checkRange(db, projectId, s.chapterId, s.untilChapterId);
   if (s.outfitId) {
     const [o] = await db
       .select({ c: characterOutfits.characterId })
       .from(characterOutfits)
       .where(eq(characterOutfits.id, s.outfitId));
-    if (o?.c !== s.characterId) throw badRequest("That outfit belongs to another character");
+    if (o?.c !== s.characterId) throw badRequest("该服装属于其他角色");
   }
 }
 
@@ -339,7 +339,7 @@ bibleRoutes.post("/projects/:projectId/bible/extract", async (c) => {
   const input = await body(c, ExtractInput);
   const deps = c.get("deps");
   const chs = await chapterOrders(deps.db, p.id);
-  if (!chs.length) throw conflict("The project has no chapters yet: analyse and apply the story first");
+  if (!chs.length) throw conflict("项目尚无章节，请先分析故事并应用结果");
   if (input.chapterId && !chs.some((x) => x.id === input.chapterId)) throw notFound("Chapter");
   await assertBudget(c, p.id);
   const run = await textRun(c, input.ai);
@@ -394,8 +394,7 @@ bibleRoutes.post("/bible-extractions/:id/apply", async (c) => {
     .where(eq(generationJobs.id, uuidParam(c, "id")));
   if (job?.kind !== "bible_extract" || !job.projectId) throw notFound("Extraction");
   const p = await projectAccess(c, job.projectId, "write");
-  if (job.status !== "completed")
-    throw conflict(`This extraction is ${job.status}; only a completed one can be applied`);
+  if (job.status !== "completed") throw conflict(`提取任务当前状态为 ${job.status}，完成后才可应用`);
   const input = await body(c, ApplyExtraction);
   const proposed = BibleExtraction.parse((job.result as { data?: unknown } | null)?.data ?? {});
   const facts = input.facts ?? proposed.facts;
@@ -498,12 +497,7 @@ bibleRoutes.post("/bible-extractions/:id/apply", async (c) => {
         and(eq(generationJobs.id, job.id), input.again ? undefined : sql`${generationJobs.result}->'applied' is null`),
       )
       .returning({ id: generationJobs.id });
-    if (!claimed)
-      throw new ApiError(
-        409,
-        "already_applied",
-        "This extraction was already applied. Apply it again only on purpose: pass again=true.",
-      );
+    if (!claimed) throw new ApiError(409, "already_applied", "这次提取的结果已应用。如需再次应用，请传入 again=true。");
     if (factRows.length) await tx.insert(bibleFacts).values(factRows);
     if (stateRows.length) await tx.insert(characterStates).values(stateRows);
   });

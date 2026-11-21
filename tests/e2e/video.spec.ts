@@ -52,7 +52,7 @@ test("repurpose: suggest a plan, adjust a pick, write copy, render the carousel"
     await expect(page.getByText("1 export(s) queued — download them from Exports")).toBeVisible();
     await page.goto(`${s.url}/exports`);
     const row = page.locator("li.card", { hasText: "Carousel images (ZIP)" });
-    await expect(row.getByText("completed")).toBeVisible({ timeout: 60_000 });
+    await expect(row.getByText("已完成")).toBeVisible({ timeout: 60_000 });
   });
 });
 
@@ -161,10 +161,10 @@ test("reader link: the shared chapter plays as a video preview, with subtitles o
   const panel = panels.find((p) => !p.video?.disabled)!;
   await a.patch(`/narration-lines/${rain.id}`, { panelId: panel.id });
   await page.goto(s.url);
-  await page.getByRole("button", { name: "Share" }).click();
-  const d = page.getByRole("dialog", { name: "Share a reader link" });
-  await d.getByRole("button", { name: "Create link" }).click();
-  const link = d.getByRole("link", { name: "Open" }).or(d.getByTitle("Open")).first();
+  await page.getByRole("button", { name: "分享" }).click();
+  const d = page.getByRole("dialog", { name: "分享阅读链接" });
+  await d.getByRole("button", { name: "创建链接" }).click();
+  const link = d.getByRole("link", { name: "打开" }).or(d.getByTitle("打开")).first();
   await expect(link).toBeVisible();
   const href = (await link.getAttribute("href"))!;
   // A fresh context: the reader needs no account.

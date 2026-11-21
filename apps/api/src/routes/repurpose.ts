@@ -136,7 +136,7 @@ repurposeRoutes.post("/projects/:projectId/repurpose/copy", async (c) => {
   const p = await projectAccess(c, uuidParam(c, "projectId"), "generate");
   const { itemIds, ai } = await body(c, SocialCopyInput);
   const saved = (p.settings.repurpose?.items ?? []).filter((it) => !itemIds || itemIds.includes(it.id));
-  if (!saved.length) throw badRequest("Save a repurposing plan first");
+  if (!saved.length) throw badRequest("请先保存内容复用方案");
   const deps = c.get("deps");
   const cands = await shortsCandidates(deps.db, p, { chapterId: null }, p.language, 1500);
   const textOf = new Map(cands.map((x) => [x.id, x.text]));

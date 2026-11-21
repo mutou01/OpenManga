@@ -17,7 +17,7 @@ export type LocationState = {
   untilChapterId: string | null;
   scenes: { id: string; title: string }[];
 };
-export const statesKey = (locationId: string) => ["location", locationId, "states"] as const;
+export const statesKey = (locationId: string) => ["location", locationId, "项状态"] as const;
 export const useLocationStates = (locationId: string) =>
   useQuery({
     queryKey: statesKey(locationId),
@@ -66,7 +66,7 @@ export function LocationStates({
   const generate = useAction(
     (locationStateId: string) =>
       post(`/location-versions/${versionId}/references/generate`, { kind: "location", locationStateId, ...aiImage() }),
-    { onSuccess: onChanged, success: "State reference queued" },
+    { onSuccess: onChanged, success: "状态参考图已加入队列" },
   );
   const withReference = new Set(references.map((r) => r.locationStateId).filter(Boolean));
   const hasDesign = references.some((r) => !r.locationStateId && (r.status === "approved" || r.status === "locked"));
@@ -77,20 +77,19 @@ export function LocationStates({
       value={s[field] ?? ""}
       onChange={(e) => update.mutate({ id: s.id, body: { [field]: e.target.value || null } })}
     >
-      <option value="">{field === "fromChapterId" ? "From the start" : "To the end"}</option>
+      <option value="">{field === "fromChapterId" ? "从开头开始" : "直到结尾"}</option>
       {chapters.data?.map((c) => (
         <option key={c.id} value={c.id}>
-          {field === "fromChapterId" ? "From" : "Until"} ch. {c.order}
+          {field === "fromChapterId" ? "起始" : "截止"}第 {c.order} 章
         </option>
       ))}
     </select>
   );
   return (
-    <section className="card p-3" aria-label="Location states">
-      <h2 className="text-sm font-semibold">States over story time</h2>
+    <section className="card p-3" aria-label="地点状态">
+      <h2 className="text-sm font-semibold">故事进程中的状态</h2>
       <p className="muted mb-2 text-xs">
-        How the place changes: destroyed, snowed in, at night. A scene shows a state it picks by hand, else one whose
-        words match its time or weather, else one whose chapters hold it. Panels there are drawn as it is then.
+        记录地点在毁坏、积雪、夜间等情况下的变化。场景优先使用手动选择的状态，其次匹配时间或天气关键词，再按章节范围选择。该场景的画格会呈现当时的地点状态。
       </p>
       {q.isLoading && <Spinner />}
       <ul className="space-y-2">
@@ -100,7 +99,7 @@ export function LocationStates({
               <input
                 className="input py-1 text-sm font-medium"
                 defaultValue={s.name}
-                aria-label="State name"
+                aria-label="状态名称"
                 onBlur={(e) =>
                   e.target.value.trim() &&
                   e.target.value.trim() !== s.name &&
@@ -110,13 +109,13 @@ export function LocationStates({
               <button
                 type="button"
                 className="btn-ghost p-1"
-                aria-label={`Generate a reference image for ${s.name}`}
+                aria-label={`为“${s.name}”生成参考图`}
                 title={
                   !versionId
-                    ? "No version selected"
+                    ? "尚未选择版本"
                     : hasDesign
-                      ? "Drawn from the approved design, so the place stays recognisable"
-                      : "Drawn from the description only: approve a main reference first to keep the place recognisable"
+                      ? "基于已审核设计绘制，保持地点特征一致"
+                      : "当前仅依据描述绘制，请先审核主参考图以保持地点特征一致"
                 }
                 disabled={!versionId || generate.isPending}
                 onClick={() => generate.mutate(s.id)}
@@ -126,7 +125,7 @@ export function LocationStates({
               <button
                 type="button"
                 className="btn-ghost p-1 text-red-500"
-                aria-label={`Delete state ${s.name}`}
+                aria-label={`删除状态“${s.name}”`}
                 onClick={() => remove.mutate(s.id)}
               >
                 <Trash2 className="size-4" />
@@ -134,18 +133,18 @@ export function LocationStates({
             </div>
             <textarea
               className="input min-h-12 text-xs"
-              placeholder="What differs: roof caved in, ash on every surface…"
+              placeholder="变化描述，例如屋顶坍塌、表面覆满灰烬……"
               defaultValue={s.description}
-              aria-label={`What differs (${s.name})`}
+              aria-label={`变化说明（${s.name}）`}
               onBlur={(e) =>
                 e.target.value !== s.description && update.mutate({ id: s.id, body: { description: e.target.value } })
               }
             />
             <input
               className="input py-1 text-xs"
-              placeholder="Scene time or weather words: night, snow"
+              placeholder="场景时间或天气关键词，例如夜晚、下雪"
               defaultValue={s.keywords.join(", ")}
-              aria-label={`Time or weather words (${s.name})`}
+              aria-label={`时间或天气关键词（${s.name}）`}
               onBlur={(e) => {
                 const keywords = e.target.value
                   .split(",")
@@ -155,11 +154,11 @@ export function LocationStates({
               }}
             />
             <div className="grid grid-cols-2 gap-1">
-              {chapterSelect(s, "fromChapterId", "From chapter")}
-              {chapterSelect(s, "untilChapterId", "Until chapter")}
+              {chapterSelect(s, "fromChapterId", "起始章节")}
+              {chapterSelect(s, "untilChapterId", "截止章节")}
             </div>
             {s.scenes.length > 0 && (
-              <p className="muted text-xs">Picked by hand in: {s.scenes.map((x) => x.title).join(", ")}</p>
+              <p className="muted text-xs">手动选择此状态的场景 {s.scenes.map((x) => x.title).join(", ")}</p>
             )}
           </li>
         ))}
@@ -173,14 +172,14 @@ export function LocationStates({
       >
         <input
           className="input"
-          placeholder="New state: after the fire"
+          placeholder="新状态，例如火灾之后"
           value={name}
           maxLength={120}
           onChange={(e) => setName(e.target.value)}
-          aria-label="New state name"
+          aria-label="新状态名称"
         />
         <button type="submit" className="btn-secondary" disabled={!name.trim() || add.isPending}>
-          <Plus className="size-4" /> Add
+          <Plus className="size-4" /> 添加
         </button>
       </form>
     </section>

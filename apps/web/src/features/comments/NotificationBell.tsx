@@ -55,7 +55,7 @@ export function NotificationBell() {
         ref={anchor}
         type="button"
         className="btn-ghost relative"
-        aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
+        aria-label={unread ? `通知，${unread} 条未读` : "通知"}
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
@@ -68,14 +68,14 @@ export function NotificationBell() {
       </button>
       <Popover anchor={anchor} open={open} onClose={() => setOpen(false)} className="w-80 max-w-[calc(100vw-1rem)] p-1">
         <div className="flex items-center justify-between px-2 py-1 text-sm">
-          <span className="font-medium">Notifications</span>
+          <span className="font-medium">通知</span>
           {unread > 0 && (
             <button type="button" className="btn-ghost py-0.5 text-xs" onClick={() => markRead.mutate(undefined)}>
-              Mark all read
+              全部标为已读
             </button>
           )}
         </div>
-        {!q.data?.notifications.length && <p className="muted px-2 py-3 text-sm">Nothing yet.</p>}
+        {!q.data?.notifications.length && <p className="muted px-2 py-3 text-sm">暂无通知。</p>}
         <ul className="max-h-96 overflow-y-auto">
           {q.data?.notifications.map((n) => (
             <li key={n.id}>
@@ -85,19 +85,19 @@ export function NotificationBell() {
                 onClick={() => go(n)}
               >
                 <div className="flex items-center gap-1.5 text-xs">
-                  {!n.readAt && <span className="size-1.5 shrink-0 rounded-full bg-accent-500" title="Unread" />}
+                  {!n.readAt && <span className="size-1.5 shrink-0 rounded-full bg-accent-500" title="未读" />}
                   <span className="truncate">
-                    {n.kind === "guest" ? `${n.guestName ?? "A guest"} (guest)` : `@${n.actor ?? "someone"}`}
-                    {n.viaAgent ? " (via MCP)" : ""}{" "}
+                    {n.kind === "guest" ? `${n.guestName ?? "访客"}（访客）` : `@${n.actor ?? "某用户"}`}
+                    {n.viaAgent ? "（通过 MCP）" : ""}{" "}
                     {
                       {
-                        mention: "mentioned you",
-                        reply: "replied",
-                        assigned: "assigned you a thread",
-                        guest: "commented through a reader link",
+                        mention: "提及了你",
+                        reply: "回复了你",
+                        assigned: "给你分配了一条评论",
+                        guest: "通过阅读链接发表了评论",
                       }[n.kind]
                     }{" "}
-                    in {n.projectTitle}
+                    · {n.projectTitle}
                   </span>
                   <span className="muted ml-auto shrink-0">{fmt.ago(n.createdAt)}</span>
                 </div>

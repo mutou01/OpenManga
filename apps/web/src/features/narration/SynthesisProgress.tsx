@@ -46,20 +46,20 @@ export function SynthesisProgress({ projectId, language }: { projectId: string; 
   const running = t.queued + t.processing;
   const shown = open ? d.chapters : d.chapters.filter((c) => c.queued + c.processing + c.failed > 0);
   return (
-    <section className="card mb-3 p-3" aria-label="Narration synthesis progress">
+    <section className="card mb-3 p-3" aria-label="旁白合成进度">
       <div className="flex flex-wrap items-baseline gap-2 text-sm">
-        <h2 className="font-medium">Speech across {t.chapters} chapters</h2>
+        <h2 className="font-medium">{t.chapters} 章的语音合成</h2>
         <span className="muted text-xs">
-          {t.withAudio} / {t.segments} segments
-          {running > 0 ? ` · ${t.processing} synthesising, ${t.queued} queued` : ""}
-          {t.failed > 0 ? ` · ${t.failed} failed` : ""}
+          {t.withAudio} / {t.segments} 个片段
+          {running > 0 ? ` · ${t.processing} 个合成中，${t.queued} 个排队中` : ""}
+          {t.failed > 0 ? ` · ${t.failed} 个失败` : ""}
         </span>
         <button type="button" className="btn-ghost ml-auto text-xs" onClick={() => setOpen(!open)}>
-          {open ? "Show only active" : "Show all chapters"}
+          {open ? "仅显示进行中及失败章节" : "显示全部章节"}
         </button>
       </div>
       <div className="mt-2">
-        <ProgressBar value={pct(t.withAudio, t.segments)} label="Segments with audio" />
+        <ProgressBar value={pct(t.withAudio, t.segments)} label="已有音频的片段" />
       </div>
       {shown.length > 0 && (
         <ul className="mt-2 space-y-1 text-xs">
@@ -72,7 +72,7 @@ export function SynthesisProgress({ projectId, language }: { projectId: string; 
                 className="w-56 shrink-0 truncate hover:underline"
                 title={c.title}
               >
-                Ch. {c.order} — {c.title}
+                第 {c.order} 章 — {c.title}
               </Link>
               <span className="muted w-20 shrink-0 tabular-nums">
                 {c.withAudio}/{c.segments}
@@ -87,8 +87,8 @@ export function SynthesisProgress({ projectId, language }: { projectId: string; 
                 />
               </span>
               <span className="muted w-40 shrink-0 text-right">
-                {c.processing > 0 ? `${c.processing} synthesising` : c.queued > 0 ? `${c.queued} queued` : ""}
-                {c.failed > 0 ? ` · ${c.failed} failed` : ""}
+                {c.processing > 0 ? `${c.processing} 个合成中` : c.queued > 0 ? `${c.queued} 个排队中` : ""}
+                {c.failed > 0 ? ` · ${c.failed} 个失败` : ""}
               </span>
             </li>
           ))}

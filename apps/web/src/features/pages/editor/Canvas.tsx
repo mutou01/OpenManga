@@ -141,7 +141,7 @@ export function EditorCanvas({ data, readOnly = false }: { data: PageDocument; r
       ref={wrap}
       className="relative h-full w-full overflow-hidden bg-[var(--panel-2)]"
       role="application"
-      aria-label="Page canvas"
+      aria-label="页面画布"
     >
       <Stage
         ref={stageRef}
@@ -258,7 +258,7 @@ export function EditorCanvas({ data, readOnly = false }: { data: PageDocument; r
         <button
           type="button"
           className="btn-ghost p-1.5"
-          aria-label="Zoom out"
+          aria-label="缩小"
           onClick={() => useView.getState().zoomBy(1 / 1.2)}
         >
           <Minus className="size-4" />
@@ -267,12 +267,12 @@ export function EditorCanvas({ data, readOnly = false }: { data: PageDocument; r
         <button
           type="button"
           className="btn-ghost p-1.5"
-          aria-label="Zoom in"
+          aria-label="放大"
           onClick={() => useView.getState().zoomBy(1.2)}
         >
           <Plus className="size-4" />
         </button>
-        <button type="button" className="btn-ghost p-1.5" aria-label="Fit page" onClick={fit}>
+        <button type="button" className="btn-ghost p-1.5" aria-label="适应页面" onClick={fit}>
           <Maximize className="size-4" />
         </button>
       </div>

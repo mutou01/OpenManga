@@ -62,11 +62,11 @@ function EntityDetail({ kind }: { kind: Kind }) {
   );
   const restore = useAction(() => post(`/${plural}/${entityId}/restore`), {
     invalidate: [key, listKey],
-    success: "Restored",
+    success: "已恢复",
   });
   const trash = useAction(() => del(`/${plural}/${entityId}`), {
     invalidate: [listKey],
-    success: "Moved to trash",
+    success: "已移入回收站",
     onSuccess: () => navigate({ to: "/projects/$projectId/world", params: { projectId } }),
   });
 
@@ -88,15 +88,15 @@ function EntityDetail({ kind }: { kind: Kind }) {
   return (
     <div className="space-y-5 p-6">
       <Link to="/projects/$projectId/world" params={{ projectId }} className="muted text-xs hover:underline">
-        ← World
+        ← 世界
       </Link>
       {entity.deletedAt && (
         <div className="flex flex-wrap items-center gap-2 rounded-md bg-amber-500/10 p-3 text-sm">
           <span className="mr-auto">
-            {`This ${kind}`} is in the trash, with its reference images. Restoring it brings them back.
+            {`该${kind === "location" ? "地点" : "道具"}`}及其参考图已移至回收站，可一并恢复。
           </span>
           <button type="button" className="btn-secondary" disabled={restore.isPending} onClick={() => restore.mutate()}>
-            <RotateCcw className="size-4" /> Restore
+            <RotateCcw className="size-4" /> 恢复
           </button>
         </div>
       )}
@@ -106,19 +106,19 @@ function EntityDetail({ kind }: { kind: Kind }) {
             key={entity.name}
             className="w-full bg-transparent text-xl font-semibold outline-none focus:underline"
             defaultValue={entity.name}
-            aria-label="Name"
+            aria-label="名称"
             onBlur={(e) =>
               e.target.value.trim() && e.target.value !== entity.name && update.mutate({ name: e.target.value.trim() })
             }
           />
         }
-        subtitle={kind === "location" ? "Recurring location" : "Recurring prop"}
+        subtitle={kind === "location" ? "重复出现的地点" : "重复出现的道具"}
         actions={
           <button
             type="button"
             className="btn-ghost text-red-500"
             onClick={() => setTrashOpen(true)}
-            aria-label="Trash"
+            aria-label="回收站"
           >
             <Trash2 className="size-4" />
           </button>
@@ -126,7 +126,7 @@ function EntityDetail({ kind }: { kind: Kind }) {
       />
       <div className="grid gap-5 xl:grid-cols-[16rem_1fr]">
         <section className="card h-fit p-3">
-          <h2 className="mb-2 text-sm font-semibold">Versions</h2>
+          <h2 className="mb-2 text-sm font-semibold">版本</h2>
           {data.versions.map((v) => (
             <button
               key={v.id}
@@ -136,9 +136,7 @@ function EntityDetail({ kind }: { kind: Kind }) {
             >
               <span className="font-medium">v{v.versionNumber}</span>
               <StatusChip status={v.status} />
-              {v.id === entity.currentVersionId && (
-                <span className="chip bg-accent-500/15 text-accent-500">current</span>
-              )}
+              {v.id === entity.currentVersionId && <span className="chip bg-accent-500/15 text-accent-500">当前</span>}
             </button>
           ))}
         </section>
@@ -146,14 +144,14 @@ function EntityDetail({ kind }: { kind: Kind }) {
           <div className="min-w-0 space-y-5">
             <section className="card p-4">
               <div className="mb-3 flex flex-wrap items-center gap-2">
-                <h2 className="mr-auto font-semibold">Description v{version.versionNumber}</h2>
+                <h2 className="mr-auto font-semibold">描述版本 v{version.versionNumber}</h2>
                 {version.id !== entity.currentVersionId && (
                   <button
                     type="button"
                     className="btn-secondary"
                     onClick={() => update.mutate({ currentVersionId: version.id })}
                   >
-                    Make current
+                    设为当前
                   </button>
                 )}
                 {VERSION_ACTIONS[version.status]?.map((a) => (
@@ -167,13 +165,11 @@ function EntityDetail({ kind }: { kind: Kind }) {
                   </button>
                 ))}
                 <button type="button" className="btn-secondary" onClick={() => newVersion.mutate(version.id)}>
-                  <GitBranch className="size-4" /> New version
+                  <GitBranch className="size-4" /> 新建版本
                 </button>
               </div>
               {version.status !== "draft" && (
-                <p className="muted mb-3 text-sm">
-                  This version is {version.status} and read-only. Create a new version to change it.
-                </p>
+                <p className="muted mb-3 text-sm">此版本为 {version.status}，当前只读。如需修改，请创建新版本。</p>
               )}
               <DescriptionEditor
                 key={version.id}
@@ -206,14 +202,14 @@ function EntityDetail({ kind }: { kind: Kind }) {
       </div>
       <ConfirmDialog
         open={trashOpen}
-        title={`Trash ${entity.name}?`}
+        title={`将“${entity.name}”移至回收站？`}
         danger
-        confirmLabel="Move to trash"
+        confirmLabel="移入回收站"
         busy={trash.isPending}
         onClose={() => setTrashOpen(false)}
         onConfirm={() => trash.mutate()}
       >
-        It can be restored from the World trash.
+        可以从世界回收站恢复。
       </ConfirmDialog>
     </div>
   );
@@ -246,27 +242,27 @@ function DescriptionEditor({
       <div className="flex justify-end">
         <SaveIndicator state={state} />
       </div>
-      <TextRow {...p} k="summary" label="Summary" multiline />
+      <TextRow {...p} k="summary" label="摘要" multiline />
       {kind === "location" ? (
-        <FieldGroup title="Environment">
-          <TextRow {...p} k="kind" label="Type (room, street, vehicle interior…)" />
-          <TextRow {...p} k="architecture" label="Architecture" />
-          <TextRow {...p} k="layout" label="Layout" />
-          <TextRow {...p} k="palette" label="Palette" />
-          <TextRow {...p} k="lighting" label="Lighting" />
-          <TextRow {...p} k="atmosphere" label="Atmosphere" />
+        <FieldGroup title="环境">
+          <TextRow {...p} k="kind" label="类型（房间、街道、车内等）" />
+          <TextRow {...p} k="architecture" label="建筑" />
+          <TextRow {...p} k="layout" label="布局" />
+          <TextRow {...p} k="palette" label="配色" />
+          <TextRow {...p} k="lighting" label="光照" />
+          <TextRow {...p} k="atmosphere" label="氛围" />
         </FieldGroup>
       ) : (
-        <FieldGroup title="Object">
-          <TextRow {...p} k="kind" label="Type" />
-          <TextRow {...p} k="material" label="Material" />
-          <TextRow {...p} k="size" label="Size" />
-          <TextRow {...p} k="colors" label="Colors" />
+        <FieldGroup title="物体">
+          <TextRow {...p} k="kind" label="类型" />
+          <TextRow {...p} k="material" label="材质" />
+          <TextRow {...p} k="size" label="尺寸" />
+          <TextRow {...p} k="colors" label="颜色" />
         </FieldGroup>
       )}
-      <FieldGroup title="Consistency">
-        <ListRow {...p} k="keyFeatures" label="Key features" />
-        <ListRow {...p} k="immutableTraits" label="Immutable traits" />
+      <FieldGroup title="一致性">
+        <ListRow {...p} k="keyFeatures" label="主要特征" />
+        <ListRow {...p} k="immutableTraits" label="固定特征" />
       </FieldGroup>
     </div>
   );

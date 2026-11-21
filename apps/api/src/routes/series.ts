@@ -242,7 +242,7 @@ seriesRoutes.patch("/series/:id", async (c) => {
     : [];
   if (taken) {
     await guard?.fail();
-    throw conflict("That address is taken");
+    throw conflict("该地址已被占用");
   }
   const [row] = await c.get("deps").db.update(series).set(input).where(eq(series.id, s.id)).returning();
   return c.json({ series: row });
@@ -256,7 +256,7 @@ doc({
 });
 seriesRoutes.delete("/series/:id", async (c) => {
   const s = await ownSeries(c, uuidParam(c, "id"));
-  if ((await episodesOf(c, s.id)).length) throw conflict("Detach the series' episodes first");
+  if ((await episodesOf(c, s.id)).length) throw conflict("请先移除系列中的分集");
   const { db } = c.get("deps");
   await db
     .update(projects)
@@ -332,7 +332,7 @@ seriesRoutes.post("/series/:id/adopt", async (c) => {
   const { db } = c.get("deps");
   const [p] = await db.select().from(projects).where(eq(projects.id, input.projectId));
   if (!p || p.ownerUserId !== user(c).id || p.deletedAt) throw notFound("Project");
-  if (p.seriesId) throw conflict("That project already belongs to a series");
+  if (p.seriesId) throw conflict("此项目已加入一个系列");
   await db
     .update(projects)
     .set({ seriesId: s.id, seriesRole: "episode", episodeNumber: await nextNumber(c, s.id) })
@@ -409,8 +409,8 @@ seriesRoutes.post("/series/:id/split", async (c) => {
   const s = await ownSeries(c, uuidParam(c, "id"));
   const input = await body(c, Split);
   const parts = splitEpisodes(input.story, input);
-  if (parts.length > 50) throw conflict(`That makes ${parts.length} episodes; at most 50 at a time`);
-  if (parts.some((p) => p.text.length > 500_000)) throw conflict("An episode would be over 500,000 characters");
+  if (parts.length > 50) throw conflict(`将生成 ${parts.length} 个分集，每次最多生成 50 个`);
+  if (parts.some((p) => p.text.length > 500_000)) throw conflict("有分集超过 500,000 字");
   const preview = parts.map((p) => ({ title: p.title, chapters: p.chapters, characters: p.text.length }));
   if (!input.confirm) return c.json({ episodes: preview });
   const made = [];

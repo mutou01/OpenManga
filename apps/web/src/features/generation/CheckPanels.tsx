@@ -21,7 +21,7 @@ type Estimate = {
 export function CheckPanelsButton({
   projectId,
   scope,
-  label = "Check all panels",
+  label = "检查全部画格",
   className = "btn-secondary",
 }: {
   projectId: string;
@@ -46,7 +46,7 @@ export function CheckPanelsButton({
       if (!confirm) setEstimate(r);
       else {
         setEstimate(null);
-        toast.success(r.jobs?.length ? `Queued ${r.jobs.length} checks` : "Nothing to check");
+        toast.success(r.jobs?.length ? `${r.jobs.length} 项检查已加入队列` : "暂无需要检查的画格");
         await qc.invalidateQueries({ queryKey: ["project", projectId, "generations"] });
       }
     } catch (e) {
@@ -57,9 +57,9 @@ export function CheckPanelsButton({
   };
   const skipped = estimate
     ? [
-        estimate.skippedReasons.alreadyChecked && `${estimate.skippedReasons.alreadyChecked} already checked`,
-        estimate.skippedReasons.inProgress && `${estimate.skippedReasons.inProgress} being checked`,
-        estimate.skippedReasons.noArtwork && `${estimate.skippedReasons.noArtwork} without artwork`,
+        estimate.skippedReasons.alreadyChecked && `${estimate.skippedReasons.alreadyChecked} 个已有检查结果`,
+        estimate.skippedReasons.inProgress && `${estimate.skippedReasons.inProgress} 个正在检查`,
+        estimate.skippedReasons.noArtwork && `${estimate.skippedReasons.noArtwork} 个缺少原画`,
       ]
         .filter(Boolean)
         .join(", ")
@@ -73,7 +73,7 @@ export function CheckPanelsButton({
       <ConfirmDialog
         open={Boolean(estimate)}
         title={label}
-        confirmLabel={estimate?.count ? `Check ${estimate.count}` : "Nothing to check"}
+        confirmLabel={estimate?.count ? `检查 ${estimate.count} 个画格` : "暂无需要检查的画格"}
         disabled={!estimate?.count}
         busy={busy}
         onClose={() => setEstimate(null)}
@@ -82,14 +82,13 @@ export function CheckPanelsButton({
         {estimate && (
           <div className="space-y-3 text-sm">
             <p>
-              A vision model looks at <strong>{estimate.count}</strong> panel{estimate.count === 1 ? "" : "s"}: whether
-              the expected characters are there, and where their faces are.
-              {skipped && <span className="muted"> Skipped: {skipped}.</span>}
+              视觉模型将检查 <strong>{estimate.count}</strong> 个画格，确认预期角色是否出现，并定位人脸。
+              {skipped && <span className="muted"> 已跳过 {skipped}。</span>}
             </p>
             <p>
-              Estimated cost:{" "}
+              预计费用{" "}
               <strong>
-                {estimate.estimatedUsd === null ? "unknown (no rate snapshot)" : `≈ ${fmt.usd(estimate.estimatedUsd)}`}
+                {estimate.estimatedUsd === null ? "未知（暂无费率快照）" : `≈ ${fmt.usd(estimate.estimatedUsd)}`}
               </strong>
               <span className="muted">
                 {" "}
@@ -97,8 +96,7 @@ export function CheckPanelsButton({
               </span>
             </p>
             <p className="muted text-xs">
-              Uses the key set in Project settings → Consistency check when there is one; otherwise the text model
-              above, which must be able to read images.
+              优先使用“项目设置 → 一致性检查”中的密钥，否则使用上方所选的文本模型，该模型需要支持图片输入。
             </p>
             <label className="flex items-center gap-2">
               <input
@@ -109,7 +107,7 @@ export function CheckPanelsButton({
                   void call(false, e.target.checked);
                 }}
               />
-              Only panels without a current check
+              仅检查没有当前检查结果的画格
             </label>
           </div>
         )}

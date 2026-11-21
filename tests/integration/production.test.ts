@@ -293,7 +293,7 @@ describe("production runs", () => {
     expect(done.status).toBe("completed_with_warnings");
     expect(done.warnings).toMatchObject({ failedJobCount: 1, panelsWithoutArt: 0, failedExports: [] });
     expect(done.warnings!.failedJobs).toMatchObject([{ kind: "panel_generation", step: "art" }]);
-    expect(done.steps.find((s) => s.key === "art")?.note).toBe("1 of 2 failed; see Generation");
+    expect(done.steps.find((s) => s.key === "art")?.note).toBe("2 项中有 1 项失败，请查看生成任务");
     // The card's Retry failed calls the usual retry route for each listed job.
     const retried = await u.post<{ job: { id: string } }>(
       `/api/generations/${done.warnings!.failedJobs[0]!.id}/retry`,
@@ -325,7 +325,7 @@ describe("production runs", () => {
     };
     expect(done.status).toBe("completed_with_warnings");
     expect(done.warnings?.segmentsWithoutAudio).toBe(1);
-    expect(done.steps[0]!.note).toBe("1 segment(s) without current audio, 1 failed; see Narration");
+    expect(done.steps[0]!.note).toBe("1 段缺少最新音频，1 项失败，请查看旁白");
 
     // A segment the step never queued (here: changed while the step was already waiting) is queued once more.
     await u.patch(`/api/narration-lines/${lines[0]!.id}`, { text: "The rain stopped at last." });
@@ -489,7 +489,7 @@ describe("production runs", () => {
       (await u.get<Why>(`/api/projects/${projectId}/staleness/why`)).stages.find((s) => s.key === key)!.items;
     expect(await why("plan")).toEqual([]);
     expect(await why("art")).toEqual([]);
-    expect((await why("render"))[0]!.why).toBe("No whole-project video yet");
+    expect((await why("render"))[0]!.why).toBe("尚未渲染整部视频");
     const { chapters } = await u.get<{ chapters: { id: string; title: string }[] }>(
       `/api/projects/${projectId}/chapters`,
     );
@@ -502,8 +502,8 @@ describe("production runs", () => {
     });
     const [plan] = await why("plan");
     expect(plan!.label).toBe(chapters[0]!.title);
-    expect(plan!.why).toMatch(/Its text changed after planning: \d+ panels? tells? revised text \(page \d+ panel \d+/);
-    expect(plan!.redo).toMatch(/^Re-planning replaces its \d+ pages?/);
+    expect(plan!.why).toMatch(/规划后原文已修改，涉及 \d+ 个画格（第 \d+ 页第 \d+ 格/);
+    expect(plan!.redo).toMatch(/^重新规划将替换 \d+ 页/);
 
     // A drawn panel's spec edited: the fields that changed since its artwork.
     const { panels } = await u.get<{ panels: { id: string }[] }>(`/api/chapters/${chapterId}/panels`);
@@ -512,15 +512,13 @@ describe("production runs", () => {
       spec: { ...specs[0]!.spec, beat: "Woo Jin turns away.", lighting: "moonlight" },
     });
     const art = (await why("art")).find((i) => i.panelId === panels[0]!.id)!;
-    expect(art.why).toBe("Edited after its artwork was drawn: beat, lighting");
+    expect(art.why).toBe("绘制后修改了画格设定：情节节点、光线");
     // The same edit is why the narration is out of date.
-    expect((await why("narration"))[0]!.why).toMatch(
-      /^Its panels or dialogue changed after it was written: page 1 panel 1/,
-    );
+    expect((await why("narration"))[0]!.why).toMatch(/^编写旁白后修改了画格或对白：第 1 页第 1 格/);
 
     // A story revision: new and removed paragraphs against the analysed one.
     await u.post(`/api/projects/${projectId}/story/revisions`, { content: `${STORY}\n\nThe rain stopped.` }, 201);
-    expect((await why("story"))[0]!.why).toMatch(/1 paragraph new or changed/);
+    expect((await why("story"))[0]!.why).toMatch(/新增或修改 1 段/);
   }, 400_000);
 
   test("the YouTube text and thumbnail headline are flagged when the title changes, and only regenerated when asked", async () => {
@@ -567,7 +565,7 @@ describe("production runs", () => {
       201,
     );
     const done = await until(projectId, ["completed"]);
-    expect(done.reason).toBe("YouTube text may be out of date");
+    expect(done.reason).toBe("YouTube 文案可能需要更新");
     expect(await yt()).toEqual(before);
 
     // Regenerating it on request writes it for the current title and chapters.
@@ -646,7 +644,7 @@ describe("production runs", () => {
     });
     const short = await finish(true, [{ key: "render", status: "done", exportJobId: render!.id }]);
     expect(short.status).toBe("completed_with_warnings");
-    expect(short.warnings?.video).toContain("too short");
+    expect(short.warnings?.video).toContain("视频过短");
     expect(short.warnings?.segmentsWithoutAudio).toBe(0);
     // Health below counts a segment without audio again.
     await db.update(narrationSegments).set({ activeAudioAssetId: null }).where(eq(narrationSegments.id, seg!.id));
@@ -672,9 +670,13 @@ describe("production runs", () => {
     expect(health.verdict.ready).toBe(false);
     expect(health.verdict.blocking).toBe(health.items.filter((i) => i.severity === "block").length);
     expect(item("readiness.missing_audio")).toMatchObject({ count: 1, severity: "block" });
-    expect(item("checks")).toMatchObject({ count: 1, severity: "block" });
-    expect(item("comments")).toMatchObject({ count: 1, severity: "info" });
-    expect(item("stale.audio")).toMatchObject({ count: 1, severity: "info" });
+    expect(item("checks")).toMatchObject({ count: 1, severity: "block", label: "1 个画格未通过画面检查" });
+    expect(item("comments")).toMatchObject({ count: 1, severity: "info", label: "1 条待处理的评论讨论" });
+    expect(item("stale.audio")).toMatchObject({
+      count: 1,
+      severity: "info",
+      label: "音频待更新：1 条旁白需要重新合成音频",
+    });
     expect(health.spend.budgetUsd).toBe(50);
     expect(health.disk.totalBytes).toBeGreaterThan(0);
   }, 400_000);

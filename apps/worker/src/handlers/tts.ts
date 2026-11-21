@@ -42,7 +42,7 @@ export async function processTts(deps: WorkerDeps, bullJob: Job) {
       .set({
         status: "failed",
         failureCode: "disabled",
-        failureReason: "Narration synthesis is disabled (TTS_ENABLED=false)",
+        failureReason: "旁白合成已停用（TTS_ENABLED=false）",
         finishedAt: new Date(),
       })
       .where(eq(audioJobs.id, id));
@@ -60,11 +60,11 @@ export async function processTts(deps: WorkerDeps, bullJob: Job) {
       .set({
         status: "failed",
         failureCode: "invalid_input",
-        failureReason: "Segment was deleted",
+        failureReason: "音频片段已删除",
         finishedAt: new Date(),
       })
       .where(eq(audioJobs.id, id));
-    await publish("failed", "Segment was deleted");
+    await publish("failed", "音频片段已删除");
     return;
   }
   await deps.db
@@ -191,11 +191,11 @@ export async function processTts(deps: WorkerDeps, bullJob: Job) {
         .set({
           status: "failed",
           failureCode: "invalid_input",
-          failureReason: "Segment was deleted",
+          failureReason: "音频片段已删除",
           finishedAt: new Date(),
         })
         .where(eq(audioJobs.id, id));
-      await publish("failed", "Segment was deleted");
+      await publish("failed", "音频片段已删除");
       return;
     }
     await deps.usage.record({

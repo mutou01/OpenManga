@@ -28,11 +28,11 @@ const useHealth = (projectId: string) =>
 function Verdict({ h }: { h: Health }) {
   return h.verdict.ready ? (
     <span className="flex items-center gap-1.5 font-medium text-emerald-700 dark:text-emerald-300">
-      <CheckCircle2 className="size-4" /> Ready to publish
+      <CheckCircle2 className="size-4" /> 可发布
     </span>
   ) : (
     <span className="flex items-center gap-1.5 font-medium text-amber-700 dark:text-amber-300">
-      <AlertTriangle className="size-4" /> {h.verdict.blocking} blocking issue{h.verdict.blocking === 1 ? "" : "s"}
+      <AlertTriangle className="size-4" /> 有 {h.verdict.blocking} 项问题影响发布
     </span>
   );
 }
@@ -65,18 +65,18 @@ export function HealthPage() {
   const info = h.items.filter((i) => i.severity === "info");
   return (
     <div className="mx-auto max-w-4xl space-y-4 p-4 sm:p-6">
-      <PageHeader title="Health" subtitle="What stands between this project and publishing, and where to fix it." />
+      <PageHeader title="项目检查" subtitle="查看发布前需要处理的问题和处理入口。" />
       <div className="card flex flex-wrap items-center gap-x-6 gap-y-2 p-4 text-sm">
         <Verdict h={h} />
         <span className="muted">
-          Spend {fmt.usd(h.spend.usd)}
-          {h.spend.budgetUsd != null ? ` of ${fmt.usd(h.spend.budgetUsd)} budget` : " (no budget cap)"}
+          已花费 {fmt.usd(h.spend.usd)}
+          {h.spend.budgetUsd != null ? ` / 预算 ${fmt.usd(h.spend.budgetUsd)}` : "（未设预算上限）"}
         </span>
-        <span className="muted">On disk {fmt.bytes(h.disk.totalBytes)}</span>
+        <span className="muted">磁盘占用 {fmt.bytes(h.disk.totalBytes)}</span>
       </div>
       {[
-        { title: "Blocking", items: blocking, Icon: AlertTriangle, tone: "text-amber-600" },
-        { title: "Worth knowing", items: info, Icon: Info, tone: "muted" },
+        { title: "发布前需解决", items: blocking, Icon: AlertTriangle, tone: "text-amber-600" },
+        { title: "提示", items: info, Icon: Info, tone: "muted" },
       ].map(
         (g) =>
           g.items.length > 0 && (
@@ -93,7 +93,7 @@ export function HealthPage() {
             </section>
           ),
       )}
-      {!h.items.length && <p className="muted text-sm">Nothing to report: everything is current.</p>}
+      {!h.items.length && <p className="muted text-sm">所有内容均已更新。</p>}
       <Accessibility projectId={projectId} />
     </div>
   );
@@ -130,32 +130,31 @@ function Accessibility({ projectId }: { projectId: string }) {
       params={{ projectId, pageId: x.pageId }}
       className="text-accent-500 hover:underline"
     >
-      ch. {x.chapter}, page {x.page}
+      第 {x.chapter} 章 · 第 {x.page} 页
     </Link>
   );
   return (
-    <section className="card space-y-3 p-4" aria-label="Accessibility">
+    <section className="card space-y-3 p-4" aria-label="无障碍">
       <h2 className="flex items-center gap-1.5 text-sm font-medium">
-        <Accessibility2 className="size-4" /> Accessibility
+        <Accessibility2 className="size-4" /> 无障碍
       </h2>
       <p className="text-sm">
-        Alt text: {a.altText.written} of {a.altText.panels} panels written by hand; the rest are described from their
-        story beat, dialogue and sound effects (EPUBs and readers use it).
+        替代文本：{a.altText.panels} 个画格中有 {a.altText.written} 个已手动填写。其余根据情节、对白和音效生成描述，供
+        EPUB 和阅读器使用。
         {a.altText.empty.length > 0 && (
-          <span className="text-amber-600"> {a.altText.empty.length} panel(s) have nothing to describe them by.</span>
+          <span className="text-amber-600"> 还有 {a.altText.empty.length} 个画格缺少可用于生成描述的内容。</span>
         )}{" "}
         <a className="text-accent-500 hover:underline" href={`/api/projects/${projectId}/transcript?download=1`}>
-          Narration transcript
+          旁白文稿
         </a>
       </p>
       {a.readingOrder.length > 0 && (
         <div className="text-sm">
-          <h3 className="font-medium">Reading order</h3>
+          <h3 className="font-medium">阅读顺序</h3>
           <ul className="space-y-0.5">
             {a.readingOrder.map((r) => (
               <li key={r.pageId}>
-                {pageLink(r)}: panels are numbered in another order than they sit; a reader goes{" "}
-                {r.expected.join(" → ")}
+                {pageLink(r)}：画格编号与排列不一致。实际阅读顺序为 {r.expected.join(" → ")}
               </li>
             ))}
           </ul>
@@ -163,22 +162,22 @@ function Accessibility({ projectId }: { projectId: string }) {
       )}
       {a.lettering.length > 0 && (
         <div className="text-sm">
-          <h3 className="font-medium">Lettering</h3>
+          <h3 className="font-medium">排字</h3>
           <ul className="space-y-0.5">
             {a.lettering.slice(0, 50).map((l, i) => (
               <li key={`${l.pageId}-${i}`}>
                 {pageLink(l)}: “{l.text.slice(0, 40)}” —{" "}
                 {l.kind === "contrast"
-                  ? `contrast ${l.value}:1, under ${l.limit}:1`
-                  : `text ${(l.value * 100).toFixed(1)}% of the page width, under ${(l.limit * 100).toFixed(1)}%`}
+                  ? `对比度为 ${l.value}:1，低于 ${l.limit}:1`
+                  : `文字尺寸占页宽的 ${(l.value * 100).toFixed(1)}%，低于 ${(l.limit * 100).toFixed(1)}%`}
               </li>
             ))}
           </ul>
-          {a.lettering.length > 50 && <p className="muted text-xs">and {a.lettering.length - 50} more</p>}
+          {a.lettering.length > 50 && <p className="muted text-xs">还有 {a.lettering.length - 50} 项</p>}
         </div>
       )}
       {!a.readingOrder.length && !a.lettering.length && (
-        <p className="muted text-sm">Reading order and lettering contrast and size: nothing to fix.</p>
+        <p className="muted text-sm">阅读顺序、排字对比度和文字尺寸均通过检查。</p>
       )}
     </section>
   );
@@ -194,10 +193,10 @@ export function HealthCard({ projectId }: { projectId: string }) {
     <div className="card space-y-2 p-4 text-xs">
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="mr-auto flex items-center gap-2 text-sm font-medium">
-          <HeartPulse className="size-4" /> Health
+          <HeartPulse className="size-4" /> 项目检查
         </h3>
         <Link to="/projects/$projectId/health" params={{ projectId }} className="text-accent-500 hover:underline">
-          Details →
+          查看详情 →
         </Link>
       </div>
       <div className="text-sm">
@@ -210,7 +209,7 @@ export function HealthCard({ projectId }: { projectId: string }) {
               <ItemLink projectId={projectId} item={i} />
             </li>
           ))}
-          {blocking.length > 4 && <li className="muted">and {blocking.length - 4} more</li>}
+          {blocking.length > 4 && <li className="muted">还有 {blocking.length - 4} 项</li>}
         </ul>
       )}
     </div>

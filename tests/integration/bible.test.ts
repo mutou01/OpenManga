@@ -199,7 +199,7 @@ test("a chapter with no stored text is read from its narration, and one with not
   );
   const failed = await finished(empty.job.id, "extraction with nothing to read");
   expect(failed.status).toBe("failed");
-  expect(failed.failureReason).toContain("no text to read");
+  expect(failed.failureReason).toContain("没有可读取的文本");
 
   await alice.post(
     `/api/chapters/${ch.chapter.id}/narration/lines`,

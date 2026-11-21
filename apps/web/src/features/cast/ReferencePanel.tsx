@@ -20,11 +20,11 @@ const KINDS: Record<Subject, string[]> = {
 };
 
 const KIND_LABELS: Record<string, string> = {
-  location: "wide view",
+  location: "广角视图",
   location_panorama: "panorama",
-  location_sheet: "sheet (every side)",
-  prop: "single view",
-  prop_multi_angle: "multi angle",
+  location_sheet: "各侧面设定图",
+  prop: "单视图",
+  prop_multi_angle: "多角度视图",
 };
 const kindLabel = (k: string) => KIND_LABELS[k] ?? k.replace(/_/g, " ");
 
@@ -103,7 +103,7 @@ export function ReferencePanel({
       }),
     {
       onSuccess: (r) => setPending((p) => [...p, { jobId: r.job.id, status: "queued" }]),
-      success: "Reference generation queued",
+      success: "参考图生成已加入队列",
     },
   );
   const setStatus = useAction(
@@ -116,7 +116,7 @@ export function ReferencePanel({
       setTrashing(null);
       onChanged();
     },
-    success: "Reference moved to trash",
+    success: "参考图已移入回收站",
   });
 
   const upload = async (file: File) => {
@@ -126,7 +126,7 @@ export function ReferencePanel({
     setUploading(true);
     try {
       await api(`/${versionPath}/${versionId}/references/upload`, { method: "POST", body: form });
-      toast.success("Reference uploaded");
+      toast.success("参考图已上传");
       onChanged();
     } catch (e) {
       toast.error(e);
@@ -136,12 +136,12 @@ export function ReferencePanel({
   };
 
   return (
-    <section className={trashed ? "card p-4 opacity-60" : "card p-4"} aria-label="References">
+    <section className={trashed ? "card p-4 opacity-60" : "card p-4"} aria-label="参考图">
       <div className="mb-3 flex flex-wrap items-end gap-2">
-        <h2 className="mr-auto font-semibold">Canonical references</h2>
+        <h2 className="mr-auto font-semibold">标准参考图</h2>
         {kinds.length > 1 && (
           <label>
-            <span className="label">Kind</span>
+            <span className="label">类型</span>
             <select className="input" value={kind} onChange={(e) => setKind(e.target.value)}>
               {kinds.map((k) => (
                 <option key={k} value={k}>
@@ -153,9 +153,9 @@ export function ReferencePanel({
         )}
         {kind === "outfit" && outfits && (
           <label>
-            <span className="label">Outfit</span>
+            <span className="label">服装</span>
             <select className="input" value={outfitId} onChange={(e) => setOutfitId(e.target.value)}>
-              <option value="">Default wardrobe</option>
+              <option value="">默认服装</option>
               {outfits.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.name}
@@ -166,12 +166,12 @@ export function ReferencePanel({
           </label>
         )}
         <label className="min-w-48 flex-1">
-          <span className="label">Extra instruction (optional)</span>
+          <span className="label">补充说明（可选）</span>
           <input
             className="input"
             value={extra}
             onChange={(e) => setExtra(e.target.value)}
-            placeholder="e.g. slightly smiling"
+            placeholder="例如，面带微笑"
           />
         </label>
         <AiChip cap="image" />
@@ -179,19 +179,15 @@ export function ReferencePanel({
           type="button"
           className="btn-primary"
           disabled={superseded || generate.isPending || needsBaseline}
-          title={
-            needsBaseline
-              ? "Generate and approve a main reference first — outfits are drawn from it so the face stays the same"
-              : undefined
-          }
+          title={needsBaseline ? "请先生成并审核主参考图，服装将以此绘制以保持面容一致" : undefined}
           onClick={() => generate.mutate()}
         >
-          {generate.isPending ? <Spinner /> : <Sparkles className="size-4" />} Generate
+          {generate.isPending ? <Spinner /> : <Sparkles className="size-4" />} 生成
         </button>
         <label
           className={`btn-secondary cursor-pointer ${superseded || uploading ? "pointer-events-none opacity-50" : ""}`}
         >
-          {uploading ? <Spinner /> : <ImagePlus className="size-4" />} Upload
+          {uploading ? <Spinner /> : <ImagePlus className="size-4" />} 上传
           <input
             type="file"
             className="sr-only"
@@ -206,8 +202,7 @@ export function ReferencePanel({
         </label>
       </div>
       <p className="muted mb-3 text-xs">
-        References are generated at full resolution and kept as the canonical identity source. Approving one creates a
-        small prompt derivative that is attached to later panel requests.
+        参考图以原始分辨率生成并保存，作为标准身份依据。审核通过后会创建小尺寸派生图，附加到后续画格生成请求中。
       </p>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
@@ -218,7 +213,7 @@ export function ReferencePanel({
           >
             {p.status === "failed" ? (
               <>
-                <span className="text-red-500">Generation failed</span>
+                <span className="text-red-500">生成失败</span>
                 <span className="muted text-xs">{p.failureReason}</span>
                 <div className="flex gap-1">
                   <Link
@@ -226,21 +221,21 @@ export function ReferencePanel({
                     params={{ projectId, jobId: p.jobId }}
                     className="btn-ghost text-xs"
                   >
-                    Inspect
+                    查看详情
                   </Link>
                   <button
                     type="button"
                     className="btn-ghost text-xs"
                     onClick={() => setPending((l) => l.filter((x) => x.jobId !== p.jobId))}
                   >
-                    Dismiss
+                    关闭
                   </button>
                 </div>
               </>
             ) : (
               <>
                 <Spinner className="size-6" />
-                <span>Generating full-resolution reference…</span>
+                <span>正在生成原始分辨率参考图……</span>
                 <StatusChip status={p.status} />
               </>
             )}
@@ -251,15 +246,10 @@ export function ReferencePanel({
           const active = r.status === "approved" || r.status === "locked";
           return (
             <div key={r.id} className="overflow-hidden rounded-lg border border-[var(--border)]">
-              <button
-                type="button"
-                className="block w-full"
-                onClick={() => setViewing(r)}
-                aria-label="View full resolution"
-              >
+              <button type="button" className="block w-full" onClick={() => setViewing(r)} aria-label="查看原始分辨率">
                 <AssetImage
                   assetId={r.asset.id}
-                  alt={`${r.kind} reference`}
+                  alt={`${kindLabel(r.kind)}参考图`}
                   className="aspect-[3/4] w-full"
                   fit="contain"
                   trashed={trashed}
@@ -269,28 +259,26 @@ export function ReferencePanel({
                 <div className="flex items-center gap-1">
                   <span className="font-medium capitalize">{kindLabel(r.kind)}</span>
                   {r.locationStateId && (
-                    <span className="chip text-[10px]">{stateNames?.get(r.locationStateId) ?? "state"}</span>
+                    <span className="chip text-[10px]">{stateNames?.get(r.locationStateId) ?? "状态"}</span>
                   )}
-                  {r.isPrimary && <Star className="size-3.5 fill-amber-400 text-amber-400" aria-label="Primary" />}
+                  {r.isPrimary && <Star className="size-3.5 fill-amber-400 text-amber-400" aria-label="主参考图" />}
                   <span className="ml-auto flex items-center gap-1">
                     {r.stale && (
                       <span
                         className="chip bg-amber-500/15 text-amber-600"
-                        title="Made from an older description. The image still shows the old look and is attached to every panel; regenerate it."
+                        title="基于旧版描述生成，仍展示旧外观并会附加到每个画格，请重新生成。"
                       >
-                        stale
+                        已过时
                       </span>
                     )}
                     <StatusChip status={r.status} />
                   </span>
                 </div>
                 <div className="muted">
-                  {r.asset.width}×{r.asset.height} canonical · {fmt.bytes(r.asset.byteSize)}
+                  {r.asset.width}×{r.asset.height} 原始参考图 · {fmt.bytes(r.asset.byteSize)}
                 </div>
                 <div className="muted">
-                  {d
-                    ? `prompt ref ${d.width}×${d.height} · ${fmt.bytes(d.byteSize)}`
-                    : "derivative created on approval"}
+                  {d ? `提示词参考图 ${d.width}×${d.height} · ${fmt.bytes(d.byteSize)}` : "审核通过后创建派生图"}
                 </div>
                 <div className="flex flex-wrap gap-1 pt-1">
                   {r.status === "draft" && (
@@ -299,7 +287,7 @@ export function ReferencePanel({
                       className="btn-secondary px-2 py-1 text-xs"
                       onClick={() => setStatus.mutate({ id: r.id, status: "approved" })}
                     >
-                      Approve
+                      审核通过
                     </button>
                   )}
                   {r.status === "approved" && (
@@ -309,20 +297,20 @@ export function ReferencePanel({
                         className="btn-secondary px-2 py-1 text-xs"
                         onClick={() => setStatus.mutate({ id: r.id, status: "locked" })}
                       >
-                        <Lock className="size-3" /> Lock
+                        <Lock className="size-3" /> 锁定
                       </button>
                       <button
                         type="button"
                         className="btn-ghost px-2 py-1 text-xs"
                         onClick={() => setStatus.mutate({ id: r.id, status: "draft" })}
                       >
-                        Unapprove
+                        撤销审核
                       </button>
                     </>
                   )}
                   {!r.isPrimary && active && (
                     <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={() => primary.mutate(r.id)}>
-                      <Star className="size-3" /> Primary
+                      <Star className="size-3" /> 主参考图
                     </button>
                   )}
                   {r.asset.generationJobId && (
@@ -330,7 +318,7 @@ export function ReferencePanel({
                       to="/projects/$projectId/generation/$jobId"
                       params={{ projectId, jobId: r.asset.generationJobId }}
                       className="btn-ghost px-2 py-1 text-xs"
-                      title="Prompt inspector"
+                      title="提示词检查器"
                     >
                       <ExternalLink className="size-3" />
                     </Link>
@@ -340,7 +328,7 @@ export function ReferencePanel({
                       type="button"
                       className="btn-ghost ml-auto px-2 py-1 text-xs text-red-500"
                       onClick={() => setTrashing(r)}
-                      aria-label="Trash reference"
+                      aria-label="将参考图移入回收站"
                     >
                       <Trash2 className="size-3" />
                     </button>
@@ -352,9 +340,7 @@ export function ReferencePanel({
         })}
       </div>
       {!mine.length && !pending.length && (
-        <EmptyState title="No references yet">
-          Generate one with the image AI (full resolution) or upload your own.
-        </EmptyState>
+        <EmptyState title="暂无参考图">使用图像 AI 生成原始分辨率参考图，或上传自己的图片。</EmptyState>
       )}
 
       <Modal
@@ -366,21 +352,21 @@ export function ReferencePanel({
         {viewing && (
           <img
             src={assetUrl(viewing.asset.id, undefined, undefined, trashed)}
-            alt="Full resolution reference"
+            alt="原始分辨率参考图"
             className="mx-auto max-h-[65vh] object-contain"
           />
         )}
       </Modal>
       <ConfirmDialog
         open={Boolean(trashing)}
-        title="Trash reference?"
+        title="将参考图移入回收站？"
         danger
-        confirmLabel="Move to trash"
+        confirmLabel="移入回收站"
         busy={trash.isPending}
         onClose={() => setTrashing(null)}
         onConfirm={() => trashing && trash.mutate(trashing.id)}
       >
-        The image moves to the asset trash and will no longer be used as an identity reference.
+        图片将移入素材回收站，并停止用作身份参考图。
       </ConfirmDialog>
       {setStatus.error && <p className="mt-2 text-xs text-red-500">{errorMessage(setStatus.error)}</p>}
     </section>

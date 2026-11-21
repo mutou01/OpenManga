@@ -361,7 +361,7 @@ describe("project import", () => {
     entries[art] = huge;
     const { job } = await importFile(zipSync(entries, { level: 0 }), "huge.zip");
     expect(`${job.status}:${job.failureReason ?? ""}`).toBe("completed:");
-    expect(job.result!.warnings.join(" ")).toContain("larger than 40 MP; skipped");
+    expect(job.result!.warnings.join(" ")).toContain("超过 40 MP，已跳过");
   }, 240_000);
 
   test("project_json import completes with warnings about missing files", async () => {
@@ -407,7 +407,7 @@ describe("project import", () => {
     );
     const { projectId, job } = await importFile(wrapped, "samples-main.zip");
     expect(`${job.status}:${job.failureReason ?? ""}`).toBe("completed:");
-    expect(job.result!.warnings.join(" ")).toContain("contains 2 projects");
+    expect(job.result!.warnings.join(" ")).toContain("压缩包包含 2 个项目");
     // The one it did restore is whole, not a mixture of the two.
     expect(await artworkShas(projectId)).toEqual(await artworkShas(sourceId));
   }, 240_000);
@@ -440,7 +440,7 @@ describe("project import", () => {
       "content-length": String(200 * 1024 * 1024),
     });
     expect(res.status).toBe(413);
-    expect((await res.json()).error.message).toContain("raw body");
+    expect((await res.json()).error.message).toContain("原始请求体");
   }, 60_000);
 
   test("a multipart upload still works", async () => {
@@ -466,9 +466,9 @@ describe("project import", () => {
     // valid JSON but not an interchange document: accepted by the API, failed by the worker, placeholder archived
     const { projectId, job } = await importFile(new TextEncoder().encode('{"hello":"world"}'), "bad.json");
     expect(job.status).toBe("failed");
-    expect(job.failureReason).toContain("Not a valid OpenManga project file");
+    expect(job.failureReason).toContain("OpenManga 项目文件无效");
     const ov = await alice.get<{ project: { title: string; status: string } }>(`/api/projects/${projectId}`);
     expect(ov.project.status).toBe("archived");
-    expect(ov.project.title.startsWith("[import failed] ")).toBe(true);
+    expect(ov.project.title.startsWith("［导入失败］")).toBe(true);
   }, 60_000);
 });

@@ -4,6 +4,7 @@ import { get, post } from "../../../api/client.ts";
 import { qk, useAction } from "../../../api/hooks.ts";
 import { AssetImage, clsx, Spinner, StatusChip } from "../../../components/ui.tsx";
 import { AiChip, useAiBody } from "../../ai/AiPicker.tsx";
+import { editorLabel } from "./labels.ts";
 
 type Sheet = { jobId: string; status: string; failureReason: string | null; assetId: string | null; createdAt: string };
 
@@ -27,7 +28,7 @@ export function CoverageSheet({ panelId, pageId, locked }: { panelId: string; pa
   const [picked, setPicked] = useState<number[]>([]);
   const draw = useAction(() => post(`/panels/${panelId}/coverage`, aiImage()), {
     invalidate: [key],
-    success: "Coverage sheet queued",
+    success: "多机位参考图任务已加入队列",
     onSuccess: () => setPicked([]),
   });
   const sheet = q.data?.sheets[0];
@@ -35,7 +36,7 @@ export function CoverageSheet({ panelId, pageId, locked }: { panelId: string; pa
     (mode: "this" | "new") =>
       post<{ panelIds: string[] }>(`/coverage-sheets/${sheet!.jobId}/use`, { cells: picked, mode }),
     {
-      success: (r) => (r.panelIds.length === 1 ? "Panel reframed" : `${r.panelIds.length} panels added after this one`),
+      success: (r) => (r.panelIds.length === 1 ? "已重新构图" : `已在当前分镜后添加 ${r.panelIds.length} 个分镜`),
       onSuccess: () => {
         setPicked([]);
         void qc.invalidateQueries({ queryKey: qk.page(pageId) });
@@ -47,11 +48,10 @@ export function CoverageSheet({ panelId, pageId, locked }: { panelId: string; pa
   const toggle = (n: number) => setPicked((p) => (p.includes(n) ? p.filter((x) => x !== n) : [...p, n].sort()));
   return (
     <details className="rounded-lg border border-[var(--border)] p-2">
-      <summary className="cursor-pointer text-sm font-medium">Coverage sheet</summary>
+      <summary className="cursor-pointer text-sm font-medium">多机位参考图</summary>
       <div className="mt-2 space-y-2 text-xs">
         <p className="muted">
-          One image of this moment from nine camera setups. Pick the framings you like: one reframes this panel, several
-          become new panels after it. Each is drawn later at full size from its cell.
+          用一张图展示同一时刻的九种机位。选择一个画面可为当前分镜重新构图，选择多个可在其后添加新分镜。之后各分镜会依据所选画面生成完整尺寸图片。
         </p>
         <div className="flex items-center gap-2">
           <AiChip cap="image" className="mr-auto" />
@@ -61,7 +61,7 @@ export function CoverageSheet({ panelId, pageId, locked }: { panelId: string; pa
             disabled={draw.isPending || locked}
             onClick={() => draw.mutate()}
           >
-            {sheet ? "Draw another" : "Draw coverage sheet"}
+            {sheet ? "再生成一张" : "生成多机位参考图"}
           </button>
         </div>
         {q.isLoading && <Spinner />}
@@ -74,13 +74,13 @@ export function CoverageSheet({ panelId, pageId, locked }: { panelId: string; pa
         {sheet?.assetId && (
           <>
             <div className="relative">
-              <AssetImage assetId={sheet.assetId} alt="Coverage sheet" className="w-full" fit="contain" />
+              <AssetImage assetId={sheet.assetId} alt="多机位参考图" className="w-full" fit="contain" />
               <div className="absolute inset-0 grid grid-cols-3 grid-rows-3">
                 {q.data!.cells.map((label, i) => (
                   <button
                     key={label}
                     type="button"
-                    aria-label={`${i + 1}. ${label}`}
+                    aria-label={`${i + 1}. ${editorLabel(label)}`}
                     aria-pressed={picked.includes(i + 1)}
                     title={label}
                     onClick={() => toggle(i + 1)}
@@ -103,7 +103,7 @@ export function CoverageSheet({ panelId, pageId, locked }: { panelId: string; pa
                 disabled={picked.length !== 1 || use.isPending || locked}
                 onClick={() => use.mutate("this")}
               >
-                Reframe this panel
+                为当前分镜重新构图
               </button>
               <button
                 type="button"
@@ -111,7 +111,7 @@ export function CoverageSheet({ panelId, pageId, locked }: { panelId: string; pa
                 disabled={!picked.length || use.isPending}
                 onClick={() => use.mutate("new")}
               >
-                Add {picked.length || ""} as new panels
+                添加 {picked.length || ""} 个，添加为新分镜
               </button>
             </div>
           </>

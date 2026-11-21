@@ -41,8 +41,12 @@ export function PageTab({ data }: { data: PageDocument }) {
     ...projectLayouts,
     ...(library.data?.layouts ?? []).filter((l) => !projectLayouts.some((x) => x.id === l.id)),
   ];
+  const layoutKey = p.layoutTemplate;
+  const currentLayoutName = layoutKey?.startsWith("custom:")
+    ? (saved.find((layout) => `custom:${layout.id}` === layoutKey)?.name ?? "已保存布局")
+    : meta?.layouts.find((layout) => layout.key === layoutKey)?.name;
   const saveLayout = useAction((name: string) => post("/layouts", { name, pageId: p.id }), {
-    success: "Saved to your layouts",
+    success: "已保存到布局库",
     onSuccess: () => {
       setLayoutName("");
       void qc.invalidateQueries({ queryKey: ["layouts"] });
@@ -59,7 +63,7 @@ export function PageTab({ data }: { data: PageDocument }) {
         });
     },
     {
-      success: "Layout deleted",
+      success: "已删除布局",
       onSuccess: () => {
         setRemoving(null);
         void qc.invalidateQueries({ queryKey: ["layouts"] });
@@ -75,16 +79,16 @@ export function PageTab({ data }: { data: PageDocument }) {
   const inv = [qk.page(p.id), qk.chapter(p.chapterId)];
   const save = useAction((body: Record<string, unknown>) => patch(`/pages/${p.id}`, body), {
     invalidate: inv,
-    success: "Page saved",
+    success: "已保存页面",
   });
   const layout = useAction((layoutTemplate: string) => post(`/pages/${p.id}/layout`, { layoutTemplate }), {
     invalidate: inv,
-    success: "Layout applied",
+    success: "已应用布局",
     onSuccess: () => setSwap(null),
   });
   const exportPng = useAction(() => post(`/projects/${projectId}/exports`, { kind: "png_pages", pageIds: [p.id] }), {
     invalidate: [qk.exports(projectId)],
-    success: "PNG export queued — find it under Exports",
+    success: "PNG 导出已加入队列，请到导出页面查看",
   });
   const idx = data.siblings.findIndex((s) => s.id === p.id);
   const prev = data.siblings[idx - 1];
@@ -101,13 +105,13 @@ export function PageTab({ data }: { data: PageDocument }) {
             search={{}}
             className="btn-ghost"
           >
-            <ChevronLeft className="size-4" /> Page {prev.order}
+            <ChevronLeft className="size-4" /> 页面 {prev.order}
           </Link>
         ) : (
           <span />
         )}
         <span className="muted text-xs">
-          Page {p.order} of {data.siblings.length}
+          页面 {p.order} / {data.siblings.length}
         </span>
         {next ? (
           <Link
@@ -116,7 +120,7 @@ export function PageTab({ data }: { data: PageDocument }) {
             search={{}}
             className="btn-ghost"
           >
-            Page {next.order} <ChevronRight className="size-4" />
+            页面 {next.order} <ChevronRight className="size-4" />
           </Link>
         ) : (
           <span />
@@ -126,16 +130,16 @@ export function PageTab({ data }: { data: PageDocument }) {
         <StatusChip status={p.status} />
         {p.status === "draft" && (
           <button type="button" className="btn-secondary py-1" onClick={() => save.mutate({ status: "approved" })}>
-            Approve page
+            审核通过页面
           </button>
         )}
         {p.status === "approved" && (
           <>
             <button type="button" className="btn-secondary py-1" onClick={() => save.mutate({ status: "draft" })}>
-              Unapprove
+              撤销审核
             </button>
             <button type="button" className="btn-secondary py-1" onClick={() => save.mutate({ status: "locked" })}>
-              <Lock className="size-3.5" /> Lock
+              <Lock className="size-3.5" /> 锁定
             </button>
           </>
         )}
@@ -146,10 +150,10 @@ export function PageTab({ data }: { data: PageDocument }) {
             key={k}
             label={
               {
-                purpose: "Page purpose",
-                pacing: "Pacing",
-                visualEmphasis: "Visual emphasis",
-                pageTurnHook: "Page-turn hook",
+                purpose: "页面用途",
+                pacing: "节奏",
+                visualEmphasis: "视觉重点",
+                pageTurnHook: "翻页悬念",
               }[k]
             }
           >
@@ -167,19 +171,19 @@ export function PageTab({ data }: { data: PageDocument }) {
           disabled={save.isPending}
           onClick={() => save.mutate(form)}
         >
-          Save page plan
+          保存页面规划
         </button>
         <div hidden={film} className="space-y-2 rounded-lg border border-[var(--border)] p-2">
-          <div className="label">Borders</div>
+          <div className="label">边框</div>
           <EdgePicker
-            label="This page's edge"
-            inheritLabel="Project default"
+            label="本页边缘"
+            inheritLabel="项目默认"
             value={p.edge ?? undefined}
             onChange={(edge) => save.mutate({ edge: edge ?? null })}
           />
           <EdgePicker
-            label="Every panel on this page"
-            inheritLabel="Project default"
+            label="本页所有分镜"
+            inheritLabel="项目默认"
             value={panelEdge}
             onChange={(edge) =>
               useEditor.getState().commit((d) => ({
@@ -192,16 +196,12 @@ export function PageTab({ data }: { data: PageDocument }) {
             }
           />
           <p className="muted text-xs">
-            The page edge overrides the project's for this page only. The panel border is set on every panel of the page
-            at once; a panel can still change its own on its Panel tab.
+            页面边缘仅对本页覆盖项目设置。分镜边框会同时应用到本页所有分镜，仍可在各自的“分镜”选项卡中单独调整。
           </p>
         </div>
         <div hidden={film}>
           <div className="label">
-            Layout template{" "}
-            {p.layoutTemplate
-              ? `(current: ${p.layoutTemplate.startsWith("custom:") ? (saved.find((l) => `custom:${l.id}` === p.layoutTemplate)?.name ?? "a saved layout") : p.layoutTemplate})`
-              : "(custom)"}
+            布局模板 {layoutKey ? `（当前 ${currentLayoutName ?? layoutKey}）` : "（自定义）"}
           </div>
           <div className="grid grid-cols-4 gap-1.5">
             {meta?.layouts.map((t) => (
@@ -209,7 +209,7 @@ export function PageTab({ data }: { data: PageDocument }) {
                 key={t.key}
                 type="button"
                 title={t.name}
-                aria-label={`Use layout ${t.name}`}
+                aria-label={`使用布局 ${t.name}`}
                 onClick={() => setSwap(t.key)}
                 className={clsx(
                   "card flex flex-col items-center p-1.5 text-[10px] hover:border-accent-500",
@@ -222,14 +222,14 @@ export function PageTab({ data }: { data: PageDocument }) {
           </div>
           {saved.length > 0 && (
             <>
-              <div className="label mt-2">Your layouts</div>
+              <div className="label mt-2">你的布局</div>
               <div className="grid grid-cols-4 gap-1.5">
                 {saved.map((l) => (
                   <div key={l.id} className="relative">
                     <button
                       type="button"
-                      title={`${l.name} · ${l.frames.length} panel${l.frames.length === 1 ? "" : "s"}`}
-                      aria-label={`Use layout ${l.name}`}
+                      title={`${l.name} · ${l.frames.length} 个分镜`}
+                      aria-label={`使用布局 ${l.name}`}
                       onClick={() => setSwap(`custom:${l.id}`)}
                       className={clsx(
                         "card flex flex-col items-center gap-0.5 p-1.5 text-[10px] hover:border-accent-500",
@@ -241,8 +241,8 @@ export function PageTab({ data }: { data: PageDocument }) {
                     </button>
                     <button
                       type="button"
-                      aria-label={`Delete layout ${l.name}`}
-                      title="Delete layout"
+                      aria-label={`删除布局 ${l.name}`}
+                      title="删除布局"
                       onClick={() => setRemoving(l)}
                       className="absolute -top-1.5 -right-1.5 rounded-full border border-[var(--border)] bg-[var(--panel)] p-0.5 hover:text-red-500"
                     >
@@ -262,8 +262,8 @@ export function PageTab({ data }: { data: PageDocument }) {
           >
             <input
               className="input flex-1 text-xs"
-              aria-label="Layout name"
-              placeholder="Name this page's layout"
+              aria-label="布局名称"
+              placeholder="为本页布局命名"
               maxLength={80}
               value={layoutName}
               onChange={(e) => setLayoutName(e.target.value)}
@@ -273,27 +273,22 @@ export function PageTab({ data }: { data: PageDocument }) {
               className="btn-secondary text-xs"
               disabled={saveLayout.isPending || !layoutName.trim()}
             >
-              Save as layout
+              保存为布局
             </button>
           </form>
           <p className="muted text-xs">
-            Saves this page's panels (shapes and borders included) to your layouts, for any of your projects. Pick the
-            ones a project plans new pages with in its settings → Page layouts.
+            将本页分镜（包括形状和边框）保存到布局库，供所有项目使用。在项目设置的“页面布局”中选择新页面规划要使用的布局。
           </p>
         </div>
       </fieldset>
       <div className="grid gap-2">
-        <BulkGenerateButton
-          projectId={projectId}
-          scope={{ pageId: p.id }}
-          label={film ? "Generate shot" : "Generate page"}
-        />
+        <BulkGenerateButton projectId={projectId} scope={{ pageId: p.id }} label={film ? "生成镜头" : "生成页面"} />
         <ActiveBatches projectId={projectId} pageId={p.id} compact />
         <PreviewVideoButton
           projectId={projectId}
           scope={{ pageId: p.id }}
-          label={film ? "Preview shot video" : "Preview page video"}
-          title={`Preview — page ${p.order}`}
+          label={film ? "预览镜头视频" : "预览页面视频"}
+          title={`预览 · 第 ${p.order} 页`}
         />
         <button
           type="button"
@@ -301,31 +296,29 @@ export function PageTab({ data }: { data: PageDocument }) {
           disabled={exportPng.isPending}
           onClick={() => exportPng.mutate()}
         >
-          <Download className="size-4" /> Export page PNG
+          <Download className="size-4" /> 导出页面 PNG
         </button>
       </div>
       <ConfirmDialog
         open={Boolean(swap)}
-        title="Swap layout template?"
-        confirmLabel="Apply layout"
+        title="更换布局模板？"
+        confirmLabel="应用布局"
         busy={layout.isPending}
         onClose={() => setSwap(null)}
         onConfirm={() => swap && layout.mutate(swap)}
       >
-        Existing panels are moved into the new frames in reading order (artwork and lettering are kept). Missing frames
-        get new empty panels.
+        已有分镜将按阅读顺序移入新画框，并保留图片和对白排版。多出的画框会创建为空分镜。
       </ConfirmDialog>
       <ConfirmDialog
         open={Boolean(removing)}
-        title={`Delete layout "${removing?.name ?? ""}"?`}
-        confirmLabel="Delete"
+        title={`删除布局“${removing?.name ?? ""}”？`}
+        confirmLabel="删除"
         danger
         busy={removeLayout.isPending}
         onClose={() => setRemoving(null)}
         onConfirm={() => removing && removeLayout.mutate(removing)}
       >
-        It is removed from your layouts and from this project. Pages already laid out with it keep their panels; other
-        projects that use it keep their copy.
+        将从布局库和当前项目中移除此布局。已有页面保留其分镜，其他项目保留各自的布局副本。
       </ConfirmDialog>
     </div>
   );

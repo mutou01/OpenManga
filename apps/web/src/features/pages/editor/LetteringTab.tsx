@@ -16,6 +16,7 @@ import type { PageDocument } from "../../../api/types.ts";
 import { ConfirmDialog, clsx, toast } from "../../../components/ui.tsx";
 import { CheckPanelsButton } from "../../generation/CheckPanels.tsx";
 import { useProject } from "../../project/ProjectLayout.tsx";
+import { editorLabel } from "./labels.ts";
 import { type DocBubble, type DocSfx, useEditor } from "./store.ts";
 
 const TYPES: BubbleType[] = ["normal", "thought", "shout", "whisper", "narration", "system"];
@@ -48,7 +49,7 @@ function Pct({ label, value, onChange }: { label: string; value: number; onChang
         step={0.5}
         min={0}
         max={100}
-        aria-label={`${label} (% of page)`}
+        aria-label={`${label}（占页面百分比）`}
         value={Math.round(value * 1000) / 10}
         onChange={(e) => e.target.value !== "" && onChange(Math.min(1, Math.max(0, Number(e.target.value) / 100)))}
       />
@@ -129,31 +130,31 @@ function TailControls({
     <div className="col-span-2 space-y-1.5 rounded-md bg-[var(--panel-2)] p-1.5">
       <div className="flex items-center gap-2">
         <label className="flex items-center gap-1">
-          <input type="checkbox" checked={b.tail} onChange={(e) => onChange({ tail: e.target.checked })} /> Tail
+          <input type="checkbox" checked={b.tail} onChange={(e) => onChange({ tail: e.target.checked })} /> 尾巴
         </label>
         <button
           type="button"
           className={clsx("btn-ghost ml-auto py-0.5 text-xs", aiming && "bg-accent-500 text-white")}
           aria-pressed={aiming}
-          title="Then click the page where the speaker is"
+          title="然后点击页面中说话者的位置"
           onClick={() => {
             const st = useEditor.getState();
             st.select({ type: "bubble", ids: [bubbleId] });
             st.setAimTail(aiming ? null : bubbleId);
           }}
         >
-          <Crosshair className="size-3.5" /> {aiming ? "Click the speaker on the page…" : "Aim at speaker"}
+          <Crosshair className="size-3.5" /> {aiming ? "点击页面上的说话者……" : "指向说话者"}
         </button>
       </div>
       <div className="flex items-center gap-2">
-        <fieldset className="grid shrink-0 grid-cols-[repeat(3,1.75rem)] gap-0.5" aria-label="Tail direction">
+        <fieldset className="grid shrink-0 grid-cols-[repeat(3,1.75rem)] gap-0.5" aria-label="尾巴方向">
           {TAIL_PAD.map((d, i) =>
             d ? (
               <button
                 key={d}
                 type="button"
                 className="flex size-7 items-center justify-center rounded text-sm leading-none hover:bg-[var(--border)] focus-visible:outline-2 focus-visible:outline-accent-500"
-                aria-label={`Point tail ${d.replace("-", " ")}`}
+                aria-label={`尾巴指向${editorLabel(d)}`}
                 onClick={() => onChange({ tail: true, tailTarget: tailTargetToward(b, d) })}
               >
                 {TAIL_ARROW[d]}
@@ -164,8 +165,7 @@ function TailControls({
           )}
         </fieldset>
         <p className="muted text-[11px] leading-tight">
-          Pick a direction, use "Aim at speaker", or drag the blue dot on the page. The tip stays put when you move the
-          bubble.
+          可选择方向、使用“指向说话者”，或拖动页面上的蓝色圆点。移动气泡时尾巴尖端位置保持固定。
         </p>
       </div>
     </div>
@@ -207,16 +207,16 @@ function BubbleEditor({ item, data, selected }: { item: DocBubble; data: PageDoc
     >
       {item.kind === "narration" ? (
         <p className="text-xs">
-          <span className="chip bg-amber-500/15">narration box</span> {item.text}{" "}
-          <span className="muted">(edit text in Narration)</span>
+          <span className="chip bg-amber-500/15">旁白框</span> {item.text}{" "}
+          <span className="muted">（请在旁白页面编辑文本）</span>
         </p>
       ) : (
-        <CommitInput label="Bubble text" value={item.text} onCommit={setText} multiline />
+        <CommitInput label="对白文本" value={item.text} onCommit={setText} multiline />
       )}
       <div className="grid grid-cols-2 gap-1.5 text-xs">
         <select
           className="input text-xs"
-          aria-label="Bubble type"
+          aria-label="气泡类型"
           value={b.type}
           onChange={(e) =>
             update((bb, text) => {
@@ -238,11 +238,11 @@ function BubbleEditor({ item, data, selected }: { item: DocBubble; data: PageDoc
         {item.kind === "dialogue" && (
           <select
             className="input text-xs"
-            aria-label="Speaker"
+            aria-label="说话者"
             value={line?.characterId ?? ""}
             onChange={(e) => speaker.mutate(e.target.value || null)}
           >
-            <option value="">No speaker</option>
+            <option value="">无说话者</option>
             {data.cast.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -251,7 +251,7 @@ function BubbleEditor({ item, data, selected }: { item: DocBubble; data: PageDoc
           </select>
         )}
         <label className="flex items-center gap-1">
-          Size{" "}
+          字号{" "}
           <input
             type="number"
             className="input text-xs"
@@ -264,45 +264,45 @@ function BubbleEditor({ item, data, selected }: { item: DocBubble; data: PageDoc
         <label className="flex items-center gap-1">
           <select
             className="input text-xs"
-            aria-label="Alignment"
+            aria-label="对齐"
             value={b.align}
             onChange={(e) => setBubble({ align: e.target.value as Bubble["align"] })}
           >
-            <option value="left">left</option>
-            <option value="center">center</option>
-            <option value="right">right</option>
+            <option value="left">左对齐</option>
+            <option value="center">居中</option>
+            <option value="right">右对齐</option>
           </select>
         </label>
         <label className="flex items-center gap-1">
-          Fill{" "}
+          填充{" "}
           <input
             type="color"
             value={b.background}
             onChange={(e) => setBubble({ background: e.target.value })}
-            aria-label="Background color"
+            aria-label="背景颜色"
           />
         </label>
         <label className="flex items-center gap-1">
-          Text{" "}
+          文本{" "}
           <input
             type="color"
             value={b.textColor}
             onChange={(e) => setBubble({ textColor: e.target.value })}
-            aria-label="Text color"
+            aria-label="文本颜色"
           />
         </label>
         <label className="flex items-center gap-1">
-          Border{" "}
+          边框{" "}
           <input
             type="color"
             value={b.borderColor}
             onChange={(e) => setBubble({ borderColor: e.target.value })}
-            aria-label="Border color"
+            aria-label="边框颜色"
           />
         </label>
         <div />
         <label className="col-span-2 flex items-center gap-1">
-          Font{" "}
+          字体{" "}
           <select className="input text-xs" value={b.font} onChange={(e) => setBubble({ font: e.target.value }, true)}>
             <option>Comic Neue</option>
             <option>DejaVu Sans</option>
@@ -311,24 +311,32 @@ function BubbleEditor({ item, data, selected }: { item: DocBubble; data: PageDoc
         {b.type !== "narration" && b.type !== "system" && (
           <TailControls bubbleId={item.id} bubble={b} onChange={(p) => setBubble(p)} />
         )}
-        <Pct label="X" value={b.x} onChange={(x) => setBubble({ x: Math.min(x, 1 - b.width) })} />
-        <Pct label="Y" value={b.y} onChange={(y) => setBubble({ y: Math.min(y, 1 - b.height) })} />
-        <Pct label="W" value={b.width} onChange={(w) => setBubble({ width: Math.max(0.02, Math.min(w, 1 - b.x)) })} />
-        <Pct label="H" value={b.height} onChange={(h) => setBubble({ height: Math.max(0.02, Math.min(h, 1 - b.y)) })} />
+        <Pct label="横坐标" value={b.x} onChange={(x) => setBubble({ x: Math.min(x, 1 - b.width) })} />
+        <Pct label="纵坐标" value={b.y} onChange={(y) => setBubble({ y: Math.min(y, 1 - b.height) })} />
+        <Pct
+          label="宽度"
+          value={b.width}
+          onChange={(w) => setBubble({ width: Math.max(0.02, Math.min(w, 1 - b.x)) })}
+        />
+        <Pct
+          label="高度"
+          value={b.height}
+          onChange={(h) => setBubble({ height: Math.max(0.02, Math.min(h, 1 - b.y)) })}
+        />
       </div>
       <div className="flex flex-wrap gap-1 text-xs">
         <button
           type="button"
           className="btn-ghost py-0.5 text-xs"
-          title="Shrink or grow the box to fit its text"
+          title="调整文本框大小以适应文本"
           onClick={() => update((bb, text) => ({ bubble: fit(text, bb) }))}
         >
-          <Minimize2 className="size-3.5" /> Fit to text
+          <Minimize2 className="size-3.5" /> 适应文本
         </button>
         <button
           type="button"
           className="btn-ghost py-0.5 text-xs"
-          title={`Apply the project's default "${b.type}" style`}
+          title={`应用项目默认的“${editorLabel(b.type)}”样式`}
           onClick={() =>
             update((bb, text) => {
               const next = applyTypeStyle(bb, lettering);
@@ -336,11 +344,11 @@ function BubbleEditor({ item, data, selected }: { item: DocBubble; data: PageDoc
             })
           }
         >
-          <Paintbrush className="size-3.5" /> Default style
+          <Paintbrush className="size-3.5" /> 默认样式
         </button>
         {item.kind === "dialogue" && (
           <button type="button" className="btn-ghost py-0.5 text-xs text-red-500" onClick={() => remove.mutate()}>
-            <Trash2 className="size-3.5" /> Delete bubble
+            <Trash2 className="size-3.5" /> 删除气泡
           </button>
         )}
       </div>
@@ -365,13 +373,13 @@ function SfxEditor({ item, pageId, selected }: { item: DocSfx; pageId: string; s
       {...card}
     >
       <CommitInput
-        label="SFX text"
+        label="拟声词文本"
         value={item.text}
         onCommit={(text) => commit((d) => ({ ...d, sfx: d.sfx.map((s) => (s.id === item.id ? { ...s, text } : s)) }))}
       />
       <div className="grid grid-cols-2 gap-1.5">
         <label className="flex items-center gap-1">
-          Size{" "}
+          字号{" "}
           <input
             type="number"
             className="input text-xs"
@@ -382,7 +390,7 @@ function SfxEditor({ item, pageId, selected }: { item: DocSfx; pageId: string; s
           />
         </label>
         <label className="flex items-center gap-1">
-          Stroke w{" "}
+          描边宽度{" "}
           <input
             type="number"
             className="input text-xs"
@@ -393,20 +401,25 @@ function SfxEditor({ item, pageId, selected }: { item: DocSfx; pageId: string; s
           />
         </label>
         <label className="flex items-center gap-1">
-          Fill{" "}
-          <input type="color" value={st.fill} onChange={(e) => set({ fill: e.target.value })} aria-label="SFX fill" />
+          填充{" "}
+          <input
+            type="color"
+            value={st.fill}
+            onChange={(e) => set({ fill: e.target.value })}
+            aria-label="拟声词填充色"
+          />
         </label>
         <label className="flex items-center gap-1">
-          Stroke{" "}
+          描边{" "}
           <input
             type="color"
             value={st.stroke}
             onChange={(e) => set({ stroke: e.target.value })}
-            aria-label="SFX stroke"
+            aria-label="拟声词描边颜色"
           />
         </label>
         <label className="col-span-2 flex items-center gap-1">
-          Rotation{" "}
+          旋转{" "}
           <input
             type="range"
             className="flex-1"
@@ -417,7 +430,7 @@ function SfxEditor({ item, pageId, selected }: { item: DocSfx; pageId: string; s
           />
         </label>
         <label className="col-span-2 flex items-center gap-1">
-          Scale{" "}
+          缩放{" "}
           <input
             type="range"
             className="flex-1"
@@ -429,7 +442,7 @@ function SfxEditor({ item, pageId, selected }: { item: DocSfx; pageId: string; s
           />
         </label>
         <label className="col-span-2 flex items-center gap-1">
-          Opacity{" "}
+          不透明度{" "}
           <input
             type="range"
             className="flex-1"
@@ -440,8 +453,8 @@ function SfxEditor({ item, pageId, selected }: { item: DocSfx; pageId: string; s
             onChange={(e) => set({ opacity: Number(e.target.value) })}
           />
         </label>
-        <Pct label="X" value={st.x} onChange={(x) => set({ x })} />
-        <Pct label="Y" value={st.y} onChange={(y) => set({ y })} />
+        <Pct label="横坐标" value={st.x} onChange={(x) => set({ x })} />
+        <Pct label="纵坐标" value={st.y} onChange={(y) => set({ y })} />
       </div>
       <div className="flex flex-wrap gap-1">
         <button
@@ -454,10 +467,10 @@ function SfxEditor({ item, pageId, selected }: { item: DocSfx; pageId: string; s
             }))
           }
         >
-          <Paintbrush className="size-3.5" /> Default style
+          <Paintbrush className="size-3.5" /> 默认样式
         </button>
         <button type="button" className="btn-ghost py-0.5 text-red-500" onClick={() => remove.mutate()}>
-          <Trash2 className="size-3.5" /> Delete SFX
+          <Trash2 className="size-3.5" /> 删除拟声词
         </button>
       </div>
     </div>
@@ -492,7 +505,7 @@ export function LetteringTab({ data, panelId }: { data: PageDocument; panelId: s
         { scope, restyle, fit: true },
       );
       toast.success(
-        `${restyle ? "Restyled" : "Fitted"} ${r.bubbles + r.narration} text boxes${restyle ? ` and ${r.sfx} SFX` : ""} on ${r.pages} page${r.pages === 1 ? "" : "s"}`,
+        `已${restyle ? "更新样式并适配" : "适配"} ${r.pages} 页中的 ${r.bubbles + r.narration} 个文本框${restyle ? `及 ${r.sfx} 个拟声词` : ""}`,
       );
       await qc.invalidateQueries({ queryKey: ["page"] });
     } catch (e) {
@@ -509,10 +522,8 @@ export function LetteringTab({ data, panelId }: { data: PageDocument; panelId: s
         { scope },
       );
       toast.success(
-        `Moved ${r.bubbles + r.captions} text boxes off faces in ${r.panels} panel${r.panels === 1 ? "" : "s"}` +
-          (r.withoutFaces
-            ? `. ${r.withoutFaces} panel${r.withoutFaces === 1 ? " has" : "s have"} no face data yet: run the consistency check on ${r.withoutFaces === 1 ? "it" : "them"} first.`
-            : ""),
+        `已在 ${r.panels} 个分镜中将 ${r.bubbles + r.captions} 个文本框移出人脸区域` +
+          (r.withoutFaces ? `。另有 ${r.withoutFaces} 个分镜缺少人脸数据，请先运行一致性检查。` : ""),
       );
       await qc.invalidateQueries({ queryKey: ["page"] });
     } catch (e) {
@@ -529,9 +540,7 @@ export function LetteringTab({ data, panelId }: { data: PageDocument; panelId: s
         `/pages/${data.page.id}/lettering/clear`,
         { scope },
       );
-      toast.success(
-        `Removed ${r.bubbles} bubbles, ${r.captions} captions and ${r.sfx} SFX from ${r.pages} page${r.pages === 1 ? "" : "s"}`,
-      );
+      toast.success(`已从 ${r.pages} 页中移除 ${r.bubbles} 个气泡、${r.captions} 条字幕及 ${r.sfx} 个拟声词`);
       useEditor.getState().select(null);
       await qc.invalidateQueries({ queryKey: ["page"] });
     } catch (e) {
@@ -553,7 +562,7 @@ export function LetteringTab({ data, panelId }: { data: PageDocument; panelId: s
       await useEditor.getState().flush();
       return post<{ lines: number; sfx: number }>(`/pages/${data.page.id}/letter-from-plan`);
     },
-    { invalidate: [["page"]], success: (r) => `Placed ${r.lines} bubbles and ${r.sfx} SFX from the plan` },
+    { invalidate: [["page"]], success: (r) => `已按规划放置 ${r.lines} 个气泡和 ${r.sfx} 个拟声词` },
   );
   const bubbles = doc.bubbles.filter((b) => !panelId || b.panelId === panelId);
   const sfx = doc.sfx.filter((s) => !panelId || s.panelId === panelId);
@@ -562,18 +571,15 @@ export function LetteringTab({ data, panelId }: { data: PageDocument; panelId: s
   return (
     <div className="space-y-4 text-sm">
       <p className="muted text-xs">
-        {panelId
-          ? "Showing lettering for the selected panel."
-          : "Showing lettering for the whole page. Select a panel to attach new items to it."}{" "}
-        Lettering is vector — changes cost zero image calls. Click an item (here or on the page) to move and resize it;
-        drag the side handles to change width.
+        {panelId ? "正在显示所选分镜的对白排版。" : "正在显示整页对白排版。选择一个分镜可向其中添加新元素。"}{" "}
+        对白采用矢量排版，修改无需图片调用费用。在此处或页面上点击元素可移动、缩放，拖动两侧手柄可调整宽度。
       </p>
       {planned.lines + planned.sfx > 0 && (
         <div className="rounded-lg border border-accent-500/40 bg-accent-600/10 p-2 text-xs">
-          <div className="font-medium">The chapter plan wrote text for this page</div>
+          <div className="font-medium">章节规划已为本页生成文本</div>
           <p className="muted mt-1">
-            {planned.lines} line{planned.lines === 1 ? "" : "s"} of dialogue and {planned.sfx} SFX, kept aside because
-            automatic lettering is off. Place them as bubbles where the plan left space; move or edit them after.
+            {planned.lines} 句{planned.lines === 1 ? "" : "s"} 对白和 {planned.sfx}{" "}
+            个拟声词。自动排版已关闭，可按规划预留位置放置气泡，之后继续移动或编辑。
           </p>
           <button
             type="button"
@@ -581,25 +587,23 @@ export function LetteringTab({ data, panelId }: { data: PageDocument; panelId: s
             disabled={letterFromPlan.isPending}
             onClick={() => letterFromPlan.mutate()}
           >
-            <MessageSquarePlus className="size-3.5" /> Letter from plan
+            <MessageSquarePlus className="size-3.5" /> 按规划排版
           </button>
         </div>
       )}
       <details className="rounded-lg border border-[var(--border)] p-2 text-xs">
-        <summary className="cursor-pointer font-medium">Default styles & bulk actions</summary>
+        <summary className="cursor-pointer font-medium">默认样式与批量操作</summary>
         <div className="mt-2 space-y-2">
-          <p className="muted">
-            Per-type fonts, sizes and colors are set in Project settings → Lettering. Apply them to existing text:
-          </p>
+          <p className="muted">在“项目设置 → 对白排版”中设置各类型的字体、字号和颜色，再应用到已有文本。</p>
           <select
             className="input text-xs"
-            aria-label="Apply to"
+            aria-label="应用范围"
             value={scope}
             onChange={(e) => setScope(e.target.value as typeof scope)}
           >
-            <option value="page">This page</option>
-            <option value="chapter">Whole chapter</option>
-            <option value="project">Whole project</option>
+            <option value="page">当前页面</option>
+            <option value="chapter">整个章节</option>
+            <option value="project">整个项目</option>
           </select>
           <div className="flex gap-1">
             <button
@@ -608,7 +612,7 @@ export function LetteringTab({ data, panelId }: { data: PageDocument; panelId: s
               disabled={applying}
               onClick={() => applyDefaults(false)}
             >
-              <Minimize2 className="size-3.5" /> Fit boxes to text
+              <Minimize2 className="size-3.5" /> 让文本框适应文本
             </button>
             <button
               type="button"
@@ -616,7 +620,7 @@ export function LetteringTab({ data, panelId }: { data: PageDocument; panelId: s
               disabled={applying}
               onClick={() => applyDefaults(true)}
             >
-              <Paintbrush className="size-3.5" /> Apply styles + fit
+              <Paintbrush className="size-3.5" /> 应用样式并适配文本
             </button>
           </div>
           <button
@@ -624,9 +628,9 @@ export function LetteringTab({ data, panelId }: { data: PageDocument; panelId: s
             className="btn-secondary w-full text-xs"
             disabled={applying}
             onClick={fitFaces}
-            title="Uses the faces found by the consistency check; moves bubbles and captions off them and points tails at the speaker"
+            title="根据一致性检查定位的人脸移动气泡和字幕，并将尾巴指向说话者"
           >
-            <ScanFace className="size-3.5" /> Move bubbles off faces
+            <ScanFace className="size-3.5" /> 移开遮挡人脸的气泡
           </button>
           <div className="flex flex-wrap items-center gap-1">
             <CheckPanelsButton
@@ -638,7 +642,7 @@ export function LetteringTab({ data, panelId }: { data: PageDocument; panelId: s
                     ? { chapterId: data.page.chapterId }
                     : {}
               }
-              label={`Check panels (${scope})`}
+              label={`检查分镜（${editorLabel(scope)}）`}
               className="btn-secondary flex-1 text-xs"
             />
           </div>
@@ -648,7 +652,7 @@ export function LetteringTab({ data, panelId }: { data: PageDocument; panelId: s
             disabled={applying}
             onClick={() => setConfirmClear(true)}
           >
-            <Trash2 className="size-3.5" /> Remove all bubbles, captions & SFX
+            <Trash2 className="size-3.5" /> 移除所有气泡、字幕和拟声词
           </button>
         </div>
       </details>
@@ -656,32 +660,28 @@ export function LetteringTab({ data, panelId }: { data: PageDocument; panelId: s
         open={confirmClear}
         danger
         busy={applying}
-        title="Remove lettering?"
-        confirmLabel="Remove lettering"
+        title="移除对白排版？"
+        confirmLabel="移除对白排版"
         onClose={() => setConfirmClear(false)}
         onConfirm={clearLettering}
       >
-        Deletes every speech bubble and SFX and hides narration captions on{" "}
-        {scope === "page"
-          ? "this page"
-          : scope === "chapter"
-            ? "every page of this chapter"
-            : "every page of the project"}
-        . Artwork is untouched, and narration lines and their audio are kept. This can't be undone.
+        将删除所有对话气泡和拟声词，并隐藏旁白字幕，范围为{" "}
+        {scope === "page" ? "当前页面" : scope === "chapter" ? "本章所有页面" : "项目中的所有页面"}
+        。图片、旁白文本和音频将保留，此操作无法撤销。
       </ConfirmDialog>
       <div className="space-y-2 rounded-lg border border-[var(--border)] p-2">
         <textarea
           className="input"
           rows={2}
-          placeholder="New dialogue…"
-          aria-label="New bubble text"
+          placeholder="输入新对白……"
+          aria-label="新气泡文本"
           value={text}
           onChange={(e) => setText(e.target.value)}
         />
         <div className="flex gap-1">
           <select
             className="input"
-            aria-label="New bubble type"
+            aria-label="新气泡类型"
             value={type}
             onChange={(e) => setType(e.target.value as BubbleType)}
           >
@@ -693,11 +693,11 @@ export function LetteringTab({ data, panelId }: { data: PageDocument; panelId: s
           </select>
           <select
             className="input"
-            aria-label="New bubble speaker"
+            aria-label="新气泡说话者"
             value={speaker}
             onChange={(e) => setSpeaker(e.target.value)}
           >
-            <option value="">No speaker</option>
+            <option value="">无说话者</option>
             {data.cast.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -711,14 +711,14 @@ export function LetteringTab({ data, panelId }: { data: PageDocument; panelId: s
           disabled={!text.trim() || addBubble.isPending}
           onClick={() => addBubble.mutate()}
         >
-          <MessageSquarePlus className="size-4" /> Add bubble
+          <MessageSquarePlus className="size-4" /> 添加气泡
         </button>
       </div>
       <div className="flex gap-1">
         <input
           className="input"
-          placeholder="SFX (e.g. BAM)"
-          aria-label="New sound effect"
+          placeholder="拟声词（例如，砰）"
+          aria-label="新拟声词"
           value={sfxText}
           onChange={(e) => setSfxText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sfxText.trim() && addSfx.mutate()}
@@ -729,7 +729,7 @@ export function LetteringTab({ data, panelId }: { data: PageDocument; panelId: s
           disabled={!sfxText.trim() || addSfx.isPending}
           onClick={() => addSfx.mutate()}
         >
-          <Zap className="size-4" /> Add
+          <Zap className="size-4" /> 添加
         </button>
       </div>
       {bubbles.map((b) => (
@@ -738,7 +738,7 @@ export function LetteringTab({ data, panelId }: { data: PageDocument; panelId: s
       {sfx.map((s) => (
         <SfxEditor key={s.id} item={s} pageId={data.page.id} selected={isSel("sfx", s.id)} />
       ))}
-      {!bubbles.length && !sfx.length && <p className="muted text-xs">No lettering yet.</p>}
+      {!bubbles.length && !sfx.length && <p className="muted text-xs">暂无对白排版。</p>}
     </div>
   );
 }

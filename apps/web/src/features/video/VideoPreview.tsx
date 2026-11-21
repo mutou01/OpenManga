@@ -105,13 +105,13 @@ type Preview = {
 };
 
 const MOTION_LABEL: Record<Motion, string> = {
-  static: "static",
-  "push-in": "push in",
-  "pull-out": "pull out",
-  "pan-left": "pan left",
-  "pan-right": "pan right",
-  "pan-up": "pan up",
-  "pan-down": "pan down",
+  static: "静止",
+  "push-in": "推进",
+  "pull-out": "拉远",
+  "pan-left": "向左平移",
+  "pan-right": "向右平移",
+  "pan-up": "向上平移",
+  "pan-down": "向下平移",
 };
 
 export type PreviewScope = { chapterId?: string; pageId?: string; panelId?: string; panelIds?: string[] };
@@ -185,7 +185,7 @@ export function buildTimeline(
     const c = branding?.[which];
     if (!c || !shots.length) return;
     const n = cardFrames(c.durationMs, FPS);
-    const label = which === "intro" ? "Intro card" : "Outro card";
+    const label = which === "intro" ? "片头卡" : "片尾卡";
     timed.push({
       key: which,
       label,
@@ -227,12 +227,12 @@ export function buildTimeline(
         : undefined;
     const intro = openingShots && g.first === openingShots ? branding?.intro : null;
     const cards = [
-      ...(intro ? [{ key: "intro", label: "Intro card", which: "intro", c: intro }] : []),
+      ...(intro ? [{ key: "intro", label: "片头卡", which: "intro", c: intro }] : []),
       ...(chapter
         ? [
             {
               key: `chapter-${chapter.chapterId}`,
-              label: "Chapter card",
+              label: "章节卡",
               which: `chapter-${chapter.chapterId}`,
               c: chapter,
             },
@@ -795,7 +795,7 @@ export function VideoPreview({
     setPosting(true);
     try {
       await post(`/panels/${notePanel.id}/comments`, { body: note.trim(), timecodeMs: Math.round(clock) });
-      toast.success(`Comment added to ${shot?.label} at ${mmss(clock)}`);
+      toast.success(`已在 ${shot?.label ?? "当前镜头"} 的 ${mmss(clock)} 添加评论`);
       setNote("");
       setNoting(false);
     } catch (e) {
@@ -863,7 +863,7 @@ export function VideoPreview({
         acknowledgeIssues,
       });
       setNotReady(false);
-      toast.success("Final render queued — follow it on the Exports page");
+      toast.success("最终渲染已排队，可在导出页查看进度");
     } catch (e) {
       if (e instanceof ApiError && e.code === "export_not_ready") setNotReady(true);
       else toast.error(e);
@@ -887,12 +887,11 @@ export function VideoPreview({
   };
 
   const issues = [
-    missingAudio > 0 && `${missingAudio} narration segment(s) have no audio yet and are silent`,
-    noArt > 0 && `${noArt} panel(s) have no artwork and show their lettered page crop`,
-    (preview.data?.unplacedLines ?? 0) > 0 &&
-      `${preview.data?.unplacedLines} narration line(s) aren't linked to a page or panel and are left out`,
+    missingAudio > 0 && `${missingAudio} 个旁白片段暂无音频，将保持静音`,
+    noArt > 0 && `${noArt} 个画格暂无画稿，将显示带文字的页面裁剪`,
+    (preview.data?.unplacedLines ?? 0) > 0 && `${preview.data?.unplacedLines} 行旁白未关联页面或画格，将被略过`,
     (preview.data?.disabledPanels ?? 0) > 0 &&
-      `${preview.data?.disabledPanels} panel(s) are disabled as shots and left out with their narration`,
+      `${preview.data?.disabledPanels} 个画格未启用为镜头，将与对应旁白一同略过`,
   ].filter(Boolean) as string[];
 
   return (
@@ -919,7 +918,7 @@ export function VideoPreview({
                   type="button"
                   className="relative block cursor-pointer overflow-hidden rounded-lg bg-black p-0"
                   style={{ width: stageW, height: (stageW * H) / W }}
-                  aria-label={playing ? "Pause" : "Play"}
+                  aria-label={playing ? "暂停" : "播放"}
                   disabled={!timeline.totalMs}
                   onClick={togglePlay}
                 >
@@ -963,18 +962,18 @@ export function VideoPreview({
                 <button
                   type="button"
                   className="btn-ghost p-1.5"
-                  aria-label="Previous shot"
+                  aria-label="上一个镜头"
                   onClick={() => seek((timeline.timed[Math.max(0, current - 1)]?.startMs ?? 0) + 1)}
                 >
                   <SkipBack className="size-4" />
                 </button>
                 <button type="button" className="btn-primary" onClick={togglePlay} disabled={!timeline.totalMs}>
-                  {playing ? <Pause className="size-4" /> : <Play className="size-4" />} {playing ? "Pause" : "Play"}
+                  {playing ? <Pause className="size-4" /> : <Play className="size-4" />} {playing ? "暂停" : "播放"}
                 </button>
                 <button
                   type="button"
                   className="btn-ghost p-1.5"
-                  aria-label="Next shot"
+                  aria-label="下一个镜头"
                   onClick={() => seek((timeline.timed[current + 1]?.startMs ?? timeline.totalMs) + 1)}
                 >
                   <SkipForward className="size-4" />
@@ -987,17 +986,17 @@ export function VideoPreview({
                   step={100}
                   value={clock}
                   onChange={(e) => seek(Number(e.target.value))}
-                  aria-label="Seek"
+                  aria-label="播放进度"
                 />
                 <span className="muted text-xs tabular-nums">
-                  {mmss(clock)} / {mmss(timeline.totalMs)} · shot {current + 1}/{timeline.timed.length}
+                  {mmss(clock)} / {mmss(timeline.totalMs)} · 镜头 {current + 1}/{timeline.timed.length}
                 </span>
                 {issues.length > 0 && (
                   <button
                     type="button"
                     className="btn-ghost p-1.5 text-amber-500"
                     title={issues.join("\n")}
-                    aria-label={`${issues.length} issue(s)`}
+                    aria-label={`${issues.length} 个问题`}
                     onClick={() => setShowOptions(true)}
                   >
                     <TriangleAlert className="size-4" />
@@ -1009,49 +1008,47 @@ export function VideoPreview({
                     className={`btn-ghost p-1.5 ${noting ? "bg-[var(--panel-2)]" : ""}`}
                     aria-pressed={noting}
                     disabled={!notePanel}
-                    title={
-                      notePanel ? "Comment on this shot at this moment" : "Comments at a moment need the panel cut"
-                    }
+                    title={notePanel ? "评论当前时刻的镜头" : "时间点评论需要使用画格剪辑"}
                     onClick={() => {
                       setPlaying(false);
                       setNoting((v) => !v);
                     }}
                   >
-                    <MessageSquarePlus className="size-4" /> <span className="hidden sm:inline">Comment</span>
+                    <MessageSquarePlus className="size-4" /> <span className="hidden sm:inline">评论</span>
                   </button>
                 )}
                 <button
                   type="button"
                   className={`btn-ghost p-1.5 ${showSubs ? "bg-[var(--panel-2)]" : ""}`}
                   aria-pressed={showSubs}
-                  title="Show or hide subtitles on the picture (C)"
+                  title="显示或隐藏画面字幕（C）"
                   onClick={() => setShowSubs((v) => !v)}
                 >
-                  <Captions className="size-4" /> <span className="hidden sm:inline">Subtitles</span>
+                  <Captions className="size-4" /> <span className="hidden sm:inline">字幕</span>
                 </button>
                 <button
                   type="button"
                   className={`btn-ghost p-1.5 ${showLines ? "bg-[var(--panel-2)]" : ""}`}
                   aria-pressed={showLines}
-                  title="Show or hide the shot list"
+                  title="显示或隐藏镜头列表"
                   onClick={() => setShowLines((v) => !v)}
                 >
-                  <ListVideo className="size-4" /> <span className="hidden sm:inline">Lines</span>
+                  <ListVideo className="size-4" /> <span className="hidden sm:inline">旁白列表</span>
                 </button>
                 <button
                   type="button"
                   className={`btn-ghost p-1.5 ${showOptions ? "bg-[var(--panel-2)]" : ""}`}
                   aria-pressed={showOptions}
-                  title="Show or hide the render settings"
+                  title="显示或隐藏渲染设置"
                   onClick={() => setShowOptions((v) => !v)}
                 >
-                  <Settings2 className="size-4" /> <span className="hidden sm:inline">Settings</span>
+                  <Settings2 className="size-4" /> <span className="hidden sm:inline">设置</span>
                 </button>
                 <button
                   type="button"
                   className="btn-ghost p-1.5"
-                  aria-label={fullscreen ? "Exit full screen" : "Full screen"}
-                  title={fullscreen ? "Exit full screen (F)" : "Full screen (F)"}
+                  aria-label={fullscreen ? "退出全屏" : "全屏"}
+                  title={fullscreen ? "退出全屏（F）" : "全屏（F）"}
                   onClick={toggleFullscreen}
                 >
                   {fullscreen ? <Minimize className="size-4" /> : <Maximize className="size-4" />}
@@ -1067,18 +1064,18 @@ export function VideoPreview({
                   }}
                 >
                   <span className="muted text-xs">
-                    {shot?.label} at {mmss(clock)}
+                    {shot?.label} 于 {mmss(clock)}
                   </span>
                   <input
                     className="input min-w-0 flex-1"
-                    aria-label="Comment at this moment"
-                    placeholder="What should change here?"
+                    aria-label="评论此刻"
+                    placeholder="这里需要修改什么？"
                     maxLength={4000}
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                   />
                   <button type="submit" className="btn-primary" disabled={posting || !note.trim()}>
-                    Comment
+                    评论
                   </button>
                 </form>
               )}
@@ -1086,7 +1083,7 @@ export function VideoPreview({
               {showOptions && (
                 <div className="shrink-0 space-y-2">
                   <div className="grid gap-3 sm:grid-cols-4">
-                    <Field label="Shape">
+                    <Field label="画幅">
                       <select
                         className="input"
                         value={o.aspect}
@@ -1098,13 +1095,13 @@ export function VideoPreview({
                           setO({ ...o, aspect, pageWidthRatio: aspect === "16:9" ? 0.6 : 1 });
                         }}
                       >
-                        <option value="16:9">16:9 landscape</option>
-                        <option value="9:16">9:16 vertical (Shorts)</option>
-                        <option value="1:1">1:1 square</option>
+                        <option value="16:9">16:9 横屏</option>
+                        <option value="9:16">9:16 竖屏（Shorts）</option>
+                        <option value="1:1">1:1 方形</option>
                       </select>
                     </Field>
                     {!scope.panelId && !scope.panelIds && (
-                      <Field label="Cut">
+                      <Field label="剪辑方式">
                         <select
                           className="input"
                           value={o.cut}
@@ -1114,12 +1111,12 @@ export function VideoPreview({
                             setO({ ...o, cut: e.target.value as Options["cut"] });
                           }}
                         >
-                          <option value="panel">Panel cut (Ken Burns)</option>
-                          <option value="page">Page cut</option>
+                          <option value="panel">画格剪辑（Ken Burns）</option>
+                          <option value="page">页面剪辑</option>
                         </select>
                       </Field>
                     )}
-                    <Field label={`Min seconds per ${o.cut === "panel" ? "panel" : "page"}`}>
+                    <Field label={`每${o.cut === "panel" ? "画格" : "页"}最短时长（秒）`}>
                       <input
                         className="input"
                         type="number"
@@ -1131,7 +1128,7 @@ export function VideoPreview({
                       />
                     </Field>
                     {o.cut === "panel" ? (
-                      <Field label={`Zoom ${Math.round(o.zoom * 100)}%`}>
+                      <Field label={`缩放 ${Math.round(o.zoom * 100)}%`}>
                         <input
                           type="range"
                           className="w-full"
@@ -1143,22 +1140,22 @@ export function VideoPreview({
                         />
                       </Field>
                     ) : (
-                      <Field label="Page framing">
+                      <Field label="页面取景">
                         <select
                           className="input"
                           value={o.framing}
                           onChange={(e) => setO({ ...o, framing: e.target.value as Options["framing"] })}
                         >
-                          <option value="width">3/5 width, slow scroll</option>
-                          <option value="scroll">3/5 width, scroll the whole page</option>
-                          <option value="height">Whole page visible</option>
+                          <option value="width">3/5 宽度，缓慢滚动</option>
+                          <option value="scroll">3/5 宽度，滚动整页</option>
+                          <option value="height">显示整页</option>
                         </select>
                       </Field>
                     )}
                     <div className="flex items-end">
                       {scope.chapterId && !shareToken && (
                         <button type="button" className="btn-secondary w-full" onClick={() => void render(false)}>
-                          <Clapperboard className="size-4" /> Render final video
+                          <Clapperboard className="size-4" /> 渲染最终视频
                         </button>
                       )}
                     </div>
@@ -1193,19 +1190,17 @@ export function VideoPreview({
                         >
                           <span className="w-44 shrink-0 truncate font-medium">{s.label}</span>
                           <span className="muted w-24 shrink-0 tabular-nums">
-                            {mmss(s.startMs)} · {(s.holdMs / 1000).toFixed(1)}s
+                            {mmss(s.startMs)} · {(s.holdMs / 1000).toFixed(1)} 秒
                           </span>
                           {o.cut === "panel" && s.shot?.panel && (
                             <span className="muted w-16 shrink-0">
                               {s.shot.motion ? MOTION_LABEL[s.shot.motion] : ""}
-                              {s.shot.fade.in ? " · fade" : ""}
+                              {s.shot.fade.in ? " · 淡入淡出" : ""}
                             </span>
                           )}
                           {/* Truncated to keep the row one line; the title shows the whole narration on hover. */}
                           <span className="muted truncate" title={narration || undefined}>
-                            {s.card
-                              ? (s.title ?? "")
-                              : narration || (continues ? "↳ narration continues" : "— no narration —")}
+                            {s.card ? (s.title ?? "") : narration || (continues ? "↳ 旁白继续" : "— 无旁白 —")}
                           </span>
                         </button>
                       </li>
@@ -1217,13 +1212,12 @@ export function VideoPreview({
           )}
           <ConfirmDialog
             open={notReady}
-            title="Render anyway?"
-            confirmLabel="Render anyway"
+            title="仍要渲染吗？"
+            confirmLabel="仍要渲染"
             onClose={() => setNotReady(false)}
             onConfirm={() => void render(true)}
           >
-            The readiness check found missing artwork, narration or audio in this chapter. The Exports page lists the
-            details. Render anyway?
+            就绪检查发现本章缺少画稿、旁白或音频，导出页列出了详细信息。仍要渲染吗？
           </ConfirmDialog>
         </Modal>
       </Playing.Provider>
@@ -1235,7 +1229,7 @@ export function VideoPreview({
 export function PreviewVideoButton({
   projectId,
   scope,
-  label = "Preview video",
+  label = "预览视频",
   title,
   className = "btn-secondary",
   defaultAspect,

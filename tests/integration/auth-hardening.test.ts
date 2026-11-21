@@ -55,6 +55,12 @@ test("an email invitation is not claimable in the app by whoever registered that
   );
   const pid = (await owner.post<{ project: { id: string } }>("/api/projects", { title: "Private" }, 201)).project.id;
   await owner.post(`/api/projects/${pid}/invites`, { identifier: "someone@example.com", role: "editor" }, 201);
+  const [mail] = await h.deps.db.execute<{ subject: string; text_body: string }>(
+    sql`select subject, text_body from dev_emails where "to" = 'someone@example.com' order by created_at desc limit 1`,
+  );
+  expect(mail?.subject).toBe("ahowner 邀请你加入 OpenManga 项目");
+  expect(mail?.text_body).toContain("以编辑者身份加入“Private”");
+  expect(mail?.text_body).toContain("请在 7 天内打开链接接受邀请");
   expect((await squatter.get<{ invites: unknown[] }>("/api/invites")).invites).toHaveLength(0);
   const [inv] = await h.deps.db.execute<{ id: string }>(sql`select id from project_invites where project_id = ${pid}`);
   await squatter.post(`/api/invites/${inv!.id}/accept`, {}, 404);

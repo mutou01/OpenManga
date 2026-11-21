@@ -30,18 +30,18 @@ export function HookVariants({ projectId, video }: { projectId: string; video: V
       patch(`/projects/${projectId}`, {
         settings: { video: { fadeAtSceneBreaks: false, ...video, hooks } },
       }),
-    { invalidate: [qk.project(projectId)], success: "Hook variants saved" },
+    { invalidate: [qk.project(projectId)], success: "开场变体已保存" },
   );
   const set = (i: number, h: Partial<VideoHook>) => setHooks(hooks.map((x, k) => (k === i ? { ...x, ...h } : x)));
   const valid = hooks.every((h) => h.label.trim() && h.text.trim() && h.panelIds.length);
   return (
     <details className="sm:col-span-2">
-      <summary className="cursor-pointer text-sm">Hook variants ({hooks.length})</summary>
+      <summary className="cursor-pointer text-sm">开场变体（{hooks.length}）</summary>
       <p className="muted mt-1 text-xs">
-        Alternative openings in front of the same film: each one's narration (15–30 s) over panels you pick, then the
-        intro card and the film. Rendering another variant only encodes its own shots.
+        为同一部视频制作不同开场，在所选画格上播放各自的旁白（15 至 30
+        秒），随后播放片头卡与正片。渲染其他变体时仅编码对应镜头。
       </p>
-      <ul className="mt-2 space-y-3" aria-label="Hook variants">
+      <ul className="mt-2 space-y-3" aria-label="开场变体">
         {hooks.map((h, i) => {
           const words = h.text.split(/\s+/).filter(Boolean).length;
           return (
@@ -49,8 +49,8 @@ export function HookVariants({ projectId, video }: { projectId: string; video: V
               <div className="flex gap-2">
                 <input
                   className="input flex-1"
-                  aria-label="Hook name"
-                  placeholder="Name, e.g. Mystery"
+                  aria-label="开场名称"
+                  placeholder="名称，例如悬念开场"
                   maxLength={60}
                   value={h.label}
                   onChange={(e) => set(i, { label: e.target.value })}
@@ -58,13 +58,13 @@ export function HookVariants({ projectId, video }: { projectId: string; video: V
                 <button
                   type="button"
                   className="btn-ghost"
-                  aria-label={`Remove ${h.label || "hook"}`}
+                  aria-label={`移除${h.label || "开场"}`}
                   onClick={() => setHooks(hooks.filter((_, k) => k !== i))}
                 >
                   <Trash2 className="size-4" />
                 </button>
               </div>
-              <Field label="Narration" hint={`${words} words, about ${Math.round(words / WORDS_PER_SECOND)} s`}>
+              <Field label="旁白" hint={`${words} 个词，约 ${Math.round(words / WORDS_PER_SECOND)} 秒`}>
                 <textarea
                   className="input min-h-20"
                   maxLength={600}
@@ -74,7 +74,7 @@ export function HookVariants({ projectId, video }: { projectId: string; video: V
               </Field>
               <PanelPick projectId={projectId} value={h.panelIds} onChange={(panelIds) => set(i, { panelIds })} />
               <div className="grid gap-2 sm:grid-cols-2">
-                <Field label="Title for this version (optional)">
+                <Field label="此版本的标题（可选）">
                   <input
                     className="input"
                     maxLength={100}
@@ -82,7 +82,7 @@ export function HookVariants({ projectId, video }: { projectId: string; video: V
                     onChange={(e) => set(i, { title: e.target.value })}
                   />
                 </Field>
-                <Field label="Thumbnail headline (optional)">
+                <Field label="缩略图标题（可选）">
                   <input
                     className="input"
                     maxLength={60}
@@ -97,7 +97,7 @@ export function HookVariants({ projectId, video }: { projectId: string; video: V
                   className="text-xs underline"
                   href={`${API_BASE}/projects/${projectId}/thumbnail.png?${new URLSearchParams({ title: h.thumbnailHeadline, download: "1" })}`}
                 >
-                  Download this version's thumbnail
+                  下载此版本的缩略图
                 </a>
               )}
             </li>
@@ -113,10 +113,10 @@ export function HookVariants({ projectId, video }: { projectId: string; video: V
             setHooks([...hooks, { id: uuid(), label: "", text: "", panelIds: [], title: "", thumbnailHeadline: "" }])
           }
         >
-          <Plus className="size-4" /> Add a hook
+          <Plus className="size-4" /> 添加开场
         </button>
         <button type="button" className="btn-primary" disabled={!valid || save.isPending} onClick={() => save.mutate()}>
-          Save hook variants
+          保存开场变体
         </button>
       </div>
     </details>
@@ -151,23 +151,23 @@ function PanelPick({
   return (
     <div className="space-y-1 text-sm">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="label">Opening panels ({value.length}/6, in story order)</span>
+        <span className="label">开场画格（{value.length}/6，按故事顺序）</span>
         <select
           className="input w-auto py-1 text-xs"
-          aria-label="Pick panels from"
+          aria-label="选择画格所在章节"
           value={chapterId}
           onChange={(e) => setChapterId(e.target.value)}
         >
-          <option value="">Chapter…</option>
+          <option value="">选择章节…</option>
           {chapters.data?.map((c) => (
             <option key={c.id} value={c.id}>
-              ch. {c.order}: {c.title}
+              第 {c.order} 章 — {c.title}
             </option>
           ))}
         </select>
         {value.length > 0 && (
           <button type="button" className="btn-ghost text-xs" onClick={() => onChange([])}>
-            Clear
+            清空选择
           </button>
         )}
       </div>
@@ -181,7 +181,7 @@ function PanelPick({
               disabled={!value.includes(p.id) && value.length >= 6}
               onChange={(e) => onChange(e.target.checked ? [...value, p.id] : value.filter((x) => x !== p.id))}
             />
-            p{p.pageOrder}·{p.order}
+            第 {p.pageOrder} 页 · 画格 {p.order}
           </label>
         ))}
       </div>

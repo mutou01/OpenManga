@@ -238,23 +238,20 @@ exportRoutes.post("/projects/:projectId/exports", async (c) => {
   const captions = input.kind === "video_shorts" ? input.video.captions : undefined;
   if (captions && captions !== "off" && !captionsSupported(input.language || p.language))
     throw badRequest(
-      "Captions can't be drawn in this narration language yet: the render image has no font for its script. Turn captions off; the .srt file still comes with the video.",
+      "渲染环境缺少当前旁白语言的字体，暂时无法把字幕嵌入画面。关闭嵌入字幕后，仍可随视频导出 SRT 文件。",
     );
   if (input.kind === "video_shorts" && input.video.hook && !c.get("deps").config.TTS_ENABLED)
-    throw badRequest(
-      "A hook line is spoken by the narrator voice, and narration synthesis is turned off on this server.",
-    );
+    throw badRequest("开场句需要使用旁白音色，但此服务器已关闭旁白合成。");
   if (input.video.hookId) {
-    if (input.kind !== "video_panels") throw badRequest("A hook variant opens a panel-cut video (video_panels)");
+    if (input.kind !== "video_panels") throw badRequest("开场变体只能用于按画格剪辑的视频（video_panels）");
     const hook = p.settings.video?.hooks?.find((h) => h.id === input.video.hookId);
     if (!hook) throw notFound("Hook variant");
-    if (!c.get("deps").config.TTS_ENABLED)
-      throw badRequest("A hook is spoken by the narrator voice, and narration synthesis is turned off on this server.");
+    if (!c.get("deps").config.TTS_ENABLED) throw badRequest("视频开场需要使用旁白音色，但此服务器已关闭旁白合成。");
   }
   if (input.target) {
     const t = exportTarget(input.target);
     if (!t) throw notFound("Export target");
-    if (t.kind !== input.kind) throw badRequest(`${t.label} is a ${t.kind} export`);
+    if (t.kind !== input.kind) throw badRequest(`“${t.label}”预设对应的导出类型为 ${t.kind}`);
   }
   // Filled here, so the stored options say what was rendered whoever asked: the app, an agent or a production run.
   const output = p.settings.video?.output;
@@ -266,7 +263,7 @@ exportRoutes.post("/projects/:projectId/exports", async (c) => {
     !input.chapterId &&
     !input.pageIds?.length
   ) {
-    throw badRequest("Choose a chapter (or pages) to export");
+    throw badRequest("请选择要导出的章节或页面");
   }
   if (input.chapterId && (await entityAccess(c, "chapter", input.chapterId, "read")).id !== p.id)
     throw notFound("Chapter");
@@ -280,15 +277,15 @@ exportRoutes.post("/projects/:projectId/exports", async (c) => {
       .where(and(eq(pages.projectId, p.id), inArray(pages.id, input.pageIds)));
     if (own.length !== new Set(input.pageIds).size) throw notFound("Page");
   }
-  if (input.kind === "quote_image" && !input.still.text) throw badRequest("Write the quote (still.text)");
+  if (input.kind === "quote_image" && !input.still.text) throw badRequest("请输入引文（still.text）");
   if (input.kind === "print_cover") {
     const check = await printCoverCheck(deps.db, p, input, { ...input.pdf, print: input.print });
-    if (!check) throw badRequest("Choose a print size for the cover (pdf.pageSize other than source)");
+    if (!check) throw badRequest("请选择封面的成品尺寸（pdf.pageSize 需指定印刷尺寸）");
     const block = check.layout.issues.find((i) => i.severity === "block");
     if (block) throw badRequest(block.message);
   }
   if (["video_shorts", "carousel", "quote_image"].includes(input.kind)) {
-    if (!input.panelIds?.length) throw badRequest("Pick the panels (panelIds)");
+    if (!input.panelIds?.length) throw badRequest("请选择要导出的画格（panelIds）");
     const own = await deps.db
       .select({ id: panels.id })
       .from(panels)
@@ -299,13 +296,13 @@ exportRoutes.post("/projects/:projectId/exports", async (c) => {
     .select({ n: sql<number>`count(*)::int` })
     .from(exportJobs)
     .where(and(eq(exportJobs.projectId, p.id), inArray(exportJobs.status, ["queued", "processing"])));
-  if ((active[0]?.n ?? 0) >= 5) throw conflict("Too many exports in progress for this project");
+  if ((active[0]?.n ?? 0) >= 5) throw conflict("此项目的进行中导出任务已达上限");
   // Exports are files too: none while the project is over its storage cap.
   await assertStorageRoom(c, p.id);
   const readiness = await projectReadiness(deps.db, p.id, { chapterId: input.chapterId, language: input.language });
   const issues = issuesForExport(readiness, input.kind);
   if (issues.some((i) => i.severity === "block") && !input.acknowledgeIssues)
-    throw new ApiError(409, "export_not_ready", `This export has ${issues.length} readiness issue(s)`, {
+    throw new ApiError(409, "export_not_ready", `此次导出有 ${issues.length} 项问题需要确认`, {
       issues,
       language: readiness.language,
     });
@@ -433,7 +430,7 @@ exportRoutes.post("/exports/:id/cancel", async (c) => {
   if (!job) throw notFound("Export");
   await projectAccess(c, job.projectId, "write");
   const result = await deps.jobs.cancelExport(id);
-  if (result === "not_cancellable") throw conflict(`Export is already ${job.status}`);
+  if (result === "not_cancellable") throw conflict(`导出任务当前状态为 ${job.status}，无法取消`);
   return c.json({ result });
 });
 
@@ -546,7 +543,7 @@ exportRoutes.delete("/exports/:id", async (c) => {
   const [job] = await c.get("deps").db.select().from(exportJobs).where(eq(exportJobs.id, id));
   if (!job) throw notFound("Export");
   await projectAccess(c, job.projectId, "delete");
-  if (RUNNING_EXPORT.has(job.status)) throw conflict("This export is still running. Cancel it first.");
+  if (RUNNING_EXPORT.has(job.status)) throw conflict("此导出任务仍在运行，请先取消。");
   return c.json(await deleteExportJobs(c, job.projectId, [id]));
 });
 

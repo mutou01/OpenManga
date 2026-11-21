@@ -10,11 +10,11 @@ import { useLocationStates } from "../world/LocationStates.tsx";
 type Scene = ChapterDetail["scenes"][number];
 type Option = { id: string; name: string };
 const TEXT_FIELDS = [
-  ["purpose", "Purpose"],
-  ["opening", "Opening"],
-  ["progression", "Progression"],
-  ["climax", "Climax"],
-  ["ending", "Ending"],
+  ["purpose", "目的"],
+  ["opening", "开场"],
+  ["progression", "推进"],
+  ["climax", "高潮"],
+  ["ending", "结尾"],
 ] as const;
 
 function StateRows({
@@ -38,21 +38,21 @@ function StateRows({
             <input
               className="input w-40"
               value={k}
-              placeholder="subject"
-              aria-label="State subject"
+              placeholder="状态对象"
+              aria-label="状态对象"
               onChange={(e) => setRow(i, e.target.value, v)}
             />
             <input
               className="input"
               value={v}
-              placeholder="state"
-              aria-label="State value"
+              placeholder="状态内容"
+              aria-label="状态值"
               onChange={(e) => setRow(i, k, e.target.value)}
             />
             <button
               type="button"
               className="btn-ghost"
-              aria-label="Remove state"
+              aria-label="移除状态"
               onClick={() => onChange(Object.fromEntries(rows.filter((_, j) => j !== i)))}
             >
               <X className="size-4" />
@@ -64,7 +64,7 @@ function StateRows({
           className="btn-ghost text-xs"
           onClick={() => onChange({ ...value, [`subject ${rows.length + 1}`]: "" })}
         >
-          <Plus className="size-3" /> Add state
+          <Plus className="size-3" /> 添加状态
         </button>
       </div>
     </div>
@@ -94,9 +94,9 @@ export function SceneEditor({
       await patch(`/scenes/${id}`, body);
       await put(`/scenes/${id}/beats`, { beats: beats.filter((b) => b.trim()) });
     },
-    { success: "Scene saved", onSuccess: onChanged },
+    { success: "场景已保存", onSuccess: onChanged },
   );
-  const remove = useAction(() => del(`/scenes/${scene.id}`), { success: "Scene deleted", onSuccess: onChanged });
+  const remove = useAction(() => del(`/scenes/${scene.id}`), { success: "场景已删除", onSuccess: onChanged });
   const text = (k: keyof Scene, label: string, multiline = false) => {
     const common = {
       value: String(s[k] ?? ""),
@@ -133,14 +133,14 @@ export function SceneEditor({
               .filter(Boolean)
               .join(" · ")}
           </span>
-          <span className="muted ml-auto text-xs">{scene.beats.length} beats</span>
+          <span className="muted ml-auto text-xs">{scene.beats.length} 个情节节点</span>
         </button>
         {projectId && (
           <div className="flex max-w-full flex-wrap items-center gap-1 px-2 pb-2 sm:pb-0">
             <BulkGenerateButton
               projectId={projectId}
               scope={{ sceneId: scene.id }}
-              label="Generate scene"
+              label="生成场景"
               className="btn-secondary px-2 py-1 text-xs"
             />
           </div>
@@ -149,15 +149,15 @@ export function SceneEditor({
       {open && (
         <div className="space-y-3 border-t border-[var(--border)] p-3">
           <div className="grid gap-3 sm:grid-cols-2">
-            {text("title", "Title")}
+            {text("title", "标题")}
             <label className="block">
-              <span className="label">Location</span>
+              <span className="label">地点</span>
               <select
                 className="input"
                 value={s.locationId ?? ""}
                 onChange={(e) => setS({ ...s, locationId: e.target.value || null, locationStateId: null })}
               >
-                <option value="">None</option>
+                <option value="">无</option>
                 {locations.map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.name}
@@ -165,8 +165,8 @@ export function SceneEditor({
                 ))}
               </select>
             </label>
-            {text("time", "Time")}
-            {text("weather", "Weather")}
+            {text("time", "时间")}
+            {text("weather", "天气")}
             {s.locationId && (
               <StatePick
                 locationId={s.locationId}
@@ -175,9 +175,9 @@ export function SceneEditor({
               />
             )}
           </div>
-          {text("summary", "Summary", true)}
+          {text("summary", "摘要", true)}
           <div>
-            <span className="label">Characters present</span>
+            <span className="label">出场角色</span>
             <div className="flex flex-wrap gap-1">
               {cast.map((c) => {
                 const on = s.characterIds.includes(c.id);
@@ -206,23 +206,23 @@ export function SceneEditor({
             ))}
           </div>
           <div>
-            <span className="label">Continuity notes</span>
+            <span className="label">连贯性备注</span>
             <TagInput
               value={s.continuityNotes}
               onChange={(v) => setS({ ...s, continuityNotes: v })}
-              placeholder="coat removed, rain started…"
+              placeholder="例如，脱下外套、开始下雨……"
             />
           </div>
           <div className="grid gap-3 lg:grid-cols-2">
-            <StateRows label="Initial state" value={s.initialState} onChange={(v) => setS({ ...s, initialState: v })} />
-            <StateRows label="Final state" value={s.finalState} onChange={(v) => setS({ ...s, finalState: v })} />
+            <StateRows label="初始状态" value={s.initialState} onChange={(v) => setS({ ...s, initialState: v })} />
+            <StateRows label="最终状态" value={s.finalState} onChange={(v) => setS({ ...s, finalState: v })} />
           </div>
           <div>
-            <span className="label">Continuity deltas</span>
+            <span className="label">连贯性变化</span>
             <TagInput value={s.continuityDeltas} onChange={(v) => setS({ ...s, continuityDeltas: v })} />
           </div>
           <div>
-            <span className="label">Beats</span>
+            <span className="label">情节节拍</span>
             <div className="space-y-1">
               {beats.map((b, i) => (
                 <div key={i} className="flex gap-1">
@@ -230,13 +230,13 @@ export function SceneEditor({
                   <input
                     className="input"
                     value={b}
-                    aria-label={`Beat ${i + 1}`}
+                    aria-label={`情节节点 ${i + 1}`}
                     onChange={(e) => setBeats(beats.map((x, j) => (j === i ? e.target.value : x)))}
                   />
                   <button
                     type="button"
                     className="btn-ghost"
-                    aria-label="Remove beat"
+                    aria-label="移除节拍"
                     onClick={() => setBeats(beats.filter((_, j) => j !== i))}
                   >
                     <X className="size-4" />
@@ -244,30 +244,30 @@ export function SceneEditor({
                 </div>
               ))}
               <button type="button" className="btn-ghost text-xs" onClick={() => setBeats([...beats, ""])}>
-                <Plus className="size-3" /> Add beat
+                <Plus className="size-3" /> 添加节拍
               </button>
             </div>
           </div>
           <div className="flex gap-2">
             <button type="button" className="btn-primary" disabled={save.isPending} onClick={() => save.mutate()}>
-              Save scene
+              保存场景
             </button>
             <button type="button" className="btn-ghost ml-auto text-red-500" onClick={() => setConfirmDelete(true)}>
-              <Trash2 className="size-4" /> Delete
+              <Trash2 className="size-4" /> 删除
             </button>
           </div>
         </div>
       )}
       <ConfirmDialog
         open={confirmDelete}
-        title="Delete scene?"
+        title="删除场景？"
         danger
-        confirmLabel="Delete"
+        confirmLabel="删除"
         busy={remove.isPending}
         onClose={() => setConfirmDelete(false)}
         onConfirm={() => remove.mutate()}
       >
-        Pages and panels keep existing but lose their scene link.
+        页面和画格会保留，场景关联将解除。
       </ConfirmDialog>
     </div>
   );
@@ -287,9 +287,9 @@ function StatePick({
   if (!states.data?.length) return null;
   return (
     <label className="block">
-      <span className="label">Location state</span>
+      <span className="label">地点状态</span>
       <select className="input" value={value ?? ""} onChange={(e) => onChange(e.target.value || null)}>
-        <option value="">By time, weather and chapter</option>
+        <option value="">按时间、天气和章节匹配</option>
         {states.data.map((st) => (
           <option key={st.id} value={st.id}>
             {st.name}

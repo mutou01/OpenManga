@@ -230,7 +230,7 @@ export async function ingestTextBatch(
     if (job?.status === "cancel_requested" || job?.status === "cancelled") {
       await deps.db
         .update(generationJobs)
-        .set({ status: "cancelled", finishedAt: new Date(), failureReason: "Cancelled while waiting in a batch" })
+        .set({ status: "cancelled", finishedAt: new Date(), failureReason: "已取消等待批处理的任务" })
         .where(and(eq(generationJobs.id, job.id), inArray(generationJobs.status, ["cancel_requested", "submitted"])));
       continue;
     }

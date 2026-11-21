@@ -78,7 +78,7 @@ function RunCheck({ data, label }: { data: BibleData; label: string }) {
       await request(true);
       setEstimate(null);
       await qc.invalidateQueries({ queryKey: reportKey(projectId) });
-      toast.success("Continuity check queued");
+      toast.success("连贯性检查已加入队列");
     } catch (e) {
       toast.error(e);
     } finally {
@@ -87,12 +87,12 @@ function RunCheck({ data, label }: { data: BibleData; label: string }) {
   };
   return (
     <div className="flex flex-wrap items-end gap-2">
-      <Field label="Check">
+      <Field label="检查">
         <select className="input" value={chapterId} onChange={(e) => setChapterId(e.target.value)}>
-          <option value="">Every chapter</option>
+          <option value="">每个章节</option>
           {data.chapters.map((c) => (
             <option key={c.id} value={c.id}>
-              Chapter {c.order}: {c.title}
+              章节 {c.order}: {c.title}
             </option>
           ))}
         </select>
@@ -103,8 +103,8 @@ function RunCheck({ data, label }: { data: BibleData; label: string }) {
       </button>
       <ConfirmDialog
         open={Boolean(estimate)}
-        title="Check continuity"
-        confirmLabel={`Check ${estimate?.count ?? 0} chapter${estimate?.count === 1 ? "" : "s"}`}
+        title="检查连贯性"
+        confirmLabel={`检查 ${estimate?.count ?? 0} 章`}
         busy={busy}
         disabled={!estimate?.count}
         onClose={() => setEstimate(null)}
@@ -112,15 +112,12 @@ function RunCheck({ data, label }: { data: BibleData; label: string }) {
       >
         {estimate?.count ? (
           <p>
-            One text request per chapter compares its scenes, panels and narration with the story bible and its
-            neighbours, using {estimate.provider.model}.{" "}
-            {estimate.estimatedUsd === null
-              ? "No price is known for this model."
-              : `About ${fmt.usd(estimate.estimatedUsd)}.`}
-            {estimate.skipped ? ` ${estimate.skipped} chapter(s) with nothing planned or narrated are skipped.` : ""}
+            每章发送一次文本请求，将场景、画格及旁白与故事设定集及相邻章节对照，使用 {estimate.provider.model}.{" "}
+            {estimate.estimatedUsd === null ? "暂无此模型的价格信息。" : `预计 ${fmt.usd(estimate.estimatedUsd)}。`}
+            {estimate.skipped ? ` 已跳过 ${estimate.skipped} 个没有规划或旁白的章节。` : ""}
           </p>
         ) : (
-          <p>Nothing to check yet: plan a chapter or write its narration first.</p>
+          <p>暂无可检查内容，请先规划章节或编写旁白。</p>
         )}
       </ConfirmDialog>
     </div>
@@ -194,10 +191,10 @@ export function ContinuityQueue({ data }: { data: BibleData }) {
   );
   return (
     <div className="space-y-3">
-      <RunCheck data={data} label="Check continuity" />
+      <RunCheck data={data} label="检查连贯性" />
       {(q.data?.running ?? 0) > 0 && (
         <p className="muted flex items-center gap-2 text-sm">
-          <Spinner /> {q.data!.running} chapter check{q.data!.running === 1 ? "" : "s"} running
+          <Spinner /> 正在检查 {q.data!.running} 章
         </p>
       )}
       <div className="flex flex-wrap items-end gap-3">
@@ -205,17 +202,17 @@ export function ContinuityQueue({ data }: { data: BibleData }) {
           value={status}
           onChange={setStatus}
           tabs={[
-            { value: "open", label: "Open" },
-            { value: "resolved", label: "Resolved" },
-            { value: "all", label: "All" },
+            { value: "open", label: "待处理" },
+            { value: "resolved", label: "已处理" },
+            { value: "all", label: "全部" },
           ]}
         />
-        <Field label="Chapter">
+        <Field label="章节">
           <select className="input" value={chapterId} onChange={(e) => setChapterId(e.target.value)}>
-            <option value="">All chapters</option>
+            <option value="">所有章节</option>
             {data.chapters.map((c) => (
               <option key={c.id} value={c.id}>
-                Chapter {c.order}: {c.title}
+                章节 {c.order}: {c.title}
               </option>
             ))}
           </select>
@@ -224,8 +221,8 @@ export function ContinuityQueue({ data }: { data: BibleData }) {
       {q.isLoading && <Spinner />}
       <ErrorBox error={q.error} onRetry={() => q.refetch()} />
       {q.data && !shown.length && (
-        <EmptyState title={status === "open" ? "No open contradictions" : "Nothing here"}>
-          A check compares each chapter's scenes, panels and narration with the bible and the chapters around it.
+        <EmptyState title={status === "open" ? "暂无待处理矛盾" : "暂无内容"}>
+          检查会将每章场景、画格和旁白与故事设定集及相邻章节进行对照。
         </EmptyState>
       )}
       <ul className="space-y-2">
@@ -244,12 +241,12 @@ export function ContinuityQueue({ data }: { data: BibleData }) {
                 {f.evidence}
               </p>
             )}
-            {f.status !== "open" && f.resolution && <p className="muted text-xs">Resolution: {f.resolution}</p>}
+            {f.status !== "open" && f.resolution && <p className="muted text-xs">处理说明 {f.resolution}</p>}
             <div className="flex flex-wrap gap-2 pt-1">
               {f.status === "open" ? (
                 <>
                   <button type="button" className="btn-secondary text-xs" onClick={() => resolve(f, "fixed")}>
-                    <Check className="size-3.5" /> Fixed
+                    <Check className="size-3.5" /> 标记已修复
                   </button>
                   <button
                     type="button"
@@ -259,15 +256,15 @@ export function ContinuityQueue({ data }: { data: BibleData }) {
                       setIgnoring(f);
                     }}
                   >
-                    <EyeOff className="size-3.5" /> Ignore
+                    <EyeOff className="size-3.5" /> 忽略
                   </button>
                   <button type="button" className="btn-secondary text-xs" onClick={() => setExplaining(f)}>
-                    <ScrollText className="size-3.5" /> Explain
+                    <ScrollText className="size-3.5" /> 解释
                   </button>
                 </>
               ) : (
                 <button type="button" className="btn-ghost text-xs" onClick={() => resolve(f, "open")}>
-                  <RotateCcw className="size-3.5" /> Reopen
+                  <RotateCcw className="size-3.5" /> 重新打开
                 </button>
               )}
             </div>
@@ -277,11 +274,11 @@ export function ContinuityQueue({ data }: { data: BibleData }) {
       <Modal
         open={Boolean(ignoring)}
         onClose={() => setIgnoring(null)}
-        title="Ignore this finding"
+        title="忽略此问题"
         footer={
           <>
             <button type="button" className="btn-secondary" onClick={() => setIgnoring(null)}>
-              Cancel
+              取消
             </button>
             <button
               type="button"
@@ -292,12 +289,12 @@ export function ContinuityQueue({ data }: { data: BibleData }) {
                 setIgnoring(null);
               }}
             >
-              Ignore
+              忽略
             </button>
           </>
         }
       >
-        <Field label="Why it is not a problem" hint="Later checks do not raise the same finding again.">
+        <Field label="说明为何无需处理" hint="后续检查将跳过相同问题。">
           <textarea
             className="input min-h-20"
             maxLength={1000}
@@ -310,7 +307,7 @@ export function ContinuityQueue({ data }: { data: BibleData }) {
         <FactForm
           data={data}
           fact={null}
-          title="Explain with a bible fact"
+          title="用故事设定集事实解释"
           initial={{ fromChapterId: explaining.chapterId }}
           onClose={() => setExplaining(null)}
           onSubmit={async (fact) => {
@@ -329,12 +326,12 @@ export function RuleChecks({ data }: { data: BibleData }) {
   const q = useReport(projectId);
   return (
     <div className="space-y-3">
-      <RunCheck data={data} label="Run checks" />
+      <RunCheck data={data} label="运行检查" />
       {q.isLoading && <Spinner />}
       <ErrorBox error={q.error} onRetry={() => q.refetch()} />
       {q.data && !q.data.rules.length && (
-        <EmptyState title="No fixed rules">
-          Mark a fact as fixed (“no guns exist in this world”, “scar on the LEFT jaw”) to check it as a rule.
+        <EmptyState title="暂无固定规则">
+          将事实标记为固定规则后即可检查，例如“这个世界不存在枪械”“左侧下颌有疤痕”。
         </EmptyState>
       )}
       <ul className="space-y-2">
@@ -344,7 +341,7 @@ export function RuleChecks({ data }: { data: BibleData }) {
               {r.verdict ? (
                 <StatusChip status={VERDICT[r.verdict]} label={r.verdict} />
               ) : (
-                <StatusChip status="draft" label="not checked" />
+                <StatusChip status="draft" label="尚未检查" />
               )}
               <p className="min-w-0 flex-1">
                 {r.subject && <strong>{r.subject}: </strong>}
@@ -355,7 +352,7 @@ export function RuleChecks({ data }: { data: BibleData }) {
               <div className="flex flex-wrap gap-1.5">
                 {r.chapters.map((c) => (
                   <span key={c.chapterId} title={c.note || undefined}>
-                    <StatusChip status={VERDICT[c.verdict]} label={`ch. ${c.order}: ${c.verdict}`} />
+                    <StatusChip status={VERDICT[c.verdict]} label={`第 ${c.order} 章：${c.verdict}`} />
                   </span>
                 ))}
               </div>
@@ -364,15 +361,13 @@ export function RuleChecks({ data }: { data: BibleData }) {
               .filter((c) => c.verdict !== "pass" && c.note)
               .map((c) => (
                 <p key={c.chapterId} className="muted text-xs">
-                  Ch. {c.order}: {c.note}
+                  章节 {c.order}: {c.note}
                 </p>
               ))}
           </li>
         ))}
       </ul>
-      <p className="muted text-xs">
-        Checked by text: what the plan, panel specs, dialogue and narration say. The artwork itself is not looked at.
-      </p>
+      <p className="muted text-xs">检查依据为规划、画格设定、对白与旁白中的文本描述。</p>
     </div>
   );
 }

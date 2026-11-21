@@ -109,7 +109,7 @@ continuityRoutes.post("/projects/:projectId/continuity-checks", async (c) => {
   };
   if (!input.confirm) return c.json({ confirmRequired: true, ...estimate, budget: await projectBudget(deps.db, p.id) });
   await assertBudget(c, p.id, estimatedUsd ?? 0);
-  if (!eligible.length) throw conflict("Nothing to check yet: plan a chapter or write its narration first");
+  if (!eligible.length) throw conflict("暂无可检查的内容，请先规划章节或编写旁白");
   const batchId = crypto.randomUUID();
   const jobs = await deps.db.transaction(async (tx) => {
     const out = [];

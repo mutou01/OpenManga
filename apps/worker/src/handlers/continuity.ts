@@ -35,7 +35,7 @@ const MAX_LINES = 400;
 export async function continuityCheck(deps: WorkerDeps, job: ProjectJob) {
   const chapterId = String(job.input.chapterId);
   const [chapter] = await deps.db.select().from(chapters).where(eq(chapters.id, chapterId));
-  if (!chapter) throw new InputError("Chapter no longer exists");
+  if (!chapter) throw new InputError("章节已不存在");
   const neighbours = await deps.db
     .select()
     .from(chapters)

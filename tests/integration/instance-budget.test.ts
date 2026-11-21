@@ -103,7 +103,7 @@ test("past the ceiling, new AI work is refused with its own code and no override
   expect(refused.status).toBe(402);
   const err = ((await refused.json()) as { error: { code: string; message: string } }).error;
   expect(err.code).toBe("instance_budget_exceeded");
-  expect(err.message).toMatch(/monthly AI budget of \$5\.00/);
+  expect(err.message).toMatch(/服务器每月 AI 预算已达到 \$5\.00/);
 
   // An estimate is still free; confirming it is not.
   const bulk = await alice.raw(
@@ -139,7 +139,7 @@ test("a queued batch pauses at the ceiling, cannot be resumed past it, and resum
   );
   const jobs = await h.deps.db.select().from(generationJobs).where(eq(generationJobs.batchId, run.batchId));
   expect(jobs.every((j) => j.status === "paused")).toBe(true);
-  expect(jobs[0]!.failureReason).toMatch(/server's monthly AI budget of \$3\.00 is reached/);
+  expect(jobs[0]!.failureReason).toMatch(/已暂停：服务器每月 AI 预算已达到 \$3\.00/);
   const view = await alice.get<{ batches: { batchId: string; state: string; pauseReason: string }[] }>(
     `/api/projects/${projectId}/generations/batches`,
   );
@@ -185,6 +185,6 @@ test("a production run pauses at the ceiling with the server's reason", async ()
     ),
   ];
   expect(runs[0]).toMatchObject({ id: run.id, status: "paused" });
-  expect(runs[0]!.reason).toMatch(/^Server budget ceiling reached: .*monthly AI budget of \$1\.00/);
+  expect(runs[0]!.reason).toMatch(/^服务器预算已达上限: 服务器每月 AI 预算已达到 \$1\.00/);
   await admin.raw("PUT", "/api/admin/budget", { monthlyUsd: null });
 });

@@ -45,7 +45,7 @@ export function ManualAnswer({
     setBusy(true);
     try {
       await post(`/generations/${jobId}/manual`, { text: answer.trim() });
-      toast.success("Answer submitted — checking it against the schema");
+      toast.success("回答已提交，正在校验数据结构");
       setText("");
       onSubmitted();
     } catch (e) {
@@ -57,23 +57,20 @@ export function ManualAnswer({
 
   return (
     <section className="card border-amber-500/40 p-4">
-      <h2 className="mb-1 font-medium">Waiting for your answer{answered > 0 ? ` · question ${answered + 1}` : ""}</h2>
+      <h2 className="mb-1 font-medium">等待你的回答{answered > 0 ? ` · 第 ${answered + 1} 个问题` : ""}</h2>
       <p className="muted mb-3 text-sm">
-        Copy the compiled prompt below into any chat, then paste the reply here. It is checked against the same schema a
-        provider's answer is, so nothing is applied until it fits.
+        将下方编译后的提示词复制到聊天工具，再将回答粘贴到这里。系统会按提供商回答相同的数据结构进行校验，通过后才会应用。
       </p>
       {attachments.length > 0 && (
         <div className="mb-3 rounded-lg bg-[var(--panel-2)] p-3 text-sm">
           <p className="mb-2">
-            This question is about {attachments.length === 1 ? "an image" : `${attachments.length} images`}. A copied
-            prompt cannot carry pictures, so download {attachments.length === 1 ? "it" : "them"} and attach{" "}
-            {attachments.length === 1 ? "it" : "them"} to your chat — the prompt marks where each one goes.
+            此问题涉及 {attachments.length} 张图片。请下载图片并附加到聊天中，提示词已标明各图的位置。
           </p>
           <div className="flex flex-wrap gap-2">
             {attachments.map((id, n) => (
               <a key={id} href={assetUrl(id)} download target="_blank" rel="noreferrer" className="text-center text-xs">
-                <AssetImage assetId={id} alt={`Image ${n + 1}`} className="size-24 rounded object-cover" />
-                image {n + 1}
+                <AssetImage assetId={id} alt={`图片 ${n + 1}`} className="size-24 rounded object-cover" />
+                图片 {n + 1}
               </a>
             ))}
           </div>
@@ -83,26 +80,24 @@ export function ManualAnswer({
         <p className="mb-3 rounded-lg bg-red-500/10 p-2 font-mono text-xs break-words text-red-500">{lastError}</p>
       )}
       <details className="mb-3 rounded-lg border border-[var(--border)] p-2 text-sm">
-        <summary className="cursor-pointer font-medium">What should the answer look like?</summary>
+        <summary className="cursor-pointer font-medium">回答应采用什么格式？</summary>
         <div className="mt-2 space-y-2">
           <p className="muted">
-            JSON matching the schema at the end of the prompt — which is also what the prompt tells your chat to reply
-            with. Wrapping it in a code fence or a sentence of prose is fine; only the JSON is read. Here is a valid
-            answer to <em>this</em> question, to show its shape. Its content is placeholder, not a real reading of your
-            story — paste your chat's reply, not this.
+            回答需使用符合提示词末尾结构的 JSON。可以用代码块或说明文字包裹，系统只读取
+            JSON。下方示例用于展示当前问题的回答结构，示例内容为占位内容，请粘贴聊天工具针对你的故事生成的回答。
           </p>
           {guide.data?.format && (
             <>
               <div className="flex items-center justify-between">
                 <span className="font-medium">
-                  <code>{guide.data.format.name}</code> — every field, what goes in it, and an example value
+                  <code>{guide.data.format.name}</code> — 各字段的含义、填写内容与示例值
                 </span>
                 <CopyButton text={guide.data.format.interface} />
               </div>
               <pre className="max-h-[28rem] overflow-auto rounded-lg bg-[var(--panel-2)] p-2 font-mono text-xs">
                 {guide.data.format.interface}
               </pre>
-              <span className="font-medium">A valid answer to this exact question</span>
+              <span className="font-medium">当前问题的有效回答示例</span>
             </>
           )}
           {guide.data?.example ? (
@@ -115,16 +110,16 @@ export function ManualAnswer({
               </pre>
             </>
           ) : (
-            <p className="muted text-xs">{guide.isLoading ? "Loading an example…" : "No example for this one."}</p>
+            <p className="muted text-xs">{guide.isLoading ? "正在加载示例…" : "此问题暂无示例。"}</p>
           )}
           <p className="text-xs">
-            Every answer format, field by field:{" "}
+            查看各类回答格式的字段说明{" "}
             <a href={FORMATS_URL} target="_blank" rel="noreferrer" className="text-accent-500 hover:underline">
-              Answer formats
+              回答格式
             </a>
-            . How the whole flow works:{" "}
+            。完整流程说明{" "}
             <a href={DOCS_URL} target="_blank" rel="noreferrer" className="text-accent-500 hover:underline">
-              Running without any API keys
+              无需 API 密钥的使用方式
             </a>
             .
           </p>
@@ -132,16 +127,16 @@ export function ManualAnswer({
       </details>
       <textarea
         className="input min-h-40 font-mono text-xs"
-        placeholder="Paste the model's reply — JSON, optionally inside a code fence"
+        placeholder="粘贴模型的 JSON 回答，可使用代码块包裹"
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <button type="button" className="btn-primary" disabled={busy || !text.trim()} onClick={() => send(text)}>
-          {busy ? <Spinner /> : <Check className="size-4" />} Submit answer
+          {busy ? <Spinner /> : <Check className="size-4" />} 提交回答
         </button>
         <label className="btn-secondary cursor-pointer">
-          <Upload className="size-4" /> Upload a file
+          <Upload className="size-4" /> 上传文件
           <input
             type="file"
             className="sr-only"
@@ -170,15 +165,15 @@ export function JobDetailPage() {
   });
   const cancel = useAction(() => post<{ result: string }>(`/generations/${jobId}/cancel`), {
     invalidate: [qk.job(jobId), qk.generations(projectId)],
-    success: (r) => (r.result === "cancelled" ? "Cancelled" : "Cancellation requested"),
+    success: (r) => (r.result === "cancelled" ? "已取消" : "已请求取消"),
   });
   const restore = useAction((assetId: string) => post(`/assets/${assetId}/restore`), {
     invalidate: [qk.job(jobId), qk.generations(projectId), qk.assets(projectId)],
-    success: "Image restored",
+    success: "图片已恢复",
   });
   const retry = useAction(() => post<{ job: { id: string } }>(`/generations/${jobId}/retry`), {
     invalidate: [qk.job(jobId), qk.generations(projectId)],
-    success: "Retry queued as a new job",
+    success: "已创建新的重试任务并加入队列",
   });
 
   if (q.isLoading)
@@ -200,7 +195,7 @@ export function JobDetailPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-4 p-6">
       <Link to="/projects/$projectId/generation" params={{ projectId }} className="muted text-xs hover:underline">
-        ← Generation queue
+        ← 生成任务队列
       </Link>
       <PageHeader
         title={
@@ -208,7 +203,7 @@ export function JobDetailPage() {
             {kindLabel(job.kind)} <StatusChip status={job.status} />
           </span>
         }
-        subtitle={`Job ${job.id}`}
+        subtitle={`任务 ${job.id}`}
         actions={
           <>
             {(job.status === "queued" || job.status === "processing" || job.status === "awaiting_input") && (
@@ -218,12 +213,12 @@ export function JobDetailPage() {
                 onClick={() => cancel.mutate()}
                 disabled={cancel.isPending}
               >
-                <XCircle className="size-4" /> Cancel
+                <XCircle className="size-4" /> 取消
               </button>
             )}
             {(job.status === "failed" || job.status === "cancelled") && (
               <button type="button" className="btn-primary" onClick={() => retry.mutate()} disabled={retry.isPending}>
-                <RotateCcw className="size-4" /> Retry
+                <RotateCcw className="size-4" /> 重试
               </button>
             )}
           </>
@@ -234,17 +229,17 @@ export function JobDetailPage() {
           role="alert"
           className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-300"
         >
-          <span className="font-medium">{job.failureCode ?? "failed"}:</span> {job.failureReason}
+          <span className="font-medium">{job.failureCode ?? "失败"}：</span> {job.failureReason}
         </div>
       )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="card p-4">
-          <h2 className="mb-3 font-medium">Request</h2>
+          <h2 className="mb-3 font-medium">请求</h2>
           <KeyValue
             items={[
               [
-                "Target",
+                "目标",
                 job.targetType === "panel" && pageId ? (
                   <Link
                     key="t"
@@ -253,66 +248,66 @@ export function JobDetailPage() {
                     search={{ panelId: job.targetId ?? undefined }}
                     className="text-accent-500 hover:underline"
                   >
-                    panel {job.targetId?.slice(0, 8)}
+                    画格 {job.targetId?.slice(0, 8)}
                   </Link>
                 ) : (
                   `${job.targetType ?? "—"} ${job.targetId ?? ""}`
                 ),
               ],
-              ["Provider / model", `${job.provider ?? "—"} / ${job.model ?? "—"}`],
-              ["Quality", String(job.parameters.quality ?? "—")],
-              ["Template", job.templateName ? `${job.templateName} v${job.templateVersion ?? "?"}` : "—"],
+              ["提供商 / 模型", `${job.provider ?? "—"} / ${job.model ?? "—"}`],
+              ["质量", String(job.parameters.quality ?? "—")],
+              ["模板", job.templateName ? `${job.templateName} v${job.templateVersion ?? "?"}` : "—"],
               [
-                "Prompt hash",
+                "提示词哈希",
                 <code key="p" className="text-xs">
                   {job.promptHash ?? "—"}
                 </code>,
               ],
               [
-                "References hash",
+                "参考素材哈希",
                 <code key="r" className="text-xs">
                   {job.referencesHash ?? "—"}
                 </code>,
               ],
               [
-                "Options hash",
+                "选项哈希",
                 <code key="o" className="text-xs">
                   {job.optionsHash ?? "—"}
                 </code>,
               ],
               [
-                "Provider request id",
+                "提供商请求 ID",
                 <code key="q" className="text-xs">
                   {job.providerRequestId ?? "—"}
                 </code>,
               ],
-              ["Priority / attempts", `${job.priority} / ${job.attempts} of ${job.maxAttempts}`],
-              ["Created", fmt.date(job.createdAt)],
-              ["Started", fmt.date(job.startedAt)],
-              ["Finished", fmt.date(job.finishedAt)],
-              ["Latency", job.latencyMs ? fmt.ms(job.latencyMs) : "—"],
+              ["优先级 / 尝试次数", `${job.priority} / ${job.attempts} 次（最多 ${job.maxAttempts} 次）`],
+              ["创建时间", fmt.date(job.createdAt)],
+              ["开始时间", fmt.date(job.startedAt)],
+              ["结束时间", fmt.date(job.finishedAt)],
+              ["耗时", job.latencyMs ? fmt.ms(job.latencyMs) : "—"],
             ]}
           />
         </section>
         <section className="card p-4">
-          <h2 className="mb-3 font-medium">Parameters & structured input</h2>
+          <h2 className="mb-3 font-medium">参数与结构化输入</h2>
           <KeyValue
             items={[
               [
-                "Character versions",
+                "角色版本",
                 Array.isArray(promptInput.characterVersionIds)
                   ? (promptInput.characterVersionIds as string[]).map((v) => v.slice(0, 8)).join(", ") || "none"
                   : "—",
               ],
-              ["Location version", str(promptInput.locationVersionId)?.slice(0, 8) ?? "—"],
-              ["Style", str(promptInput.styleId)?.slice(0, 8) ?? "—"],
+              ["场景版本", str(promptInput.locationVersionId)?.slice(0, 8) ?? "—"],
+              ["风格", str(promptInput.styleId)?.slice(0, 8) ?? "—"],
             ]}
           />
           <div className="mt-3 space-y-2">
-            <div className="label">Parameters</div>
+            <div className="label">参数</div>
             <JsonBlock value={job.parameters} maxHeight="12rem" />
             <details>
-              <summary className="muted cursor-pointer text-xs">Full job input</summary>
+              <summary className="muted cursor-pointer text-xs">完整任务输入</summary>
               <JsonBlock value={job.input} />
             </details>
           </div>
@@ -333,7 +328,7 @@ export function JobDetailPage() {
 
       <section className="card p-4">
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="font-medium">Compiled prompt</h2>
+          <h2 className="font-medium">编译后的提示词</h2>
           {job.compiledPrompt && <CopyButton text={job.compiledPrompt} />}
         </div>
         {job.compiledPrompt ? (
@@ -341,16 +336,14 @@ export function JobDetailPage() {
             {job.compiledPrompt}
           </pre>
         ) : (
-          <p className="muted text-sm">
-            Not recorded yet (text jobs record their messages when the provider is called).
-          </p>
+          <p className="muted text-sm">尚未记录，文本任务会在调用提供商时记录消息。</p>
         )}
       </section>
 
       <section className="card p-4">
-        <h2 className="mb-3 font-medium">Images sent ({inputs.length})</h2>
+        <h2 className="mb-3 font-medium">已发送图片（{inputs.length}）</h2>
         {!inputs.length ? (
-          <p className="muted text-sm">No reference images were attached.</p>
+          <p className="muted text-sm">未附加参考图。</p>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {inputs.map((i) => {
@@ -373,20 +366,20 @@ export function JobDetailPage() {
                     </div>
                     {i.sentAs === "prompt_ref_derivative" ? (
                       <div className="mt-1 text-emerald-600 dark:text-emerald-400">
-                        Sent as small derivative {i.width}×{i.height}
-                        {m.maxWidth ? ` (max ${m.maxWidth}×${m.maxHeight})` : ""}
+                        以缩略派生图发送 {i.width}×{i.height}
+                        {m.maxWidth ? `（最大 ${m.maxWidth}×${m.maxHeight}）` : ""}
                         {m.referenceBytes || i.variant
                           ? ` · ${fmt.bytes(m.referenceBytes ?? i.variant?.byteSize)}`
                           : ""}
                       </div>
                     ) : (
                       <div className="mt-1 text-sky-600 dark:text-sky-400">
-                        Sent at full resolution {i.width}×{i.height}
+                        以原始分辨率发送 {i.width}×{i.height}
                       </div>
                     )}
                     {m.canonicalWidth && (
                       <div className="muted">
-                        Canonical {m.canonicalWidth}×{m.canonicalHeight}
+                        原始尺寸 {m.canonicalWidth}×{m.canonicalHeight}
                       </div>
                     )}
                   </div>
@@ -399,22 +392,20 @@ export function JobDetailPage() {
 
       {outputs.length > 0 && (
         <section className="card p-4">
-          <h2 className="mb-3 font-medium">Outputs</h2>
+          <h2 className="mb-3 font-medium">输出结果</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             {outputs.map((o) => (
               <div key={o.id}>
                 {o.deleted ? (
                   <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-lg bg-[var(--panel-2)] text-sm">
-                    <span className="muted">
-                      This image was deleted. It stays in the trash until the trash is emptied.
-                    </span>
+                    <span className="muted">此图片已删除，在清空回收站前可以恢复。</span>
                     <button
                       type="button"
                       className="btn-secondary"
                       disabled={restore.isPending}
                       onClick={() => restore.mutate(o.assetId)}
                     >
-                      <RotateCcw className="size-4" /> Restore image
+                      <RotateCcw className="size-4" /> 恢复图片
                     </button>
                   </div>
                 ) : (
@@ -423,16 +414,16 @@ export function JobDetailPage() {
                       <AssetImage
                         assetId={o.assetId}
                         variant={null}
-                        alt="Generated output"
+                        alt="生成结果"
                         className="max-h-[28rem] w-full rounded-lg"
                         fit="contain"
                       />
                     </a>
                     <div className="mt-1 flex items-center gap-2 text-xs">
                       {o.activated ? (
-                        <StatusChip status="approved" label="activated" />
+                        <StatusChip status="approved" label="已启用" />
                       ) : (
-                        <StatusChip status="draft" label="not activated" />
+                        <StatusChip status="draft" label="未启用" />
                       )}
                       <a
                         className="text-accent-500 hover:underline"
@@ -440,7 +431,7 @@ export function JobDetailPage() {
                         target="_blank"
                         rel="noreferrer"
                       >
-                        Full resolution <ExternalLink className="inline size-3" />
+                        查看原图 <ExternalLink className="inline size-3" />
                       </a>
                     </div>
                   </>
@@ -452,26 +443,26 @@ export function JobDetailPage() {
       )}
 
       <section className="card overflow-x-auto p-4">
-        <h2 className="mb-3 font-medium">Usage ({fmt.usd(totals.costUsd)})</h2>
+        <h2 className="mb-3 font-medium">用量（{fmt.usd(totals.costUsd)}）</h2>
         {!usage.length ? (
-          <p className="muted text-sm">No provider usage recorded.</p>
+          <p className="muted text-sm">暂无提供商用量记录。</p>
         ) : (
           <table className="w-full text-xs">
             <thead className="muted text-left">
               <tr className="border-b border-[var(--border)]">
                 {[
-                  "Provider",
-                  "Model",
-                  "Operation",
-                  "Purpose",
-                  "Text in",
-                  "Text out",
-                  "Image in",
-                  "Image out",
-                  "Cached",
-                  "Cost",
-                  "Latency",
-                  "Request id",
+                  "提供商",
+                  "模型",
+                  "操作",
+                  "用途",
+                  "文本输入",
+                  "文本输出",
+                  "图片输入",
+                  "图片输出",
+                  "缓存",
+                  "费用",
+                  "耗时",
+                  "请求 ID",
                 ].map((h) => (
                   <th key={h} className="p-1.5">
                     {h}
@@ -500,7 +491,7 @@ export function JobDetailPage() {
               ))}
               <tr className="font-medium">
                 <td className="p-1.5" colSpan={4}>
-                  Total
+                  合计
                 </td>
                 <td className="p-1.5">{fmt.num(totals.textInputTokens)}</td>
                 <td className="p-1.5">{fmt.num(totals.textOutputTokens)}</td>
@@ -515,7 +506,7 @@ export function JobDetailPage() {
         )}
         {usage[0]?.rawUsage && (
           <details className="mt-2">
-            <summary className="muted cursor-pointer text-xs">Raw provider usage</summary>
+            <summary className="muted cursor-pointer text-xs">提供商原始用量</summary>
             <JsonBlock value={usage.map((u) => u.rawUsage)} />
           </details>
         )}
@@ -523,7 +514,7 @@ export function JobDetailPage() {
 
       {retries.length > 0 && (
         <section className="card p-4">
-          <h2 className="mb-2 font-medium">Retries</h2>
+          <h2 className="mb-2 font-medium">重试记录</h2>
           <ul className="space-y-1 text-sm">
             {retries.map((r) => (
               <li key={r.id} className="flex items-center gap-2">

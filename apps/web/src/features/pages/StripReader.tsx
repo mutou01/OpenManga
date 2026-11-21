@@ -74,16 +74,16 @@ export function StripReaderPage() {
   return (
     <div className="mx-auto max-w-5xl p-4 sm:p-6">
       <PageHeader
-        title="Read"
+        title="阅读"
         subtitle={
           d && d.format !== "vertical"
-            ? "This project is not a vertical strip, so this is only a preview of how it would stack."
-            : "The chapter as one scrolling column, laid out exactly as it exports."
+            ? "当前项目采用非条漫格式，此处可预览纵向拼接效果。"
+            : "按导出排版将本章展示为连续滚动的长条。"
         }
         actions={
           <div className="flex items-center gap-2">
             <label className="sr-only" htmlFor="strip-chapter">
-              Chapter
+              章节
             </label>
             <select
               id="strip-chapter"
@@ -99,21 +99,19 @@ export function StripReaderPage() {
             >
               {chapters.data?.map((c) => (
                 <option key={c.id} value={c.id}>
-                  Ch. {c.order} — {c.title}
+                  第 {c.order} — {c.title}
                 </option>
               ))}
             </select>
             <Link to="/projects/$projectId/pages" params={{ projectId }} search={{}} className="btn-secondary">
-              Edit
+              编辑
             </Link>
           </div>
         }
       />
       <ErrorBox error={strip.error} />
       {strip.isLoading && <Spinner className="size-6" />}
-      {d && !d.blocks.length && (
-        <EmptyState title="Nothing to read yet">Plan the chapter, then generate its panels.</EmptyState>
-      )}
+      {d && !d.blocks.length && <EmptyState title="暂无可阅读内容">先规划章节，再生成分镜图片。</EmptyState>}
       <div ref={box} className="mx-auto w-full" style={{ maxWidth: d?.width }}>
         {d && layout && (
           <div className="relative mx-auto" style={{ height: layout.height * scale, background: d.background }}>
@@ -132,7 +130,7 @@ export function StripReaderPage() {
                 <img
                   key={block.pageId}
                   src={`${API_BASE}/pages/${block.pageId}/render.png?width=${d.width}&v=${encodeURIComponent(block.updatedAt)}`}
-                  alt={`Panel ${block.order}`}
+                  alt={`分镜 ${block.order}`}
                   loading="lazy"
                   className="absolute inset-x-0 block w-full"
                   style={{
@@ -148,7 +146,7 @@ export function StripReaderPage() {
                   className="absolute inset-x-0 flex items-center justify-center bg-[var(--panel-2)] text-xs"
                   style={{ top: place.top * scale, height: block.height * scale }}
                 >
-                  Panel {block.order} has no artwork yet
+                  分镜 {block.order} 尚无图片
                 </div>
               );
             })}
@@ -157,7 +155,7 @@ export function StripReaderPage() {
       </div>
       {d && layout && (
         <p className="muted mt-3 text-center text-xs">
-          {d.blocks.length} panels · {layout.height}px tall at {d.width}px wide
+          {d.blocks.length} 个分镜 · {layout.height}像素高，宽 {d.width}像素
         </p>
       )}
     </div>

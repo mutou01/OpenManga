@@ -7,10 +7,10 @@ import { clsx, Field, Spinner, TagInput, toast } from "../../components/ui.tsx";
 type Video = NonNullable<ProjectSettings["video"]>;
 
 const CORNERS: [VideoWatermark["corner"], string][] = [
-  ["top-left", "Top left"],
-  ["top-right", "Top right"],
-  ["bottom-left", "Bottom left"],
-  ["bottom-right", "Bottom right"],
+  ["top-left", "左上角"],
+  ["top-right", "右上角"],
+  ["bottom-left", "左下角"],
+  ["bottom-right", "右下角"],
 ];
 
 /**
@@ -58,8 +58,8 @@ export function VideoSection({
   return (
     <section className="card space-y-4 p-4">
       <div>
-        <h2 className="font-medium">Video</h2>
-        <p className="muted text-xs">Applied to every video export and shown in the preview.</p>
+        <h2 className="font-medium">视频</h2>
+        <p className="muted text-xs">应用于每次视频导出，并在预览中显示。</p>
       </div>
       <label className="flex items-start gap-2 text-sm">
         <input
@@ -69,26 +69,25 @@ export function VideoSection({
           onChange={(e) => set({ fadeAtSceneBreaks: e.target.checked })}
         />
         <span>
-          Fade to black at scene breaks
+          场景切换时淡入淡出至黑场
           <span className="muted block text-xs">
-            Half a second out and in where the scene changes. A panel's Video shot settings can force a fade or a hard
-            cut on its own.
+            场景切换时各用半秒淡出和淡入。可在画格的视频镜头设置中单独指定淡入淡出或硬切。
           </span>
         </span>
       </label>
 
       <div className="space-y-2">
-        <div className="label">Logo watermark</div>
+        <div className="label">标志水印</div>
         <div className="flex flex-wrap items-center gap-2">
           {wm && (
             <img
               src={assetUrl(wm.assetId)}
-              alt="Watermark logo"
+              alt="水印标志"
               className="h-12 max-w-32 rounded border border-[var(--border)] bg-[var(--panel-2)] object-contain p-1"
             />
           )}
           <label className={clsx("btn-secondary cursor-pointer", uploading && "pointer-events-none opacity-50")}>
-            {uploading ? <Spinner /> : <ImagePlus className="size-4" />} {wm ? "Replace logo" : "Upload logo"}
+            {uploading ? <Spinner /> : <ImagePlus className="size-4" />} {wm ? "替换标志" : "上传标志"}
             <input
               type="file"
               accept="image/png,image/jpeg,image/webp"
@@ -102,13 +101,13 @@ export function VideoSection({
           </label>
           {wm && (
             <button type="button" className="btn-ghost text-red-500" onClick={() => set({ watermark: null })}>
-              <Trash2 className="size-4" /> Remove
+              <Trash2 className="size-4" /> 移除
             </button>
           )}
         </div>
         {wm && (
           <div className="grid gap-3 sm:grid-cols-3">
-            <Field label="Corner">
+            <Field label="位置">
               <select
                 className="input"
                 value={wm.corner}
@@ -121,7 +120,7 @@ export function VideoSection({
                 ))}
               </select>
             </Field>
-            <Field label={`Opacity ${Math.round(wm.opacity * 100)}%`}>
+            <Field label={`不透明度 ${Math.round(wm.opacity * 100)}%`}>
               <input
                 type="range"
                 className="w-full"
@@ -132,7 +131,7 @@ export function VideoSection({
                 onChange={(e) => set({ watermark: { ...wm, opacity: Number(e.target.value) } })}
               />
             </Field>
-            <Field label={`Size ${Math.round(wm.size * 100)}% of the width`}>
+            <Field label={`宽度占比 ${Math.round(wm.size * 100)}%`}>
               <input
                 type="range"
                 className="w-full"
@@ -151,18 +150,18 @@ export function VideoSection({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <CardFields
-          label="Intro card"
+          label="片头卡"
           value={v.intro ?? null}
           fallbackTitle={projectTitle}
           onChange={(intro) => set({ intro })}
         />
-        <CardFields label="Outro card" value={v.outro ?? null} fallbackTitle="" onChange={(outro) => set({ outro })} />
+        <CardFields label="片尾卡" value={v.outro ?? null} fallbackTitle="" onChange={(outro) => set({ outro })} />
       </div>
 
       {chapters && chapters.length > 0 && (
         <details>
           <summary className="cursor-pointer text-sm">
-            Chapter cards ({v.chapterCards?.length ?? 0} on): a title card before each chapter's first shot
+            章节卡（已启用{v.chapterCards?.length ?? 0} 张），在每章第一个镜头前显示标题卡
           </summary>
           <div className="mt-2 grid gap-4 sm:grid-cols-2">
             {chapters.map((ch) => {
@@ -170,9 +169,9 @@ export function VideoSection({
               return (
                 <CardFields
                   key={ch.id}
-                  label={`Chapter ${ch.order} card`}
+                  label={`第 ${ch.order} 章标题卡`}
                   value={card}
-                  fallbackTitle={`Chapter ${ch.order}: ${ch.title}`.slice(0, 120)}
+                  fallbackTitle={`第 ${ch.order} 章 · ${ch.title}`.slice(0, 120)}
                   onChange={(next) =>
                     set({
                       chapterCards: [
@@ -189,21 +188,18 @@ export function VideoSection({
       )}
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field
-          label="Export frame"
-          hint="What a video export uses unless you choose otherwise. Shorts are always 9:16."
-        >
+        <Field label="导出画幅" hint="视频导出的默认画幅。Shorts 始终使用 9:16。">
           <select
             className="input"
             value={v.output?.aspect ?? "16:9"}
             onChange={(e) => set({ output: { height: 1080, ...v.output, aspect: e.target.value as Output["aspect"] } })}
           >
-            <option value="16:9">16:9 landscape</option>
-            <option value="9:16">9:16 vertical</option>
-            <option value="1:1">1:1 square</option>
+            <option value="16:9">16:9 横屏</option>
+            <option value="9:16">9:16 竖屏</option>
+            <option value="1:1">1:1 方形</option>
           </select>
         </Field>
-        <Field label="Export resolution">
+        <Field label="导出分辨率">
           <select
             className="input"
             value={v.output?.height ?? 1080}
@@ -232,44 +228,43 @@ export function PublishingSection({ value, onChange }: { value: Publishing; onCh
   return (
     <section className="card space-y-3 p-4">
       <div>
-        <h2 className="font-medium">Thumbnail & YouTube text</h2>
+        <h2 className="font-medium">缩略图与 YouTube 文案</h2>
         <p className="muted text-xs">
-          The YouTube package text job follows these rules as your own instructions. Your tags are added to every
-          package as written.
+          YouTube 发布包的文案生成任务将遵循这些规则，每个发布包都会原样添加你填写的标签。
         </p>
       </div>
-      <Field label="Thumbnail headline side" hint="New thumbnails keep this side of the art clear for the headline.">
+      <Field label="缩略图标题位置" hint="新缩略图会在画面的这一侧为标题留白。">
         <select
           className="input"
           value={value.thumbnailStyle?.side ?? "left"}
           onChange={(e) => onChange({ ...value, thumbnailStyle: { side: e.target.value as "left" | "right" } })}
         >
-          <option value="left">Left</option>
-          <option value="right">Right</option>
+          <option value="left">左侧</option>
+          <option value="right">右侧</option>
         </select>
       </Field>
-      <Field label="Title rules">
+      <Field label="标题规则">
         <textarea
           className="input min-h-16"
           maxLength={1000}
-          placeholder="e.g. Start with the main character's name. No question marks. Under 60 characters."
+          placeholder="例如，以主角名字开头，不用问号，少于 60 个字符。"
           value={rules.titleRules}
           onChange={(e) => setRules({ titleRules: e.target.value })}
         />
       </Field>
       <Field
-        label="Description template"
-        hint="{title} and {author} are filled in exactly; the model writes {hook} (two lines) and {summary} (no spoilers). Other text stays as written. Chapter timestamps are added after it."
+        label="描述模板"
+        hint="{title} 和 {author} 将原样填入，模型会撰写 {hook}（两行引子）和 {summary}（无剧透摘要）。其余文字原样保留，章节时间戳附在末尾。"
       >
         <textarea
           className="input min-h-24 font-mono text-sm"
           maxLength={4000}
-          placeholder={"{hook}\n\n{summary}\n\nNew recaps every Friday."}
+          placeholder={"{hook}\n\n{summary}\n\n每周五更新解说。"}
           value={rules.descriptionTemplate}
           onChange={(e) => setRules({ descriptionTemplate: e.target.value })}
         />
       </Field>
-      <Field label="Default tags" hint="Enter or comma after each.">
+      <Field label="默认标签" hint="每个标签后按回车或输入逗号。">
         <TagInput value={rules.tags} onChange={(tags) => setRules({ tags: tags.slice(0, 30) })} />
       </Field>
     </section>
@@ -303,20 +298,20 @@ function CardFields({
           <input
             className="input"
             maxLength={120}
-            placeholder="Title"
-            aria-label={`${label} title`}
+            placeholder="标题"
+            aria-label={`${label}标题`}
             value={value.title}
             onChange={(e) => onChange({ ...value, title: e.target.value })}
           />
           <input
             className="input"
             maxLength={200}
-            placeholder="Subtitle (optional)"
-            aria-label={`${label} subtitle`}
+            placeholder="副标题（可选）"
+            aria-label={`${label}副标题`}
             value={value.subtitle}
             onChange={(e) => onChange({ ...value, subtitle: e.target.value })}
           />
-          <Field label="Seconds on screen">
+          <Field label="显示时长（秒）">
             <input
               className="input"
               type="number"
@@ -369,20 +364,20 @@ function MusicBed({
   };
   return (
     <div className="space-y-2">
-      <div className="label">Music bed</div>
+      <div className="label">背景音乐</div>
       <p className="muted text-xs">
-        A track under the whole video, looped, turned down while the narrator speaks. Use only music you have the rights
-        to. Generated clips' own sound is set per shot (Panel tab → Video clip).
+        背景音乐在整段视频中循环播放，旁白朗读时降低音量。请使用已获授权的音乐。生成片段的原声可逐镜头设置（画格页签 →
+        视频片段）。
       </p>
       <div className="flex flex-wrap items-center gap-2">
         {value && (
-          <audio src={assetUrl(value.assetId)} controls className="h-8 max-w-64" aria-label="Music bed">
+          <audio src={assetUrl(value.assetId)} controls className="h-8 max-w-64" aria-label="背景音乐">
             <track kind="captions" />
           </audio>
         )}
         {name && <span className="muted text-xs">{name}</span>}
         <label className={clsx("btn-secondary cursor-pointer", busy && "pointer-events-none opacity-50")}>
-          {busy ? <Spinner /> : <Music2 className="size-4" />} {value ? "Replace track" : "Upload a track"}
+          {busy ? <Spinner /> : <Music2 className="size-4" />} {value ? "替换音乐" : "上传音乐"}
           <input
             type="file"
             accept="audio/mpeg,audio/wav,audio/ogg,audio/flac,audio/mp4,.mp3,.wav,.ogg,.flac,.m4a"
@@ -396,13 +391,13 @@ function MusicBed({
         </label>
         {value && (
           <button type="button" className="btn-ghost text-red-500" onClick={() => onChange(null)}>
-            <Trash2 className="size-4" /> Remove
+            <Trash2 className="size-4" /> 移除
           </button>
         )}
       </div>
       {value && (
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label={`Volume ${Math.round(value.volume * 100)}%`}>
+          <Field label={`音量 ${Math.round(value.volume * 100)}%`}>
             <input
               type="range"
               className="w-full"
@@ -419,7 +414,7 @@ function MusicBed({
               checked={value.duck}
               onChange={(e) => onChange({ ...value, duck: e.target.checked })}
             />
-            Lower the music while the narrator speaks
+            旁白朗读时降低音乐音量
           </label>
         </div>
       )}

@@ -91,23 +91,23 @@ const STEPS = [
 ] as const;
 
 export const STEP_LABELS: Record<(typeof STEPS)[number], string> = {
-  analyze: "Analyse the story",
-  review_analysis: "Review the analysis",
-  apply: "Apply the analysis",
-  references: "Draw references",
-  review_references: "Review the references",
-  review_plans: "Chapters changed since they were planned",
-  plan: "Plan every chapter",
-  prompts: "Prepare panel prompts",
-  art: "Generate missing artwork",
-  review_narration: "Narration written before its chapter changed",
-  narration: "Write narration",
-  audio: "Synthesize narration",
-  thumbnail: "Video thumbnail",
-  youtube_text: "YouTube package text",
-  review_render: "Review before the final render",
-  render: "Render the video",
-  youtube_package: "YouTube package export",
+  analyze: "分析故事",
+  review_analysis: "审核故事分析",
+  apply: "应用故事分析",
+  references: "生成参考图",
+  review_references: "审核参考图",
+  review_plans: "审核过期的章节规划",
+  plan: "规划各章节",
+  prompts: "准备分镜提示词",
+  art: "生成缺失的画格图",
+  review_narration: "审核过期的旁白",
+  narration: "编写旁白",
+  audio: "合成旁白音频",
+  thumbnail: "视频缩略图",
+  youtube_text: "YouTube 发布文案",
+  review_render: "审核最终渲染",
+  render: "渲染视频",
+  youtube_package: "导出 YouTube 发布包",
 };
 
 /**
@@ -172,8 +172,7 @@ export class CallError extends Error {
 
 async function caller(deps: Deps, run: Run) {
   const [u] = await deps.db.select().from(users).where(eq(users.id, run.userId));
-  if (!u || u.status === "disabled")
-    throw new CallError(403, "forbidden", "The account that started this run is disabled");
+  if (!u || u.status === "disabled") throw new CallError(403, "forbidden", "发起此任务的账户已停用");
   return callAs(deps, toSessionUser(u));
 }
 
@@ -261,14 +260,14 @@ async function each<T>(items: T[], fn: (t: T) => Promise<string[]>) {
       firstError ||= e instanceof Error ? e.message : String(e);
     }
   }
-  return { jobIds, note: refused ? `${refused} refused: ${firstError}` : undefined };
+  return { jobIds, note: refused ? `${refused} 项请求被拒绝：${firstError}` : undefined };
 }
 
 const START: Record<string, (x: Ctx) => Promise<Started>> = {
   async analyze(x) {
     // A built project is analysed again only when its story was revised after the analysis it was built from.
     const built = await hasChapters(x);
-    if (built && !(await revisedStory(x.deps.db, x.project.id))) return { status: "skipped", note: "Already analysed" };
+    if (built && !(await revisedStory(x.deps.db, x.project.id))) return { status: "skipped", note: "已完成分析" };
     const story = await x.call<{ latest: { id: string } | null }>("GET", `/api/projects/${x.project.id}/story`);
     if (!story.latest) throw new CallError(400, "no_story", "Add a story on the Story page first");
     const r = await x.call<{ job: { id: string }; analysis: { id: string } }>(
@@ -280,7 +279,7 @@ const START: Record<string, (x: Ctx) => Promise<Started>> = {
       status: "running",
       jobIds: [r.job.id],
       ref: r.analysis.id,
-      note: built ? "The story was revised: analysing the new revision" : undefined,
+      note: built ? "故事已修订，正在分析新版" : undefined,
     };
   },
   async review_analysis(x) {
@@ -289,16 +288,16 @@ const START: Record<string, (x: Ctx) => Promise<Started>> = {
     if (await hasChapters(x))
       return {
         status: "review",
-        note: "The revised story's analysis is ready. Review what it would change on the Story page; apply it there (choosing anything to remove), or continue to apply it keeping every existing chapter, character, place and prop.",
+        note: "新版故事分析已完成。可在「故事」中审核变更，并选择要移除的条目。直接继续将保留现有章节、角色、地点和道具。",
       };
     if (!x.o.reviewGates) return { status: "skipped" };
-    return { status: "review", note: "Check the analysis on the Story page, then continue: it is applied next." };
+    return { status: "review", note: "请在「故事」中查看分析。继续后将应用分析结果。" };
   },
   async apply(x) {
     const a = prev(x, "analyze");
     if (a?.status === "skipped" || !a?.ref) return { status: "skipped" };
     const { analysis } = await x.call<{ analysis: { status: string } }>("GET", `/api/story-analyses/${a.ref}`);
-    if (analysis.status === "applied") return { status: "done", note: "Applied on the Story page" };
+    if (analysis.status === "applied") return { status: "done", note: "已在「故事」中应用" };
     // Additive: existing chapters keep their pages, new ones are inserted, nothing is removed.
     await x.call("POST", `/api/story-analyses/${a.ref}/apply`, {});
     return { status: "done" };
@@ -319,7 +318,7 @@ const START: Record<string, (x: Ctx) => Promise<Started>> = {
   async review_references() {
     return {
       status: "review",
-      note: "Approve the references you want kept (Cast and World pages); unapproved ones do not pin identity.",
+      note: "请在「角色」和「世界观」中批准要保留的参考图。已批准的参考图会用于保持外观一致。",
     };
   },
   async review_plans(x) {
@@ -327,7 +326,7 @@ const START: Record<string, (x: Ctx) => Promise<Started>> = {
     if (!plans.length) return { status: "skipped" };
     return {
       status: "review",
-      note: `${plans.length} chapter(s) changed after they were planned. For each, keep the current pages or re-plan it (re-planning replaces its pages and artwork); continue when done. Chapters left undecided keep their pages.`,
+      note: `${plans.length} 章在规划后发生了变更。请逐章选择保留现有页面或重新规划。重新规划会替换页面和画格图。未选择的章节将保留原页面。`,
     };
   },
   async plan(x) {
@@ -385,7 +384,7 @@ const START: Record<string, (x: Ctx) => Promise<Started>> = {
     if (!narration.length) return { status: "skipped" };
     return {
       status: "review",
-      note: `${narration.length} chapter(s) changed after their narration was written. For each, keep the narration or write it again (which replaces it); continue when done.`,
+      note: `${narration.length} 章在编写旁白后发生了变更。请逐章选择保留旁白或重写，重写会替换现有旁白。`,
     };
   },
   async narration(x) {
@@ -411,7 +410,7 @@ const START: Record<string, (x: Ctx) => Promise<Started>> = {
     return { status: "running", audioBatchIds: out.jobIds, note: out.note };
   },
   async thumbnail(x) {
-    if (x.project.settings.thumbnail) return { status: "skipped", note: "Already has one" };
+    if (x.project.settings.thumbnail) return { status: "skipped", note: "已有缩略图" };
     const r = await x.call<{ job: { id: string } }>("POST", `/api/projects/${x.project.id}/thumbnail`, {
       ...image(x),
       title: x.project.title,
@@ -419,12 +418,12 @@ const START: Record<string, (x: Ctx) => Promise<Started>> = {
     return { status: "running", jobIds: [r.job.id] };
   },
   async youtube_text(x) {
-    if (x.project.settings.youtubePackage?.titles.length) return { status: "skipped", note: "Already written" };
+    if (x.project.settings.youtubePackage?.titles.length) return { status: "skipped", note: "已有发布文案" };
     const r = await x.call<{ job: { id: string } }>("POST", `/api/projects/${x.project.id}/youtube-package`, text(x));
     return { status: "running", jobIds: [r.job.id] };
   },
   async review_render() {
-    return { status: "review", note: "Preview the video (Pages or a chapter), then continue to render it." };
+    return { status: "review", note: "请先在「页面」或章节中预览视频，再继续渲染。" };
   },
   async render(x) {
     const r = await x.call<{ job: { id: string } }>("POST", `/api/projects/${x.project.id}/exports`, {
@@ -440,7 +439,7 @@ const START: Record<string, (x: Ctx) => Promise<Started>> = {
         .select({ status: exportJobs.status })
         .from(exportJobs)
         .where(eq(exportJobs.id, render.exportJobId));
-      if (e?.status !== "completed") return { status: "skipped", note: "The video did not render" };
+      if (e?.status !== "completed") return { status: "skipped", note: "视频渲染未完成" };
     }
     const r = await x.call<{ job: { id: string } }>("POST", `/api/projects/${x.project.id}/exports`, {
       kind: "youtube_package",
@@ -517,7 +516,7 @@ async function check(x: Ctx): Promise<"running" | "done" | { failed: string }> {
     }
     // Left for the person: listed in the run's warnings at the end, and here on the step.
     const failed = stale.filter((r) => r.failed).length;
-    s.note = `${stale.length} segment(s) without current audio${failed ? `, ${failed} failed` : ""}; see Narration`;
+    s.note = `${stale.length} 段缺少最新音频${failed ? `，${failed} 项失败` : ""}，请查看旁白`;
     return "done";
   }
   if (s.exportJobId) {
@@ -528,7 +527,8 @@ async function check(x: Ctx): Promise<"running" | "done" | { failed: string }> {
     if (!e || !FINAL.includes(e.status)) return "running";
     // The exports come last and nothing else stands on them: a failure is noted, listed in the run's warnings, and
     // can be rendered again from the run card.
-    if (e.status !== "completed") s.note = `Export ${e.status}: ${e.reason ?? "no reason given"}`;
+    if (e.status !== "completed")
+      s.note = `导出${e.status === "cancelled" ? "已取消" : "失败"}：${e.reason ?? "原因未知"}`;
     return "done";
   }
   if (!s.jobIds?.length) return "done";
@@ -541,8 +541,8 @@ async function check(x: Ctx): Promise<"running" | "done" | { failed: string }> {
   // Analysis and planning are what everything after them stands on; elsewhere a few failures are noted and left
   // for the person (they show on the storyboard and in Generation) while the run carries on.
   if (failed.length && (s.key === "analyze" || failed.length === jobs.length))
-    return { failed: failed[0]!.reason ?? "The job failed" };
-  if (failed.length) s.note = `${failed.length} of ${jobs.length} failed; see Generation`;
+    return { failed: failed[0]!.reason ?? "任务失败" };
+  if (failed.length) s.note = `${jobs.length} 项中有 ${failed.length} 项失败，请查看生成任务`;
   return "done";
 }
 
@@ -644,7 +644,7 @@ export const FAILED_CHECK =
  */
 async function videoProblem(deps: Deps, run: Run, project: Project, panels: number) {
   const render = run.steps.find((s) => s.key === "render");
-  if (!render?.exportJobId) return "The video was not rendered";
+  if (!render?.exportJobId) return "视频尚未渲染";
   const [r] = await deps.db.execute<{ status: string; video_ms: number | null; narration_ms: number }>(sql`
     select j.status,
       (select max(a.duration_ms) from exports e join assets a on a.id = e.asset_id
@@ -655,9 +655,9 @@ async function videoProblem(deps: Deps, run: Run, project: Project, panels: numb
         where nl.project_id = ${project.id} and nl.language = ${project.language}) as narration_ms
     from export_jobs j where j.id = ${render.exportJobId}`);
   if (r?.status !== "completed") return null;
-  if (r.video_ms == null) return "The rendered video has no length recorded";
+  if (r.video_ms == null) return "渲染结果缺少视频时长记录";
   if (r.video_ms + videoDriftToleranceMs(panels) < r.narration_ms)
-    return `The video runs ${Math.round(r.video_ms / 1000)} s but its narration takes ${Math.round(r.narration_ms / 1000)} s: it is too short`;
+    return `视频过短：视频时长 ${Math.round(r.video_ms / 1000)} 秒，旁白时长 ${Math.round(r.narration_ms / 1000)} 秒`;
   return null;
 }
 
@@ -672,11 +672,8 @@ async function publishingNote(deps: Deps, run: Run) {
   const stale = (await publishingStaleness(deps.db, project)).filter((p) => p.stale);
   if (!stale.length) return null;
   return stale
-    .map((p) =>
-      p.key === "youtube_text" ? "YouTube text may be out of date" : "thumbnail headline may be out of date",
-    )
-    .join("; ")
-    .replace(/^./, (ch) => ch.toUpperCase());
+    .map((p) => (p.key === "youtube_text" ? "YouTube 文案可能需要更新" : "缩略图标题字可能需要更新"))
+    .join("；");
 }
 
 // ---------------------------------------------------------------- advancing
@@ -752,7 +749,7 @@ export async function advanceRun(deps: Deps, runId: string, owner = `${PROCESS_I
       }
       const [project] = await deps.db.select().from(projects).where(eq(projects.id, run.projectId));
       if (!project || project.deletedAt) {
-        await save({ status: "cancelled", reason: "The project was removed" });
+        await save({ status: "cancelled", reason: "项目已删除" });
         return;
       }
       const o = run.options as RunOptions;
@@ -791,7 +788,7 @@ export async function advanceRun(deps: Deps, runId: string, owner = `${PROCESS_I
         const msg = e instanceof Error ? e.message : String(e);
         // Spending stops at the project's cap: pause, so raising the cap and continuing picks up right here.
         if (e instanceof CallError && (e.code === "budget_exceeded" || e.status === 402)) {
-          const which = e.code === "instance_budget_exceeded" ? "Server budget ceiling reached" : "Budget cap reached";
+          const which = e.code === "instance_budget_exceeded" ? "服务器预算已达上限" : "项目预算已达上限";
           await save({ status: "paused", reason: `${which}: ${msg}` });
           return;
         }

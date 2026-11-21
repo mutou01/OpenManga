@@ -106,7 +106,7 @@ boardRoutes.post("/projects/:projectId/board", async (c) => {
     .select({ n: sql<number>`count(*)::int`, max: sql<number>`coalesce(max(${boardItems.order}), 0)::int` })
     .from(boardItems)
     .where(eq(boardItems.projectId, p.id));
-  if ((n?.n ?? 0) >= MAX_ITEMS) throw badRequest(`A board holds at most ${MAX_ITEMS} images`);
+  if ((n?.n ?? 0) >= MAX_ITEMS) throw badRequest(`看板最多可保存 ${MAX_ITEMS} 张图片`);
   let assetId: string;
   let note = "";
   if (c.req.header("content-type")?.includes("multipart/form-data")) {
@@ -128,7 +128,7 @@ boardRoutes.post("/projects/:projectId/board", async (c) => {
     const input = await body(c, AddExisting);
     const a = await deps.assets.get(input.assetId);
     if (!a || a.projectId !== p.id || a.deletedAt) throw notFound("Image");
-    if (!a.mimeType.startsWith("image/")) throw badRequest("That asset is not an image");
+    if (!a.mimeType.startsWith("image/")) throw badRequest("该素材不是图片");
     assetId = a.id;
     note = input.note;
   }
@@ -188,7 +188,7 @@ boardRoutes.post("/projects/:projectId/board/order", async (c) => {
     (r) => r.id,
   );
   if (ids.length !== have.length || new Set(ids).size !== ids.length || ids.some((id) => !have.includes(id)))
-    throw badRequest("Send every board item exactly once");
+    throw badRequest("请为看板的每个条目提供一次且仅一次排序值");
   await db.execute(
     sql`update board_items b set "order" = v.o from (values ${sql.join(
       ids.map((id, i) => sql`(${id}::uuid, ${i + 1}::int)`),
@@ -229,13 +229,13 @@ boardRoutes.post("/board-items/:id/use", async (c) => {
   const a = await deps.assets.get(row.assetId);
   if (!a || a.deletedAt) throw notFound("Image");
   const same = (projectId: string) => {
-    if (projectId !== project.id) throw badRequest("That belongs to another project");
+    if (projectId !== project.id) throw badRequest("该条目属于其他项目");
   };
   if (input.target === "guide") {
     const p = await entityAccess(c, "panel", input.panelId, "write");
     same(p.id);
     const [pn] = await deps.db.select().from(panels).where(eq(panels.id, input.panelId));
-    if (pn!.approvalStatus === "locked") throw conflict("Panel is locked");
+    if (pn!.approvalStatus === "locked") throw conflict("画格已锁定");
     const [next] = await deps.db
       .update(panels)
       .set({ guide: { assetId: a.id, strength: input.strength, pose: pn!.guide?.pose ?? "" } })
@@ -267,7 +267,7 @@ boardRoutes.post("/board-items/:id/use", async (c) => {
     const table =
       subject === "character" ? characterVersions : subject === "location" ? locationVersions : propVersions;
     const [v] = await deps.db.select({ status: table.status }).from(table).where(eq(table.id, input.versionId));
-    if (v?.status === "superseded") throw conflict("That version is superseded");
+    if (v?.status === "superseded") throw conflict("该版本已被替换");
     versionId = input.versionId;
   }
   if (input.target === "outfit") {
@@ -276,7 +276,7 @@ boardRoutes.post("/board-items/:id/use", async (c) => {
       .from(characterOutfits)
       .innerJoin(characterVersions, eq(characterVersions.characterId, characterOutfits.characterId))
       .where(and(eq(characterOutfits.id, input.outfitId), eq(characterVersions.id, input.versionId)));
-    if (!o) throw badRequest("That outfit belongs to another character");
+    if (!o) throw badRequest("该服装属于其他角色");
   }
   if (input.target === "location" && input.locationStateId) {
     const [s] = await deps.db
@@ -284,7 +284,7 @@ boardRoutes.post("/board-items/:id/use", async (c) => {
       .from(locationStates)
       .innerJoin(locationVersions, eq(locationVersions.locationId, locationStates.locationId))
       .where(and(eq(locationStates.id, input.locationStateId), eq(locationVersions.id, input.versionId)));
-    if (!s) throw badRequest("That state belongs to another location");
+    if (!s) throw badRequest("该状态属于其他地点");
   }
   const { ref } = await storeReference(
     c,

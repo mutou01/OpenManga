@@ -31,7 +31,7 @@ async function newProject(title: string) {
   return { id: project.id, url: `/app/projects/${project.id}` };
 }
 
-const card = () => page.locator(".card", { has: page.getByRole("heading", { name: "Production run" }) });
+const card = () => page.locator(".card", { has: page.getByRole("heading", { name: "制作任务" }) });
 /** The run's status line, e.g. "completed with warnings" (capitalised only by CSS). */
 const runStatus = (re: RegExp) => card().locator("p > span.font-medium").filter({ hasText: re });
 
@@ -42,35 +42,35 @@ test("produce, the final-output gate, Health, then Update production after a rev
 
   await test.step("produce with review gates and the render off", async () => {
     await page.goto(p.url);
-    await card().getByRole("button", { name: "Produce" }).click();
-    const d = page.getByRole("dialog", { name: "Produce this project" });
+    await card().getByRole("button", { name: "一键制作" }).click();
+    const d = page.getByRole("dialog", { name: "一键制作此项目" });
     // Priced before anything starts: the analysis, references and thumbnail still to do, and the budget left.
     const plan = d.getByRole("region", { name: "Cost plan" });
     await expect(plan.getByText(/^About \$\d/)).toBeVisible();
     await expect(plan.getByText(/left of \$50\.00/)).toBeVisible();
     await plan.getByText("By chapter").click();
     await expect(plan.getByRole("cell", { name: "Analysis" })).toBeVisible();
-    await d.getByLabel(/Pause for my review/).uncheck();
-    await d.getByLabel("Render the video at the end").uncheck();
-    await d.getByRole("button", { name: "Start" }).click();
+    await d.getByLabel(/暂停，等待审核/).uncheck();
+    await d.getByLabel("制作完成后渲染视频").uncheck();
+    await d.getByRole("button", { name: "开始" }).click();
     await expect(d).toBeHidden();
-    await expect(runStatus(/^running$/i)).toBeVisible();
+    await expect(runStatus(/^运行中$/)).toBeVisible();
   });
 
   await test.step("the run ends finished, or finished with its unresolved list", async () => {
-    await expect(runStatus(/^completed( with warnings)?$/i)).toBeVisible({ timeout: 240_000 });
+    await expect(runStatus(/^已完成(，有待处理事项)?$/)).toBeVisible({ timeout: 240_000 });
     const { runs } = await a.get<{ runs: Run[] }>(`/projects/${p.id}/production-runs`);
     expect(["completed", "completed_with_warnings"]).toContain(runs[0]!.status);
     if (runs[0]!.status === "completed_with_warnings")
-      await expect(card().getByText(/^Finished with \d+ unresolved items?/)).toBeVisible();
+      await expect(card().getByText(/^制作已结束，仍有 \d+ 项待处理/)).toBeVisible();
     await expect(card().getByText("Draw references")).toBeVisible();
   });
 
   await test.step("Health shows the verdict", async () => {
     await page.goto(`${p.url}/health`);
-    await expect(page.getByRole("heading", { name: "Health" })).toBeVisible();
-    await expect(page.getByText(/(Ready to publish|\d+ blocking issues?)$/).first()).toBeVisible();
-    await expect(page.getByText(/^Spend \$/)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "项目检查" })).toBeVisible();
+    await expect(page.getByText(/(可发布|有 \d+ 项问题影响发布)$/).first()).toBeVisible();
+    await expect(page.getByText(/^已花费 \$/)).toBeVisible();
   });
 
   await test.step("revise the story: Update production stops at the review", async () => {
@@ -79,19 +79,19 @@ test("produce, the final-output gate, Health, then Update production after a rev
       content: `${STORY}\n\nChapter 2: Dawn\n\nWoo Jin walked home at dawn. The city was quiet and grey.`,
     });
     await page.goto(p.url);
-    await card().getByRole("button", { name: "Update production" }).click();
-    const d = page.getByRole("dialog", { name: "Update the production" });
+    await card().getByRole("button", { name: "更新制作" }).click();
+    const d = page.getByRole("dialog", { name: "更新制作" });
     // Review gates off: a revised story's analysis still waits for the user.
-    await d.getByLabel(/Pause for my review/).uncheck();
-    await d.getByLabel("Render the video at the end").uncheck();
-    await d.getByRole("button", { name: "Start" }).click();
+    await d.getByLabel(/暂停，等待审核/).uncheck();
+    await d.getByLabel("制作完成后渲染视频").uncheck();
+    await d.getByRole("button", { name: "开始" }).click();
     await expect(d).toBeHidden();
-    await expect(runStatus(/^waiting$/i)).toBeVisible({ timeout: 60_000 });
-    await expect(card().getByRole("link", { name: /Review it on the Story page/ })).toBeVisible();
+    await expect(runStatus(/^等待中$/)).toBeVisible({ timeout: 60_000 });
+    await expect(card().getByRole("link", { name: /在故事页审核/ })).toBeVisible();
   });
 
   await test.step("continue, and keep the changed chapter's plan as it is", async () => {
-    await card().getByRole("button", { name: "Continue" }).click();
+    await card().getByRole("button", { name: "继续" }).click();
     await expect(card().getByText(/^Chapters changed since they were planned — 1 chapter/)).toBeVisible({
       timeout: 60_000,
     });
@@ -121,17 +121,17 @@ test("stopping a run cancels its queued jobs", async () => {
   const jobId = run.steps.find((st) => st.key === "analyze")!.jobIds![0]!;
 
   await page.goto(p.url);
-  await expect(runStatus(/^running$/i)).toBeVisible();
-  await card().getByRole("button", { name: "Stop" }).click();
-  const d = page.getByRole("dialog", { name: "Stop the production run" });
-  await expect(d.getByText("1 job not started yet would be cancelled.", { exact: false })).toBeVisible();
-  await expect(d.getByLabel(/Stop and cancel its queued jobs/)).toBeChecked();
-  await d.getByRole("button", { name: "Stop" }).click();
+  await expect(runStatus(/^运行中$/)).toBeVisible();
+  await card().getByRole("button", { name: "停止" }).click();
+  const d = page.getByRole("dialog", { name: "停止制作任务" });
+  await expect(d.getByText("将取消 1 个尚未开始的任务。", { exact: false })).toBeVisible();
+  await expect(d.getByLabel(/停止制作并取消排队任务/)).toBeChecked();
+  await d.getByRole("button", { name: "停止" }).click();
   await expect(d).toBeHidden();
-  await expect(runStatus(/^cancelled$/i)).toBeVisible();
+  await expect(runStatus(/^已取消$/)).toBeVisible();
 
   await page.goto(`${p.url}/generation/${jobId}`);
-  await expect(page.getByText("cancelled").first()).toBeVisible();
+  await expect(page.getByText("已取消").first()).toBeVisible();
   const { job } = await a.get<{ job: { status: string } }>(`/generations/${jobId}`);
   expect(job.status).toBe("cancelled");
 });

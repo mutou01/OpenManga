@@ -26,24 +26,24 @@ test.afterEach(() => {
 test("members: invite by username, accept in a second browser, marked Shared", async () => {
   const page = owner.page;
   await page.goto(s.url);
-  await page.getByRole("button", { name: "Members" }).click();
-  const d = page.getByRole("dialog", { name: "Members" });
-  await d.getByLabel("Username or email").fill(member.user.username);
-  await d.getByLabel("Role").selectOption("editor");
-  await d.getByRole("button", { name: "Invite" }).click();
-  await expect(page.getByText("Invitation sent")).toBeVisible();
-  await expect(d.getByRole("heading", { name: "Pending invitations" })).toBeVisible();
+  await page.getByRole("button", { name: "成员" }).click();
+  const d = page.getByRole("dialog", { name: "成员" });
+  await d.getByLabel("用户名或邮箱").fill(member.user.username);
+  await d.getByLabel("权限").selectOption("editor");
+  await d.getByRole("button", { name: "邀请" }).click();
+  await expect(page.getByText("已发送邀请")).toBeVisible();
+  await expect(d.getByRole("heading", { name: "待接受的邀请" })).toBeVisible();
 
   const other = member.page;
   await other.goto("/app/");
-  const invites = other.getByRole("region", { name: "Invitations" });
+  const invites = other.getByRole("region", { name: "项目邀请" });
   await expect(invites.getByText("E2E collab")).toBeVisible();
-  await invites.getByRole("button", { name: "Accept" }).click();
+  await invites.getByRole("button", { name: "接受" }).click();
   await expect(other).toHaveURL(new RegExp(`/projects/${s.projectId}`));
   await other.goto("/app/");
-  const card = other.locator("li, a, div.card", { hasText: "E2E collab" }).filter({ hasText: "Shared" }).first();
+  const card = other.locator("li, a, div.card", { hasText: "E2E collab" }).filter({ hasText: "已共享" }).first();
   await expect(card).toBeVisible();
-  await expect(card.getByText(`@${owner.user.username} · editor`)).toBeVisible();
+  await expect(card.getByText(`@${owner.user.username} · 编辑者`)).toBeVisible();
 });
 
 test("panel comments: a mention reaches the member's notification bell", async () => {
@@ -59,10 +59,10 @@ test("panel comments: a mention reaches the member's notification bell", async (
 
   const other = member.page;
   await other.goto("/app/");
-  const bell = other.getByRole("button", { name: /^Notifications, 1 unread$/ });
+  const bell = other.getByRole("button", { name: /^通知，1 条未读$/ });
   await expect(bell).toBeVisible();
   await bell.click();
-  const note = other.getByRole("button", { name: new RegExp(`@${owner.user.username} mentioned you in E2E collab`) });
+  const note = other.getByRole("button", { name: new RegExp(`@${owner.user.username} 提及了你 · E2E collab`) });
   await expect(note).toBeVisible();
   await note.click();
   await expect(other).toHaveURL(new RegExp(`/pages/${s.pageId}`));
@@ -158,9 +158,9 @@ test("review: a pinned, assigned thread on the artwork, and a guest's comment th
 
   await test.step("the member is told it is theirs", async () => {
     await member.page.goto("/app/");
-    await member.page.getByRole("button", { name: /^Notifications, \d+ unread$/ }).click();
+    await member.page.getByRole("button", { name: /^通知，\d+ 条未读$/ }).click();
     await expect(
-      member.page.getByRole("button", { name: new RegExp(`@${owner.user.username} assigned you a thread`) }),
+      member.page.getByRole("button", { name: new RegExp(`@${owner.user.username} 给你分配了一条评论`) }),
     ).toBeVisible();
   });
 
@@ -181,8 +181,8 @@ test("review: a pinned, assigned thread on the artwork, and a guest's comment th
     await expect(drawer.getByText("Ana (guest)")).toBeVisible();
     await anon.close();
     await page.goto("/app/");
-    await page.getByRole("button", { name: /^Notifications, \d+ unread$/ }).click();
-    await expect(page.getByRole("button", { name: /Ana \(guest\) commented through a reader link/ })).toBeVisible();
+    await page.getByRole("button", { name: /^通知，\d+ 条未读$/ }).click();
+    await expect(page.getByRole("button", { name: /Ana（访客） 通过阅读链接发表了评论/ })).toBeVisible();
   });
 });
 
@@ -208,12 +208,12 @@ test("channel profiles: voice, pronunciation and branding, picked in the wizard,
 
   await test.step("the new-project wizard picks it", async () => {
     await page.locator("li", { hasText: name }).getByRole("link", { name: "New project" }).click();
-    await expect(page.getByLabel("Channel profile")).toHaveValue(/.+/);
-    await expect(page.getByLabel("Channel profile").locator("option:checked")).toHaveText(name);
-    await page.getByLabel("Title", { exact: true }).fill("E2E from a profile");
-    await page.getByRole("button", { name: "Next" }).click();
-    await page.getByRole("button", { name: "Create without analysis" }).click();
-    await expect(page.getByText(`From profile ${name}`, { exact: false })).toBeVisible();
+    await expect(page.getByLabel("频道配置")).toHaveValue(/.+/);
+    await expect(page.getByLabel("频道配置").locator("option:checked")).toHaveText(name);
+    await page.getByLabel("标题", { exact: true }).fill("E2E from a profile");
+    await page.getByRole("button", { name: "下一步" }).click();
+    await page.getByRole("button", { name: "直接创建" }).click();
+    await expect(page.getByText(`频道配置 ${name}`, { exact: false })).toBeVisible();
   });
   const projectUrl = page.url();
   const projectId = projectUrl.match(/projects\/([0-9a-f-]{36})/)![1]!;
@@ -231,12 +231,12 @@ test("channel profiles: voice, pronunciation and branding, picked in the wizard,
     await page.getByRole("button", { name: "Save profile" }).click();
     await expect(page.getByText("Profile saved")).toBeVisible();
     await page.goto(projectUrl);
-    await page.getByRole("button", { name: "Re-apply profile" }).click();
-    const d = page.getByRole("dialog", { name: "Apply a channel profile" });
-    const change = d.locator("li", { hasText: "Narrator voice" });
+    await page.getByRole("button", { name: "重新应用频道配置" }).click();
+    const d = page.getByRole("dialog", { name: "应用频道配置" });
+    const change = d.locator("li", { hasText: "旁白音色" });
     await expect(change).toContainText("am_michael");
     await expect(change).toContainText("bf_emma");
-    await d.getByRole("button", { name: "Apply 1 change" }).click();
+    await d.getByRole("button", { name: "应用 1 项更改" }).click();
     await expect(d).toBeHidden();
     await expect
       .poll(async () => (await api(page).get(`/projects/${projectId}`)).project.settings.narrationVoice)
@@ -262,7 +262,7 @@ test("experts: a reply becomes a new project through its output action", async (
   // A concept opens the project it made.
   await expect(page.getByText("Project created")).toBeVisible();
   await expect(page).toHaveURL(/\/projects\/[0-9a-f-]{36}/);
-  await expect(page.getByRole("heading", { name: "Production run" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "制作任务" })).toBeVisible();
 });
 
 test("project agent: a plan to approve, a step that waits for approval, then a summary", async () => {

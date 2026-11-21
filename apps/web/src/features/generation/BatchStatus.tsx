@@ -63,29 +63,25 @@ const useDismissed = create<{ ids: Set<string>; dismiss: (id: string) => void }>
 
 function scopeLabel(b: BatchInfo) {
   // References, plans and other non-panel work have no chapter or page to point at: name what they are.
-  if (!b.pageOrders.length) return `${kindLabel(b.kind ?? "panel_generation")} batch`;
-  const ch = b.chapters.map((c) => `Ch. ${c.order} ${c.title}`).join(", ") || "Panels";
-  if (b.pageOrders.length === 1) return `${ch} · page ${b.pageOrders[0]}`;
-  return `${ch} · ${b.pageOrders.length} pages`;
+  if (!b.pageOrders.length) return `${kindLabel(b.kind ?? "panel_generation")}批次`;
+  const ch = b.chapters.map((c) => `第 ${c.order} 章 ${c.title}`).join(", ") || "画格";
+  if (b.pageOrders.length === 1) return `${ch} · 第 ${b.pageOrders[0]} 页`;
+  return `${ch} · ${b.pageOrders.length} 页`;
 }
 
 const clock = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
 function statusLine(b: BatchInfo) {
   const p = b.progress;
-  const wait = b.queueWaitUntil
-    ? `waiting for room in the provider's batch queue, next try at ${clock(b.queueWaitUntil)}`
-    : null;
-  if (b.state === "waiting") return `${p.queued} ${wait}`;
+  const wait = b.queueWaitUntil ? `等待提供商批次队列空位，下次尝试时间为 ${clock(b.queueWaitUntil)}` : null;
+  if (b.state === "waiting") return `${p.queued} 项${wait ?? "等待中"}`;
   if (b.state === "queued")
-    return b.queuedAhead > 0
-      ? `Queued — waiting for ${b.queuedAhead} image${b.queuedAhead === 1 ? "" : "s"} ahead`
-      : "Queued — starting shortly";
-  if (b.state === "running") return `Generating — ${p.generating} in progress`;
+    return b.queuedAhead > 0 ? `排队中 — 前方还有 ${b.queuedAhead} 张图片` : "排队中 — 即将开始";
+  if (b.state === "running") return `生成中 — ${p.generating} 项正在处理`;
   if (b.state === "submitted")
-    return `Sent as a provider batch — ${p.submitted ?? 0} waiting, results arrive together${wait ? `; ${p.queued} more ${wait}` : ""}`;
-  if (b.state === "paused") return b.pauseReason ?? "Paused";
-  return p.failed ? `Finished with ${p.failed} failed` : "Finished";
+    return `已提交提供商批次 — 等待 ${p.submitted ?? 0} 项结果，将一起返回${wait ? `，另有 ${p.queued} 项${wait}` : ""}`;
+  if (b.state === "paused") return b.pauseReason ?? "已暂停";
+  return p.failed ? `已结束，${p.failed} 项失败` : "已结束";
 }
 
 export function BatchCard({ projectId, batch, compact }: { projectId: string; batch: BatchInfo; compact?: boolean }) {
@@ -99,7 +95,7 @@ export function BatchCard({ projectId, batch, compact }: { projectId: string; ba
     setToggling(true);
     try {
       const r = await post<{ paused?: number; resumed?: number }>(`/generations/batches/${batch.batchId}/${action}`);
-      toast.success(action === "pause" ? `Paused ${r.paused ?? 0} job(s)` : `Resumed ${r.resumed ?? 0} job(s)`);
+      toast.success(action === "pause" ? `已暂停 ${r.paused ?? 0} 个任务` : `已继续 ${r.resumed ?? 0} 个任务`);
       await invalidate();
     } catch (e) {
       toast.error(e);
@@ -137,7 +133,7 @@ export function BatchCard({ projectId, batch, compact }: { projectId: string; ba
             disabled={toggling}
             onClick={() => act("resume")}
           >
-            {toggling ? <Spinner className="size-3" /> : <Play className="size-3" />} Resume
+            {toggling ? <Spinner className="size-3" /> : <Play className="size-3" />} 继续
           </button>
         )}
         {(p.submitted ?? 0) > 0 && (
@@ -147,8 +143,8 @@ export function BatchCard({ projectId, batch, compact }: { projectId: string; ba
             type="button"
             className="btn-ghost px-2 py-1 text-xs"
             disabled={polling}
-            aria-label="Check the provider for results now"
-            title="Check the provider for finished results now. Downloading a large batch takes a minute or two."
+            aria-label="立即检查提供商结果"
+            title="立即查询提供商已完成的结果，大批次下载可能需要一两分钟。"
             onClick={async () => {
               setPolling(true);
               try {
@@ -160,8 +156,8 @@ export function BatchCard({ projectId, batch, compact }: { projectId: string; ba
                 // second press during that window looked like a no-op. The count says which case you are in.
                 toast.success(
                   r.outstanding === 0
-                    ? "Nothing is waiting at the provider for this batch"
-                    : `Checking ${r.outstanding} batch${r.outstanding === 1 ? "" : "es"} at the provider — panels appear as they are downloaded, which takes a minute or two for a large one`,
+                    ? "此批次在提供商处没有待返回结果"
+                    : `正在查询提供商的 ${r.outstanding} 个批次，画格将随下载陆续显示，大批次可能需要一两分钟`,
                 );
                 await invalidate();
               } catch (e) {
@@ -180,7 +176,7 @@ export function BatchCard({ projectId, batch, compact }: { projectId: string; ba
             className="btn-ghost px-2 py-1 text-xs"
             disabled={toggling}
             onClick={() => act("pause")}
-            aria-label="Pause batch"
+            aria-label="暂停批次"
           >
             {toggling ? <Spinner className="size-3" /> : <Pause className="size-3" />}
           </button>
@@ -194,7 +190,7 @@ export function BatchCard({ projectId, batch, compact }: { projectId: string; ba
               setCancelling(true);
               try {
                 const r = await post<{ cancelled: number }>(`/generations/batches/${batch.batchId}/cancel`);
-                toast.success(`Cancelled ${r.cancelled} job(s)`);
+                toast.success(`已取消 ${r.cancelled} 个任务`);
                 await invalidate();
               } catch (e) {
                 toast.error(e);
@@ -203,10 +199,10 @@ export function BatchCard({ projectId, batch, compact }: { projectId: string; ba
               }
             }}
           >
-            {cancelling ? <Spinner className="size-3" /> : "Cancel"}
+            {cancelling ? <Spinner className="size-3" /> : "取消"}
           </button>
         ) : (
-          <button type="button" className="btn-ghost p-1" aria-label="Dismiss" onClick={() => dismiss(batch.batchId)}>
+          <button type="button" className="btn-ghost p-1" aria-label="收起" onClick={() => dismiss(batch.batchId)}>
             <X className="size-3.5" />
           </button>
         )}
@@ -224,15 +220,15 @@ export function BatchCard({ projectId, batch, compact }: { projectId: string; ba
       </div>
       <div className="muted mt-1 flex flex-wrap justify-between gap-x-2 text-xs">
         <span>
-          {p.completed} / {p.total} completed · {p.generating} generating · {p.queued} queued
-          {p.submitted ? ` · ${p.submitted} in provider batch` : ""}
-          {p.failed ? ` · ${p.failed} failed` : ""}
-          {p.cancelled ? ` · ${p.cancelled} cancelled` : ""}
-          {p.paused ? ` · ${p.paused} paused` : ""}
+          已完成 {p.completed} / {p.total} · 生成中 {p.generating} · 排队中 {p.queued}
+          {p.submitted ? ` · 提供商批次中 ${p.submitted} 项` : ""}
+          {p.failed ? ` · 失败 ${p.failed} 项` : ""}
+          {p.cancelled ? ` · 已取消 ${p.cancelled} 项` : ""}
+          {p.paused ? ` · 已暂停 ${p.paused} 项` : ""}
         </span>
         {!compact && (
           <Link to="/projects/$projectId/generation" params={{ projectId }} className="hover:underline">
-            Details
+            详情
           </Link>
         )}
       </div>
@@ -285,12 +281,12 @@ export function ChapterBatchChip({ projectId, chapterId }: { projectId: string; 
   const total = active.reduce((s, b) => s + b.progress.total, 0);
   return running ? (
     <span className="chip bg-sky-500/15 text-sky-600 dark:text-sky-300">
-      <Loader2 className="size-3 animate-spin" /> Generating {done}/{total}
+      <Loader2 className="size-3 animate-spin" /> 生成中 {done}/{total}
     </span>
   ) : (
     <span className="chip bg-amber-500/15 text-amber-700 dark:text-amber-300">
-      <Clock className="size-3" /> Queued · {queued} images
-      {active[0]!.queuedAhead ? ` · ${active[0]!.queuedAhead} ahead` : ""}
+      <Clock className="size-3" /> 排队中 · {queued} 张图片
+      {active[0]!.queuedAhead ? ` · 前方还有 ${active[0]!.queuedAhead} 项` : ""}
     </span>
   );
 }
@@ -322,8 +318,8 @@ export function FloatingBatches({ projectId }: { projectId: string }) {
           )}
           <span className="flex-1">
             {active.length
-              ? `${active.length} batch${active.length === 1 ? "" : "es"} · ${done}/${total} images${queuedBatches ? ` · ${queuedBatches} waiting` : ""}`
-              : `${list.length} batch${list.length === 1 ? "" : "es"} finished`}
+              ? `${active.length} 个批次 · ${done}/${total} 张图片${queuedBatches ? ` · 等待中 ${queuedBatches} 个批次` : ""}`
+              : `${list.length} 个批次已结束`}
           </span>
           {open ? <ChevronDown className="size-4" /> : <ChevronUp className="size-4" />}
         </button>

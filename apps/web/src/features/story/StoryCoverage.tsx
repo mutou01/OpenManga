@@ -32,10 +32,10 @@ type Coverage = {
 };
 
 const KIND: Record<Finding["kind"], string> = {
-  left_out: "Left out",
-  repeated: "Told twice",
-  more_room: "More room than its weight",
-  less_room: "Less room than its weight",
+  left_out: "遗漏",
+  repeated: "重复叙述",
+  more_room: "篇幅超出故事权重",
+  less_room: "篇幅低于故事权重",
 };
 const SEVERITY: Record<string, string> = {
   high: "bg-red-500/15 text-red-700 dark:text-red-300",
@@ -64,7 +64,7 @@ export function StoryCoverage({
   });
   const run = useAction(() => post(`/projects/${projectId}/story/coverage`, aiText()), {
     invalidate: [["story-coverage", projectId]],
-    success: "Coverage check queued; a paste-mode check asks one question per part of the story",
+    success: "覆盖检查已加入队列，粘贴模式会按故事分段逐一提问",
   });
   const data = q.data;
   const r = data?.report;
@@ -77,42 +77,40 @@ export function StoryCoverage({
   return (
     <section className="mt-8">
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <h2 className="mr-auto text-lg font-semibold">Story coverage</h2>
+        <h2 className="mr-auto text-lg font-semibold">故事覆盖</h2>
         <AiChip cap="text" />
         <button
           type="button"
           className="btn-secondary"
           disabled={run.isPending || Boolean(data?.running)}
           onClick={() => run.mutate()}
-          title="Map every paragraph of the applied story to the chapters and scenes that tell it"
+          title="将已应用故事的每段原文映射到对应章节和场景"
         >
-          {data?.running ? <Spinner /> : <ScanSearch className="size-4" />} Check coverage
+          {data?.running ? <Spinner /> : <ScanSearch className="size-4" />} 检查覆盖范围
         </button>
       </div>
       {data?.running && (
         <p className="muted mb-3 text-sm">
-          A check is {data.running.status.replace("_", " ")}.{" "}
+          检查状态 {data.running.status.replace("_", " ")}.{" "}
           <Link
             to="/projects/$projectId/generation/$jobId"
             params={{ projectId, jobId: data.running.id }}
             className="underline"
           >
-            Open the job
+            打开生成任务
           </Link>
         </p>
       )}
       {!r ? (
         <p className="muted text-sm">
-          Compares the applied story with the plan: paragraphs left out, told twice, or given far more or less room than
-          their weight. Most useful for long recaps.
+          对照已应用故事与规划，找出遗漏、重复叙述或篇幅明显偏离故事权重的段落，适合检查长篇梗概。
         </p>
       ) : (
         <div className="space-y-4">
           <p className="muted text-sm">
-            Revision {r.revisionNumber}, {fmt.num(r.paragraphs.length)} paragraphs in {r.parts} part(s), checked{" "}
-            {fmt.ago(r.finishedAt)}.
-            {data?.stale?.story && <span className="text-amber-600"> The story was revised since.</span>}
-            {data?.stale?.plan && <span className="text-amber-600"> The plan changed since.</span>}
+            修订版 {r.revisionNumber}, {fmt.num(r.paragraphs.length)} 段，分布在 {r.parts} 个部分，已检查{" "}
+            {fmt.ago(r.finishedAt)}.{data?.stale?.story && <span className="text-amber-600"> 故事之后已有修订。</span>}
+            {data?.stale?.plan && <span className="text-amber-600"> 规划之后已有变更。</span>}
           </p>
           <div className="flex flex-wrap gap-1.5">
             {(Object.keys(KIND) as Finding["kind"][]).map((k) => (
@@ -125,10 +123,10 @@ export function StoryCoverage({
             <table className="w-full min-w-[28rem] text-sm">
               <thead className="muted text-left text-xs">
                 <tr>
-                  <th className="p-2">Chapter</th>
-                  <th className="p-2 text-right">Story weight</th>
-                  <th className="p-2 text-right">Panels</th>
-                  <th className="p-2 text-right">Narration</th>
+                  <th className="p-2">章节</th>
+                  <th className="p-2 text-right">故事权重</th>
+                  <th className="p-2 text-right">画格</th>
+                  <th className="p-2 text-right">旁白</th>
                 </tr>
               </thead>
               <tbody>
@@ -139,8 +137,8 @@ export function StoryCoverage({
                     <tr key={s.chapterId} className="border-t border-[var(--border)]">
                       <td className="p-2">
                         {chapter.get(s.chapterId)
-                          ? `Ch. ${chapter.get(s.chapterId)!.order} — ${chapter.get(s.chapterId)!.title}`
-                          : "Deleted chapter"}
+                          ? `第 ${chapter.get(s.chapterId)!.order} 章 · ${chapter.get(s.chapterId)!.title}`
+                          : "已删除章节"}
                       </td>
                       <td className="p-2 text-right tabular-nums">{pct(s.sourceShare)}</td>
                       <td className={clsx("p-2 text-right tabular-nums", off && "text-amber-600")}>
@@ -154,11 +152,11 @@ export function StoryCoverage({
             </table>
           </div>
           <p className="muted text-xs">
-            Story weight is each paragraph's importance times its length.{" "}
-            {pct(Math.max(0, 1 - r.shares.reduce((n, s) => n + s.sourceShare, 0)))} of it is told in no chapter.
+            故事权重为每段的重要性与长度的乘积。 {pct(Math.max(0, 1 - r.shares.reduce((n, s) => n + s.sourceShare, 0)))}{" "}
+            尚未编入任何章节。
           </p>
           {!r.findings.length ? (
-            <p className="text-sm">Nothing left out, repeated or far off its weight.</p>
+            <p className="text-sm">未发现遗漏、重复叙述或篇幅明显偏离权重的内容。</p>
           ) : (
             <ul className="space-y-2">
               {r.findings.map((f, i) => (
@@ -173,12 +171,12 @@ export function StoryCoverage({
                         params={{ projectId, chapterId: id }}
                         className="muted text-xs underline"
                       >
-                        Ch. {chapter.get(id)?.order ?? "?"} {chapter.get(id)?.title ?? ""}
+                        章节 {chapter.get(id)?.order ?? "?"} {chapter.get(id)?.title ?? ""}
                       </Link>
                     ))}
                     {f.sceneIds.map((id) => (
                       <span key={id} className="muted text-xs">
-                        · scene “{scene.get(id)?.title ?? "deleted"}”
+                        · 场景“{scene.get(id)?.title ?? "已删除"}”
                       </span>
                     ))}
                   </div>
@@ -192,10 +190,10 @@ export function StoryCoverage({
                       <button
                         type="button"
                         className="btn-ghost shrink-0 text-xs"
-                        title={`Characters ${s.start}–${s.end} (${s.paragraphs.join(", ")})`}
+                        title={`第 ${s.start} 至 ${s.end} 字（段落 ${s.paragraphs.join("、")}）`}
                         onClick={() => onShowSpan(r.storyRevisionId, s.start, s.end)}
                       >
-                        Show in story
+                        在故事中显示
                       </button>
                     </div>
                   ))}

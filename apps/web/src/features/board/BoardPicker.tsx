@@ -23,24 +23,24 @@ export function BoardGuidePicker({
   const board = useBoard(projectId);
   const use = useAction((id: string) => post(`/board-items/${id}/use`, { target: "guide", panelId, strength }), {
     invalidate,
-    success: "Layout guide set from the board",
+    success: "已将看板图片设为布局引导图",
     onSuccess: () => setOpen(false),
   });
   if (!board.data?.length) return null;
   return (
     <>
       <button type="button" className="btn-secondary text-xs" disabled={disabled} onClick={() => setOpen(!open)}>
-        <LayoutDashboard className="size-3.5" /> From board
+        <LayoutDashboard className="size-3.5" /> 从看板选择
       </button>
       {open && (
-        <div className="grid w-full grid-cols-4 gap-1" role="listbox" aria-label="Board images">
+        <div className="grid w-full grid-cols-4 gap-1" role="listbox" aria-label="看板图片">
           {board.data.map((it) => (
             <button
               key={it.id}
               type="button"
               role="option"
               aria-selected={false}
-              aria-label={it.note || "Board image"}
+              aria-label={it.note || "看板图片"}
               className="rounded border border-[var(--border)] hover:border-accent-500"
               disabled={use.isPending}
               onClick={() => use.mutate(it.id)}

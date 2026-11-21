@@ -870,7 +870,9 @@ describe.skipIf(!hasFfmpeg)("video export (page cut)", () => {
       video: { captions: "bottom" },
     });
     expect(fontless.status).toBe(400);
-    expect(await fontless.text()).toContain("no font for its script");
+    expect(await fontless.json()).toMatchObject({
+      error: { code: "bad_request", message: expect.stringContaining("缺少当前旁白语言的字体") },
+    });
     // Off is always fine in that language, and other kinds ignore the option.
     const offJa = await u.post<{ job: { id: string } }>(
       `/api/projects/${projectId}/exports`,

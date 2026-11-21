@@ -13,6 +13,7 @@ import type { z } from "zod";
 import { get, post } from "../../api/client.ts";
 import { qk, useAction } from "../../api/hooks.ts";
 import { ConfirmDialog, Field, Modal, Spinner, toast } from "../../components/ui.tsx";
+import { projectTypeLabel } from "../../lib/locale.ts";
 import { useAiBody } from "../ai/AiPicker.tsx";
 import { ManualAnswer } from "../generation/JobDetailPage.tsx";
 import { CopyButton } from "../generation/shared.tsx";
@@ -33,16 +34,16 @@ export type Extraction = {
 };
 
 const ACTIONS: { action: ExpertAction; label: string; needsProject: boolean; title: string }[] = [
-  { action: "concept", label: "New project", needsProject: false, title: "Start a new project from this concept" },
-  { action: "premise", label: "Premise", needsProject: true, title: "Use as the project's premise (description)" },
-  { action: "outline", label: "Outline", needsProject: true, title: "Save as an outline revision of the story" },
-  { action: "youtube", label: "YouTube text", needsProject: true, title: "Use as the project's YouTube package text" },
+  { action: "concept", label: "新建项目", needsProject: false, title: "根据此创意创建新项目" },
+  { action: "premise", label: "故事设定", needsProject: true, title: "用作项目的故事设定（描述）" },
+  { action: "outline", label: "故事大纲", needsProject: true, title: "保存为故事的大纲修订版" },
+  { action: "youtube", label: "YouTube 文案", needsProject: true, title: "用作项目的 YouTube 发布文案" },
 ];
 const LABEL: Record<ExpertAction, string> = {
-  concept: "New project",
-  premise: "Premise",
-  outline: "Outline",
-  youtube: "YouTube text",
+  concept: "新建项目",
+  premise: "故事设定",
+  outline: "故事大纲",
+  youtube: "YouTube 文案",
 };
 export const RUNNING = new Set(["queued", "processing", "submitted", "cancel_requested"]);
 
@@ -74,7 +75,7 @@ export function ExpertActions({
     <div className="mt-2 space-y-2">
       <div className="flex flex-wrap items-center gap-1 text-[11px]">
         <span className="muted inline-flex items-center gap-1">
-          <Wand2 className="size-3" /> Use as
+          <Wand2 className="size-3" /> 用于
         </span>
         {ACTIONS.map((a) => {
           const off = a.needsProject && !projectId;
@@ -84,7 +85,7 @@ export function ExpertActions({
               type="button"
               className="chip border border-[var(--border)] disabled:opacity-50"
               disabled={off || start.isPending}
-              title={off ? "Choose the project this chat is about first" : a.title}
+              title={off ? "请先选择此对话关联的项目" : a.title}
               onClick={() => start.mutate(a.action)}
             >
               {a.label}
@@ -119,23 +120,23 @@ function ExtractionCard({
         <span className="font-medium">{LABEL[e.action]}</span>
         {RUNNING.has(e.status) && (
           <span className="muted inline-flex items-center gap-1">
-            <Spinner /> Reading the reply…
+            <Spinner /> 正在读取回复…
           </span>
         )}
         {e.status === "completed" && !e.applied && (
           <button type="button" className="btn-primary px-2 py-0.5 text-xs" onClick={() => setReviewing("first")}>
-            <Check className="size-3.5" /> Review and apply
+            <Check className="size-3.5" /> 审阅并应用
           </button>
         )}
         {e.applied?.pending && (
           <span className="muted inline-flex items-center gap-1">
-            <Spinner /> Applying…
+            <Spinner /> 正在应用…
           </span>
         )}
         {applied && (
           <>
             <span className="inline-flex items-center gap-1 text-emerald-600">
-              <Check className="size-3.5" /> Applied{applied.count > 1 ? ` ${applied.count} times` : ""}
+              <Check className="size-3.5" /> 已应用{applied.count > 1 ? ` ${applied.count} 次` : ""}
             </span>
             {applied.projectId && (
               <Link
@@ -143,19 +144,21 @@ function ExtractionCard({
                 params={{ projectId: applied.projectId }}
                 className="inline-flex items-center gap-1 hover:underline"
               >
-                {applied.revisionId ? "Open the revision" : "Open the project"} <ExternalLink className="size-3" />
+                {applied.revisionId ? "打开修订版" : "打开项目"} <ExternalLink className="size-3" />
               </Link>
             )}
             <button type="button" className="btn-ghost px-1 py-0 text-xs" onClick={() => setConfirmAgain(true)}>
-              Apply again
+              再次应用
             </button>
           </>
         )}
         {(e.status === "failed" || e.status === "cancelled") && (
           <>
-            <span className="text-red-500">{e.failureReason ?? `The extraction ${e.status}.`}</span>
+            <span className="text-red-500">
+              {e.failureReason ?? (e.status === "cancelled" ? "提取已取消。" : "提取失败。")}
+            </span>
             <button type="button" className="btn-ghost px-1 py-0 text-xs" onClick={onRetry}>
-              Try again
+              重试
             </button>
           </>
         )}
@@ -165,7 +168,7 @@ function ExtractionCard({
             params={{ projectId: e.projectId, jobId: e.id }}
             className="muted ml-auto inline-flex items-center gap-1 hover:underline"
           >
-            Job <ExternalLink className="size-3" />
+            任务 <ExternalLink className="size-3" />
           </Link>
         )}
       </div>
@@ -181,21 +184,21 @@ function ExtractionCard({
       )}
       <ConfirmDialog
         open={confirmAgain}
-        title="Apply this again?"
-        confirmLabel="Review and apply again"
+        title="再次应用此结果？"
+        confirmLabel="审阅并再次应用"
         onConfirm={() => {
           setConfirmAgain(false);
           setReviewing("again");
         }}
         onClose={() => setConfirmAgain(false)}
       >
-        It was already applied
-        {applied ? ` on ${new Date(applied.at).toLocaleString()}` : ""}. Applying it again{" "}
+        此结果已应用
+        {applied ? `于 ${new Date(applied.at).toLocaleString("zh-CN")}` : ""}。再次应用将{" "}
         {e.action === "concept"
-          ? "creates another project"
+          ? "创建另一个项目"
           : e.action === "outline"
-            ? "saves another outline revision"
-            : "replaces the current text with this one again"}
+            ? "保存另一个大纲修订版"
+            : "再次用此内容替换当前文案"}
         .
       </ConfirmDialog>
     </div>
@@ -215,8 +218,8 @@ function PasteStep({ jobId, onSubmitted }: { jobId: string; onSubmitted: () => v
   return (
     <div className="mt-2 space-y-2">
       <div className="flex items-center gap-2">
-        <span className="muted">Copy this prompt into any chat, then paste its reply below.</span>
-        <CopyButton text={manual.data.prompt} label="Copy prompt" />
+        <span className="muted">将提示词复制到任意对话中，再将回答粘贴到下方。</span>
+        <CopyButton text={manual.data.prompt} label="复制提示词" />
       </div>
       <ManualAnswer
         jobId={jobId}
@@ -240,7 +243,7 @@ function checked<T>(schema: z.ZodType<T>, value: unknown): T | null {
   const r = schema.safeParse(value);
   if (r.success) return r.data;
   const i = r.error.issues[0];
-  toast.error(`${i?.path.join(".") || "Value"}: ${i?.message ?? "invalid"}`);
+  toast.error(`${i?.path.join(".") || "字段"}: ${i?.message ?? "无效"}`);
   return null;
 }
 
@@ -277,10 +280,10 @@ function Review({
       onSuccess: (r) => {
         toast.success(
           {
-            concept: "Project created",
-            premise: "Project description replaced",
-            outline: "Outline saved as a new story revision",
-            youtube: "YouTube package text replaced",
+            concept: "项目已创建",
+            premise: "项目描述已替换",
+            outline: "大纲已保存为新的故事修订版",
+            youtube: "YouTube 发布文案已替换",
           }[e.action],
         );
         onClose();
@@ -292,16 +295,14 @@ function Review({
   const apply: Apply = (data, opts) => run.mutate({ data, ...opts });
   const busy = run.isPending;
   const title = {
-    concept: "New project from this concept",
-    premise: "Replace the project's premise",
-    outline: "Save as an outline revision",
-    youtube: "Replace the YouTube package text",
+    concept: "根据此创意新建项目",
+    premise: "替换项目的故事设定",
+    outline: "保存为大纲修订版",
+    youtube: "替换 YouTube 发布文案",
   }[e.action];
   return (
     <Modal open onClose={onClose} title={title} wide>
-      <p className="muted mb-3 text-xs">
-        Read through what was taken from the reply and change anything you like. Nothing is changed until you apply it.
-      </p>
+      <p className="muted mb-3 text-xs">审阅从回复中提取的内容，可按需修改，应用后生效。</p>
       {e.action === "concept" && <ConceptForm value={result as ProjectConcept} apply={apply} busy={busy} />}
       {e.action === "premise" && e.projectId && (
         <PremiseForm
@@ -331,43 +332,43 @@ function ConceptForm({ value, apply, busy }: { value: ProjectConcept; apply: App
   };
   return (
     <div className="space-y-3">
-      <Field label="Title">
+      <Field label="标题">
         <input className="input" value={v.title} onChange={set("title")} />
       </Field>
-      <Field label="Logline">
+      <Field label="一句话梗概">
         <input className="input" value={v.logline} onChange={set("logline")} />
       </Field>
-      <Field label="Premise" hint="With the logline, this becomes the project description.">
+      <Field label="故事设定" hint="与一句话梗概一起作为项目描述。">
         <textarea className="input min-h-28 text-sm" value={v.premise} onChange={set("premise")} />
       </Field>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Type">
+        <Field label="类型">
           <select className="input" value={v.projectType} onChange={set("projectType")}>
             {["manhwa", "manga", "webtoon", "comic", "illustrated_story"].map((t) => (
               <option key={t} value={t}>
-                {t.replace("_", " ")}
+                {projectTypeLabel(t)}
               </option>
             ))}
           </select>
         </Field>
-        <Field label="Format">
+        <Field label="格式">
           <select className="input" value={v.format} onChange={set("format")}>
-            <option value="comic">Comic pages</option>
-            <option value="film">Film (16:9 shots)</option>
-            <option value="vertical">Vertical strip</option>
+            <option value="comic">漫画分页</option>
+            <option value="film">影片（16:9 镜头）</option>
+            <option value="vertical">竖向条漫</option>
           </select>
         </Field>
       </div>
-      <Field label="Story idea" hint="Saved as the project's first story revision, to analyse or develop.">
+      <Field label="故事创意" hint="保存为项目的第一个故事修订版，以便分析或继续完善。">
         <textarea className="input min-h-40 text-sm" value={v.storyIdea} onChange={set("storyIdea")} />
       </Field>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={attach} onChange={(x) => setAttach(x.target.checked)} />
-        Continue this chat about the new project
+        在此对话中继续讨论新项目
       </label>
       <div className="flex justify-end">
         <button type="button" className="btn-primary" disabled={busy} onClick={submit}>
-          {busy ? <Spinner /> : <Plus className="size-4" />} Create project
+          {busy ? <Spinner /> : <Plus className="size-4" />} 创建项目
         </button>
       </div>
     </div>
@@ -396,10 +397,10 @@ function PremiseForm({
   };
   return (
     <div className="space-y-3">
-      <Field label="Logline">
+      <Field label="一句话梗概">
         <input className="input" value={v.logline} onChange={(x) => setV({ ...v, logline: x.target.value })} />
       </Field>
-      <Field label="Premise">
+      <Field label="故事设定">
         <textarea
           className="input min-h-32 text-sm"
           value={v.premise}
@@ -408,13 +409,13 @@ function PremiseForm({
       </Field>
       {current.data?.project.description && (
         <details className="text-xs">
-          <summary className="muted cursor-pointer">The description it replaces</summary>
+          <summary className="muted cursor-pointer">将被替换的描述</summary>
           <p className="mt-1 whitespace-pre-wrap">{current.data.project.description}</p>
         </details>
       )}
       <div className="flex justify-end">
         <button type="button" className="btn-primary" disabled={busy} onClick={submit}>
-          {busy ? <Spinner /> : <Check className="size-4" />} Replace description
+          {busy ? <Spinner /> : <Check className="size-4" />} 替换描述
         </button>
       </div>
     </div>
@@ -431,7 +432,7 @@ function OutlineForm({ value, apply, busy }: { value: z.infer<typeof StoryOutlin
   };
   return (
     <div className="space-y-3">
-      <Field label="Revision title">
+      <Field label="修订版标题">
         <input className="input" value={v.title} onChange={(x) => setV({ ...v, title: x.target.value })} />
       </Field>
       <ol className="space-y-2">
@@ -441,14 +442,14 @@ function OutlineForm({ value, apply, busy }: { value: z.infer<typeof StoryOutlin
               <span className="muted text-xs">{i + 1}.</span>
               <input
                 className="input flex-1"
-                aria-label={`Chapter ${i + 1} title`}
+                aria-label={`第 ${i + 1} 章标题`}
                 value={c.title}
                 onChange={(x) => setChapter(i, "title", x.target.value)}
               />
               <button
                 type="button"
                 className="btn-ghost p-1.5 text-red-500"
-                aria-label={`Remove chapter ${i + 1}`}
+                aria-label={`移除第 ${i + 1} 章`}
                 disabled={v.chapters.length === 1}
                 onClick={() => setV({ ...v, chapters: v.chapters.filter((_, n) => n !== i) })}
               >
@@ -457,7 +458,7 @@ function OutlineForm({ value, apply, busy }: { value: z.infer<typeof StoryOutlin
             </div>
             <textarea
               className="input mt-1 min-h-16 text-sm"
-              aria-label={`Chapter ${i + 1} summary`}
+              aria-label={`第 ${i + 1} 章摘要`}
               value={c.summary}
               onChange={(x) => setChapter(i, "summary", x.target.value)}
             />
@@ -470,10 +471,10 @@ function OutlineForm({ value, apply, busy }: { value: z.infer<typeof StoryOutlin
           className="btn-secondary"
           onClick={() => setV({ ...v, chapters: [...v.chapters, { title: "", summary: "" }] })}
         >
-          <Plus className="size-4" /> Chapter
+          <Plus className="size-4" /> 添加章节
         </button>
         <button type="button" className="btn-primary" disabled={busy} onClick={submit}>
-          {busy ? <Spinner /> : <Check className="size-4" />} Save outline
+          {busy ? <Spinner /> : <Check className="size-4" />} 保存大纲
         </button>
       </div>
     </div>
@@ -501,28 +502,28 @@ function YoutubeForm({ value, apply, busy }: { value: z.infer<typeof YoutubePack
   };
   return (
     <div className="space-y-3">
-      <Field label="Titles" hint="One per line, strongest first.">
+      <Field label="标题候选" hint="每行一条，最佳标题排在最前。">
         <textarea className="input min-h-20 text-sm" value={titles} onChange={(x) => setTitles(x.target.value)} />
       </Field>
-      <Field label="Description">
+      <Field label="描述">
         <textarea
           className="input min-h-32 text-sm"
           value={description}
           onChange={(x) => setDescription(x.target.value)}
         />
       </Field>
-      <Field label="Tags" hint="Comma separated.">
+      <Field label="标签" hint="以英文逗号分隔。">
         <input className="input" value={tags} onChange={(x) => setTags(x.target.value)} />
       </Field>
-      <Field label="Pinned comment">
+      <Field label="置顶评论">
         <input className="input" value={pinnedComment} onChange={(x) => setPinnedComment(x.target.value)} />
       </Field>
-      <Field label="Thumbnail headlines" hint="One per line.">
+      <Field label="缩略图标题" hint="每行一条。">
         <textarea className="input min-h-16 text-sm" value={headlines} onChange={(x) => setHeadlines(x.target.value)} />
       </Field>
       <div className="flex justify-end">
         <button type="button" className="btn-primary" disabled={busy} onClick={submit}>
-          {busy ? <Spinner /> : <Check className="size-4" />} Replace YouTube text
+          {busy ? <Spinner /> : <Check className="size-4" />} 替换 YouTube 文案
         </button>
       </div>
     </div>

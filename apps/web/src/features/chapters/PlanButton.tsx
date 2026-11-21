@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ApiError, post } from "../../api/client.ts";
 import { onProjectEvent, qk } from "../../api/hooks.ts";
 import { ConfirmDialog, Spinner, toast } from "../../components/ui.tsx";
+import { statusLabel } from "../../lib/locale.ts";
 import { AiChip, useAiBody } from "../ai/AiPicker.tsx";
 
 /** Queue chapter planning; asks before replacing existing pages. Shows live planning state. */
@@ -11,7 +12,7 @@ export function PlanButton({
   projectId,
   chapterId,
   hasPages,
-  label = "Plan chapter",
+  label = "规划章节",
 }: {
   projectId: string;
   chapterId: string;
@@ -30,7 +31,7 @@ export function PlanButton({
       const s = String(e.status);
       if (s === "completed") {
         setJobStatus(null);
-        toast.success("Chapter plan applied");
+        toast.success("章节规划已应用");
         qc.invalidateQueries({ queryKey: qk.chapter(chapterId) });
         qc.invalidateQueries({ queryKey: qk.chapters(projectId) });
       } else if (s === "failed" || s === "cancelled") setJobStatus(null);
@@ -73,19 +74,18 @@ export function PlanButton({
         onClick={() => (hasPages ? setConfirm(true) : run(false))}
       >
         {busy || planning ? <Spinner /> : <Sparkles className="size-4" />}
-        {planning ? `Planning (${jobStatus})…` : label}
+        {planning ? `正在规划（${statusLabel(jobStatus ?? "pending")}）……` : label}
       </button>
       <ConfirmDialog
         open={confirm}
-        title="Replace existing pages?"
+        title="替换现有页面？"
         danger
-        confirmLabel="Replan and replace"
+        confirmLabel="重新规划并替换"
         busy={busy}
         onClose={() => setConfirm(false)}
         onConfirm={() => run(true)}
       >
-        This chapter already has pages. Replanning deletes its current scenes, pages, panels and page lettering.
-        Generated artwork stays in the asset library but will no longer be attached to panels.
+        本章已有页面。重新规划会删除当前场景、页面、画格和页面文字，已生成的图片会保留在素材库。
       </ConfirmDialog>
     </>
   );

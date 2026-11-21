@@ -18,7 +18,17 @@ import { type ClipboardEvent, type DragEvent, useEffect, useRef, useState } from
 import { api, assetUrl, del, get, patch, post } from "../../api/client.ts";
 import { useAction } from "../../api/hooks.ts";
 import { Markdown } from "../../components/Markdown.tsx";
-import { AssetImage, ConfirmDialog, clsx, EmptyState, Field, Modal, Spinner, toast } from "../../components/ui.tsx";
+import {
+  AssetImage,
+  ConfirmDialog,
+  clsx,
+  EmptyState,
+  ErrorBox,
+  Field,
+  Modal,
+  Spinner,
+  toast,
+} from "../../components/ui.tsx";
 import { AiChip, useAiBody } from "../ai/AiPicker.tsx";
 import { ExpertActions, type Extraction, RUNNING } from "./ExpertActions.tsx";
 
@@ -67,11 +77,11 @@ const keys = {
 };
 
 const ASPECTS: [string, number][] = [
-  ["Square 1:1", 1],
-  ["Wide 16:9", 16 / 9],
-  ["Tall 9:16", 9 / 16],
-  ["Landscape 3:2", 3 / 2],
-  ["Portrait 2:3", 2 / 3],
+  ["正方形 1:1", 1],
+  ["宽屏 16:9", 16 / 9],
+  ["竖屏 9:16", 9 / 16],
+  ["横向 3:2", 3 / 2],
+  ["纵向 2:3", 2 / 3],
 ];
 
 const idOf = (e: Expert) => e.key ?? e.id ?? "";
@@ -137,18 +147,19 @@ function ChatList({ activeId, inline }: { activeId: string | null; inline?: bool
     >
       <div className="space-y-2 p-3">
         <Link to="/experts" className="btn-primary w-full justify-center">
-          <Plus className="size-4" /> New chat
+          <Plus className="size-4" /> 新建对话
         </Link>
         <input
           className="input text-sm"
-          placeholder="Search chats"
-          aria-label="Search chats"
+          placeholder="搜索对话"
+          aria-label="搜索对话"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
       </div>
-      <nav className="min-h-0 flex-1 overflow-y-auto px-2 pb-3" aria-label="Chats">
+      <nav className="min-h-0 flex-1 overflow-y-auto px-2 pb-3" aria-label="对话列表">
         {chats.isLoading && <Spinner className="m-3" />}
+        <ErrorBox error={chats.error} title="加载对话列表失败" onRetry={() => chats.refetch()} />
         {shown.map((c) => (
           <Link
             key={c.id}
@@ -163,7 +174,9 @@ function ChatList({ activeId, inline }: { activeId: string | null; inline?: bool
             {c.projectTitle && <div className="muted truncate text-xs">{c.projectTitle}</div>}
           </Link>
         ))}
-        {!chats.isLoading && !shown.length && <p className="muted px-2 text-xs">No chats yet.</p>}
+        {!chats.isLoading && !chats.error && !shown.length && (
+          <p className="muted px-2 text-xs">{q.trim() ? "没有匹配的对话。" : "暂无对话。"}</p>
+        )}
       </nav>
     </aside>
   );
@@ -186,7 +199,7 @@ function ExpertGallery() {
   );
   const remove = useAction((id: string) => del(`/experts/${id}`), {
     invalidate: [keys.experts],
-    success: "Expert deleted",
+    success: "专家已删除",
     onSuccess: () => setRemoving(null),
   });
   const card = (e: Expert, custom: boolean) => (
@@ -195,7 +208,7 @@ function ExpertGallery() {
         <Sparkles className="mt-0.5 size-4 shrink-0 text-accent-500" />
         <div className="min-w-0 flex-1">
           <h3 className="font-medium">{e.name}</h3>
-          <p className="muted text-sm">{e.description || "Your own expert."}</p>
+          <p className="muted text-sm">{e.description || "你的自定义专家。"}</p>
         </div>
       </div>
       <div className="mt-auto flex gap-1">
@@ -205,14 +218,14 @@ function ExpertGallery() {
           disabled={start.isPending}
           onClick={() => start.mutate(idOf(e))}
         >
-          Start chat
+          开始对话
         </button>
         <button
           type="button"
           className="btn-ghost px-2"
-          title={custom ? "Edit" : "Make your own version of this expert"}
-          aria-label={custom ? `Edit ${e.name}` : `Customize ${e.name}`}
-          onClick={() => setEditing(custom ? e : { ...e, key: undefined, name: `My ${e.name}` })}
+          title={custom ? "编辑" : "基于此专家创建自定义版本"}
+          aria-label={custom ? `编辑 ${e.name}` : `自定义 ${e.name}`}
+          onClick={() => setEditing(custom ? e : { ...e, key: undefined, name: `我的 ${e.name}` })}
         >
           <Pencil className="size-4" />
         </button>
@@ -220,7 +233,7 @@ function ExpertGallery() {
           <button
             type="button"
             className="btn-ghost px-2 text-red-500"
-            aria-label={`Delete ${e.name}`}
+            aria-label={`删除 ${e.name}`}
             onClick={() => setRemoving(e)}
           >
             <Trash2 className="size-4" />
@@ -233,14 +246,12 @@ function ExpertGallery() {
     <div className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6">
       <div className="flex flex-wrap items-end gap-3">
         <div className="mr-auto">
-          <h1 className="text-xl font-semibold tracking-tight">Experts</h1>
-          <p className="muted text-sm">
-            Brainstorm and develop with a specialist. Chats are kept, so you can come back to any of them.
-          </p>
+          <h1 className="text-xl font-semibold tracking-tight">专家</h1>
+          <p className="muted text-sm">与专业助手一起构思和完善创意。对话会保存，可随时继续。</p>
         </div>
-        <Field label="Talk about a project">
+        <Field label="讨论的项目">
           <select className="input" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-            <option value="">No project</option>
+            <option value="">不关联项目</option>
             {projects.data?.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.title}
@@ -251,6 +262,8 @@ function ExpertGallery() {
       </div>
       <ChatList activeId={null} inline />
       {experts.isLoading && <Spinner />}
+      <ErrorBox error={experts.error} title="加载专家失败" onRetry={() => experts.refetch()} />
+      <ErrorBox error={projects.error} title="加载项目失败" onRetry={() => projects.refetch()} />
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {experts.data?.builtin.map((e) => card(e, false))}
         {experts.data?.custom.map((e) => card(e, true))}
@@ -260,7 +273,7 @@ function ExpertGallery() {
             className="card flex h-full w-full flex-col items-center justify-center gap-2 border-dashed p-4 text-sm hover:bg-[var(--panel-2)]"
             onClick={() => setEditing("new")}
           >
-            <Plus className="size-5" /> Write your own expert
+            <Plus className="size-5" /> 创建自定义专家
           </button>
         </li>
       </ul>
@@ -276,14 +289,14 @@ function ExpertGallery() {
       )}
       <ConfirmDialog
         open={Boolean(removing)}
-        title={`Delete ${removing?.name ?? "expert"}?`}
-        confirmLabel="Delete"
+        title={`删除 ${removing?.name ?? "专家"}？`}
+        confirmLabel="删除"
         danger
         busy={remove.isPending}
         onConfirm={() => removing?.id && remove.mutate(removing.id)}
         onClose={() => setRemoving(null)}
       >
-        Chats with it keep their own copy of its prompt.
+        已有对话会保留各自的提示词副本。
       </ConfirmDialog>
     </div>
   );
@@ -316,13 +329,13 @@ function ExpertEditor({
       };
       return expert?.id ? patch(`/experts/${expert.id}`, body) : post("/experts", body);
     },
-    { success: "Expert saved", onSuccess: onSaved },
+    { success: "专家已保存", onSuccess: onSaved },
   );
   return (
     <Modal
       open
       onClose={onClose}
-      title={expert?.id ? `Edit ${expert.name}` : "Your own expert"}
+      title={expert?.id ? `编辑 ${expert.name}` : "自定义专家"}
       wide
       footer={
         <button
@@ -331,28 +344,25 @@ function ExpertEditor({
           disabled={!name.trim() || !systemPrompt.trim() || save.isPending}
           onClick={() => save.mutate()}
         >
-          Save
+          保存
         </button>
       }
     >
       <div className="space-y-3">
-        <Field label="Name">
+        <Field label="名称">
           <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
         </Field>
-        <Field label="What it is for">
+        <Field label="用途">
           <input className="input" value={description} onChange={(e) => setDescription(e.target.value)} />
         </Field>
-        <Field
-          label="System prompt"
-          hint="Who the expert is and how it answers. Sent before every chat with it; a chat can adjust its own copy."
-        >
+        <Field label="系统提示词" hint="设定专家身份和回答方式。每次对话时都会发送，各对话可调整自己的副本。">
           <textarea
             className="input min-h-56 font-mono text-xs"
             value={systemPrompt}
             onChange={(e) => setSystemPrompt(e.target.value)}
           />
         </Field>
-        <Field label="Openers" hint="One per line: suggestions shown on a new chat.">
+        <Field label="开场白" hint="每行一条，作为新对话的建议。">
           <textarea className="input min-h-20 text-sm" value={starters} onChange={(e) => setStarters(e.target.value)} />
         </Field>
       </div>
@@ -391,14 +401,15 @@ function ChatView({ chatId }: { chatId: string }) {
     if (count) bottom.current?.scrollIntoView({ block: "end" });
   }, [count, lastStatus, live?.content.length]);
   if (detail.isLoading) return <Spinner className="m-6" />;
-  if (!detail.data) return <EmptyState title="Chat not found" />;
+  if (detail.error) return <ErrorBox error={detail.error} title="加载对话失败" onRetry={() => detail.refetch()} />;
+  if (!detail.data) return <EmptyState title="未找到对话" />;
   const { chat, project, messages, extractions } = detail.data;
   const all = [...(experts.data?.builtin ?? []), ...(experts.data?.custom ?? [])];
   const expert = all.find((e) => idOf(e) === chat.expert);
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex flex-wrap items-center gap-2 border-b border-[var(--border)] px-4 py-2">
-        <Link to="/experts" className="btn-ghost p-1.5 md:hidden" aria-label="All chats">
+        <Link to="/experts" className="btn-ghost p-1.5 md:hidden" aria-label="全部对话">
           <ArrowLeft className="size-4" />
         </Link>
         <div className="min-w-0 flex-1">
@@ -406,33 +417,33 @@ function ChatView({ chatId }: { chatId: string }) {
             key={chat.title}
             className="w-full truncate bg-transparent font-semibold outline-none focus:underline"
             defaultValue={chat.title}
-            aria-label="Chat title"
+            aria-label="对话标题"
             onBlur={(e) =>
               e.target.value.trim() && e.target.value !== chat.title && update.mutate({ title: e.target.value.trim() })
             }
           />
-          <div className="muted text-xs">{expert?.name ?? "Expert (deleted)"}</div>
+          <div className="muted text-xs">{expert?.name ?? "专家（已删除）"}</div>
         </div>
         <select
           className="input w-auto py-1 text-xs"
-          aria-label="Project this chat is about"
+          aria-label="此对话关联的项目"
           value={project?.id ?? ""}
           onChange={(e) => update.mutate({ projectId: e.target.value || null })}
         >
-          <option value="">No project</option>
+          <option value="">不关联项目</option>
           {projects.data?.map((p) => (
             <option key={p.id} value={p.id}>
               {p.title}
             </option>
           ))}
         </select>
-        <button type="button" className="btn-ghost p-1.5" title="System prompt" onClick={() => setEditingPrompt(true)}>
+        <button type="button" className="btn-ghost p-1.5" title="系统提示词" onClick={() => setEditingPrompt(true)}>
           <Settings2 className="size-4" />
         </button>
         <button
           type="button"
           className="btn-ghost p-1.5 text-red-500"
-          aria-label="Delete chat"
+          aria-label="删除对话"
           onClick={() => setConfirmDelete(true)}
         >
           <Trash2 className="size-4" />
@@ -441,15 +452,12 @@ function ChatView({ chatId }: { chatId: string }) {
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
         <div className="mx-auto max-w-3xl space-y-4">
           {!messages.length && (
-            <EmptyState
-              icon={<MessagesSquare className="size-8" />}
-              title={`Chat with ${expert?.name ?? "the expert"}`}
-            >
+            <EmptyState icon={<MessagesSquare className="size-8" />} title={`与${expert?.name ?? "专家"}对话`}>
               {expert?.description}
               {project && (
                 <>
                   {" "}
-                  Talking about <strong>{project.title}</strong>.
+                  正在讨论 <strong>{project.title}</strong>。
                 </>
               )}
             </EmptyState>
@@ -491,14 +499,14 @@ function ChatView({ chatId }: { chatId: string }) {
       )}
       <ConfirmDialog
         open={confirmDelete}
-        title="Delete this chat?"
-        confirmLabel="Delete"
+        title="删除此对话？"
+        confirmLabel="删除"
         danger
         busy={remove.isPending}
         onConfirm={() => remove.mutate()}
         onClose={() => setConfirmDelete(false)}
       >
-        Its messages go with it. Images it made stay in your library.
+        对话中的消息会一并删除，生成的图片会保留在素材库中。
       </ConfirmDialog>
     </div>
   );
@@ -529,17 +537,15 @@ function PromptEditor({ value, onClose, onSave }: { value: string; onClose: () =
     <Modal
       open
       onClose={onClose}
-      title="This chat's system prompt"
+      title="此对话的系统提示词"
       wide
       footer={
         <button type="button" className="btn-primary" disabled={!text.trim()} onClick={() => onSave(text.trim())}>
-          Save
+          保存
         </button>
       }
     >
-      <p className="muted mb-2 text-xs">
-        Who the expert is in this chat. Changing it here changes this chat only, from its next reply.
-      </p>
+      <p className="muted mb-2 text-xs">设定专家在此对话中的身份，更改从下一次回复起生效。</p>
       <textarea className="input min-h-72 font-mono text-xs" value={text} onChange={(e) => setText(e.target.value)} />
     </Modal>
   );
@@ -569,8 +575,8 @@ function MessageItem({
   const shown = m.status === "pending" ? m.content.split(IMAGE_MARKER)[0]!.trimEnd() : m.content;
   const copy = () =>
     navigator.clipboard.writeText(m.content).then(
-      () => toast.success("Copied"),
-      () => toast.error("Could not copy"),
+      () => toast.success("已复制"),
+      () => toast.error("复制失败"),
     );
   return (
     <div className={clsx("flex", mine ? "justify-end" : "justify-start")}>
@@ -589,19 +595,18 @@ function MessageItem({
           ))}
         {m.status === "pending" && (
           <div className="muted flex items-center gap-2 text-xs">
-            <Spinner />{" "}
-            {!m.content ? "Thinking…" : m.options.generateImage ? "Writing, then drawing the image…" : "Writing…"}
+            <Spinner /> {!m.content ? "思考中…" : m.options.generateImage ? "正在撰写，随后生成图片…" : "正在撰写…"}
           </div>
         )}
         {m.images.length > 0 && <ImageRow ids={m.images} large />}
         {m.options.imagePrompt && (
           <details className="mt-1 text-xs">
-            <summary className="muted cursor-pointer">Image prompt</summary>
+            <summary className="muted cursor-pointer">图片提示词</summary>
             <p className="mt-1 whitespace-pre-wrap">{m.options.imagePrompt}</p>
           </details>
         )}
-        {m.options.imageError && <p className="mt-1 text-xs text-amber-600">No image: {m.options.imageError}</p>}
-        {m.status === "failed" && <p className="text-xs text-red-500">{m.error ?? "The reply failed."}</p>}
+        {m.options.imageError && <p className="mt-1 text-xs text-amber-600">图片生成失败，{m.options.imageError}</p>}
+        {m.status === "failed" && <p className="text-xs text-red-500">{m.error ?? "回复失败。"}</p>}
         {m.status === "awaiting_input" && (
           <ManualAnswer
             chatId={chatId}
@@ -613,7 +618,7 @@ function MessageItem({
           <div className="muted mt-1 flex items-center gap-1 text-[11px]">
             {m.model && m.model !== "manual" && <span className="mr-auto truncate">{m.model}</span>}
             {m.content && (
-              <button type="button" className="btn-ghost px-1 py-0" onClick={copy} aria-label="Copy reply">
+              <button type="button" className="btn-ghost px-1 py-0" onClick={copy} aria-label="复制回复">
                 <Copy className="size-3" />
               </button>
             )}
@@ -623,9 +628,9 @@ function MessageItem({
                 className="btn-ghost px-1 py-0"
                 disabled={retry.isPending}
                 onClick={() => retry.mutate()}
-                title="Write this reply again"
+                title="重新生成此回复"
               >
-                <RotateCcw className="size-3" /> {m.status === "failed" ? "Retry" : "Again"}
+                <RotateCcw className="size-3" /> {m.status === "failed" ? "重试" : "重新生成"}
               </button>
             )}
           </div>
@@ -642,7 +647,7 @@ function ImageRow({ ids, large }: { ids: string[]; large?: boolean }) {
   return (
     <div className="my-1.5 flex flex-wrap gap-1.5">
       {ids.map((id) => (
-        <a key={id} href={assetUrl(id)} target="_blank" rel="noreferrer" title="Open full size">
+        <a key={id} href={assetUrl(id)} target="_blank" rel="noreferrer" title="查看原图">
           <AssetImage
             assetId={id}
             variant={large ? "preview" : "thumbnail"}
@@ -677,29 +682,29 @@ function ManualAnswer({ chatId, message: m, onDone }: { chatId: string; message:
   };
   return (
     <div className="mt-1 space-y-2 text-xs">
-      <p className="font-medium">Waiting for an answer pasted from any chat</p>
+      <p className="font-medium">等待粘贴回答</p>
       <button
         type="button"
         className="btn-secondary text-xs"
         onClick={() =>
           navigator.clipboard.writeText(m.prompt ?? "").then(
-            () => toast.success("Conversation copied"),
-            () => toast.error("Could not copy"),
+            () => toast.success("对话已复制"),
+            () => toast.error("复制失败"),
           )
         }
       >
-        <Copy className="size-3.5" /> Copy the conversation
+        <Copy className="size-3.5" /> 复制对话
       </button>
       <textarea
         className="input min-h-28 text-sm"
-        placeholder="Paste the answer here"
+        placeholder="在此粘贴回答"
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
       {images.length > 0 && <ImageRow ids={images} />}
       <div className="flex flex-wrap items-center gap-1">
         <label className="btn-ghost cursor-pointer text-xs">
-          <ImagePlus className="size-3.5" /> Add the image it made
+          <ImagePlus className="size-3.5" /> 添加生成的图片
           <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => add(e.target.files)} />
         </label>
         <button
@@ -708,7 +713,7 @@ function ManualAnswer({ chatId, message: m, onDone }: { chatId: string; message:
           disabled={(!text.trim() && !images.length) || answer.isPending}
           onClick={() => answer.mutate()}
         >
-          Use this answer
+          使用此回答
         </button>
       </div>
     </div>
@@ -814,7 +819,7 @@ function Composer({
                 <button
                   type="button"
                   className="absolute -right-1 -top-1 rounded-full bg-[var(--panel)] p-0.5 shadow"
-                  aria-label="Remove image"
+                  aria-label="移除图片"
                   onClick={() => setAttachments((a) => a.filter((x) => x !== id))}
                 >
                   <X className="size-3" />
@@ -826,7 +831,8 @@ function Composer({
         )}
         <textarea
           className="input min-h-20 text-sm"
-          placeholder={busy ? "The expert is answering…" : "Message the expert — drop or paste images here"}
+          aria-label="输入消息"
+          placeholder={busy ? "专家正在回答…" : "输入消息，可在此拖入或粘贴图片"}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onPaste={(e: ClipboardEvent) => {
@@ -844,8 +850,8 @@ function Composer({
           }}
         />
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <label className="btn-ghost cursor-pointer text-xs" title="Attach images">
-            <ImagePlus className="size-4" /> Image
+          <label className="btn-ghost cursor-pointer text-xs" title="添加图片">
+            <ImagePlus className="size-4" /> 图片
             <input
               type="file"
               accept="image/*"
@@ -859,13 +865,13 @@ function Composer({
           </label>
           <label className="flex items-center gap-1">
             <input type="checkbox" checked={generateImage} onChange={(e) => setGenerateImage(e.target.checked)} />
-            Generate image
+            生成图片
           </label>
           {generateImage && (
             <>
               <select
                 className="input w-auto py-0.5 text-xs"
-                aria-label="Image shape"
+                aria-label="图片比例"
                 value={aspectRatio}
                 onChange={(e) => setAspectRatio(Number(e.target.value))}
               >
@@ -875,14 +881,14 @@ function Composer({
                   </option>
                 ))}
               </select>
-              <span className="muted">Image model</span>
+              <span className="muted">图片模型</span>
               <AiChip cap="image" />
             </>
           )}
-          <span className="muted ml-auto">Text model</span>
+          <span className="muted ml-auto">文本模型</span>
           <AiChip cap="text" />
           <button type="button" className="btn-primary" disabled={!canSend} onClick={() => send.mutate()}>
-            <Send className="size-4" /> Send
+            <Send className="size-4" /> 发送
           </button>
         </div>
       </div>

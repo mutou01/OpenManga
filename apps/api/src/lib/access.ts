@@ -42,8 +42,7 @@ export async function projectAccess(
   if (service) {
     // An agent acts only in the user's own projects: an admin's bypass of membership is not extended to it.
     if (!role) throw notFound("Project");
-    if (!serviceMayAccess(service, projectId))
-      throw new ApiError(403, "project_not_granted", "This connection has not been granted access to this project");
+    if (!serviceMayAccess(service, projectId)) throw new ApiError(403, "project_not_granted", "此连接未获准访问该项目");
   }
   if (!role && u.role !== "admin") throw notFound("Project");
   // For an agent the membership role alone decides: an admin's shortcut to "manage" would otherwise hand the agent

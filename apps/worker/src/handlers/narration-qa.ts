@@ -22,8 +22,8 @@ async function chapterOf(deps: WorkerDeps, job: ProjectJob) {
   const language = String(job.input.language);
   const all = await loadNarrationQa(deps.db, job.projectId, language);
   const chapter = all.find((c) => c.id === String(job.input.chapterId));
-  if (!chapter) throw new InputError("Chapter no longer exists");
-  if (!chapter.lines.length) throw new InputError("The chapter has no narration to check");
+  if (!chapter) throw new InputError("章节已不存在");
+  if (!chapter.lines.length) throw new InputError("章节没有可检查的旁白");
   return { all, chapter, language };
 }
 
@@ -115,11 +115,11 @@ export async function narrationFix(deps: WorkerDeps, job: ProjectJob) {
         .from(narrationFindings)
         .where(and(inArray(narrationFindings.id, ids), eq(narrationFindings.chapterId, chapter.id)))
     : [];
-  if (!findings.length) throw new InputError("None of the chosen findings is still open on this chapter");
+  if (!findings.length) throw new InputError("所选问题均已处理或已不存在");
   const lines = keyed(chapter);
   const keyOf = new Map(lines.map(({ key, line }) => [line.id, key]));
   const flagged = new Set(findings.flatMap((f) => f.lineIds.map((id) => keyOf.get(id)).filter(Boolean)));
-  if (!flagged.size) throw new InputError("The flagged lines no longer exist");
+  if (!flagged.size) throw new InputError("标记的旁白已不存在");
   const shots = new Map(chapter.shots.map((s) => [s.id, s]));
   const r = await structured(
     deps,
@@ -197,7 +197,7 @@ export async function audioCheck(deps: WorkerDeps, job: ProjectJob) {
   const byChapter = new Map<string, (typeof rows)[number][]>();
   for (const r of rows)
     if (!only || only.includes(r.chapter_id)) byChapter.set(r.chapter_id, [...(byChapter.get(r.chapter_id) ?? []), r]);
-  if (!byChapter.size) throw new InputError("No voiced narration to check: voice the chapters first");
+  if (!byChapter.size) throw new InputError("没有已配音的旁白可供检查，请先合成章节旁白");
   const chapters: {
     chapterId: string;
     segments: number;

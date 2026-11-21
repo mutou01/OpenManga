@@ -18,5 +18,5 @@ export async function agentStep(deps: WorkerDeps, job: ProjectJob) {
     const r = await structured(deps, job, agentStepV1.build(prompt), AgentStep, "AgentStep", 8_000);
     return { step: r.data, repaired: r.repaired };
   }
-  throw new InputError("Unknown agent phase");
+  throw new InputError("无法识别代理的任务阶段");
 }

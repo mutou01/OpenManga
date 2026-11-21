@@ -14,24 +14,24 @@ export const useProfiles = () =>
 
 type Change = { key: string; from: unknown; to: unknown };
 const LABELS: Record<string, string> = {
-  imageQuality: "Image quality",
-  referencePolicy: "References to generate",
-  batchPolicy: "Production runs spend",
-  targetRuntime: "Target runtime",
-  narrationVoice: "Narrator voice",
-  narrationSpeed: "Narration speed",
-  pronunciation: "Pronunciation dictionary",
-  lettering: "Lettering and card fonts",
-  thumbnailStyle: "Thumbnail style",
-  youtubeRules: "YouTube rules",
-  "video.fadeAtSceneBreaks": "Fade at scene breaks",
-  "video.watermark": "Logo watermark",
-  "video.intro": "Intro card",
-  "video.outro": "Outro card",
-  "video.output": "Export frame and resolution",
+  imageQuality: "图像质量",
+  referencePolicy: "生成参考图的范围",
+  batchPolicy: "制作费用策略",
+  targetRuntime: "目标时长",
+  narrationVoice: "旁白音色",
+  narrationSpeed: "旁白语速",
+  pronunciation: "发音词典",
+  lettering: "排字和卡片字体",
+  thumbnailStyle: "缩略图样式",
+  youtubeRules: "YouTube 规则",
+  "video.fadeAtSceneBreaks": "场景切换淡化",
+  "video.watermark": "标志水印",
+  "video.intro": "片头卡片",
+  "video.outro": "片尾卡片",
+  "video.output": "导出画幅与分辨率",
 };
 const show = (v: unknown) =>
-  v === null || v === undefined ? "none" : typeof v === "object" ? JSON.stringify(v) : String(v);
+  v === null || v === undefined ? "无" : typeof v === "object" ? JSON.stringify(v) : String(v);
 
 /**
  * Where the project's settings came from, and re-applying a profile: what would change is listed first, and nothing
@@ -41,18 +41,18 @@ export function ProfileCard({ projectId, from }: { projectId: string; from: Proj
   const [open, setOpen] = useState(false);
   return (
     <div className="card space-y-2 p-4">
-      <h3 className="text-sm font-medium">Channel profile</h3>
+      <h3 className="text-sm font-medium">频道配置</h3>
       <p className="muted text-xs">
         {from ? (
           <>
-            From profile <strong className="text-[var(--text)]">{from.name}</strong>, applied {fmt.ago(from.appliedAt)}.
+            频道配置 <strong className="text-[var(--text)]">{from.name}</strong> · {fmt.ago(from.appliedAt)}应用
           </>
         ) : (
-          "Not made from a profile."
+          "此项目未使用频道配置。"
         )}
       </p>
       <button type="button" className="btn-secondary w-full justify-center" onClick={() => setOpen(true)}>
-        {from ? "Re-apply profile" : "Apply a profile"}
+        {from ? "重新应用频道配置" : "应用频道配置"}
       </button>
       {open && <ApplyDialog projectId={projectId} fromId={from?.id ?? null} onClose={() => setOpen(false)} />}
     </div>
@@ -80,7 +80,7 @@ function ApplyDialog({
   });
   const apply = useAction(() => post(`/projects/${projectId}/apply-profile`, { profileId, confirm: true }), {
     invalidate: [qk.project(projectId)],
-    success: "Profile applied",
+    success: "已应用频道配置",
     onSuccess: onClose,
   });
   const changes = diff.data?.changes ?? [];
@@ -88,11 +88,11 @@ function ApplyDialog({
     <Modal
       open
       onClose={onClose}
-      title="Apply a channel profile"
+      title="应用频道配置"
       footer={
         <>
           <button type="button" className="btn-secondary" onClick={onClose}>
-            Cancel
+            取消
           </button>
           <button
             type="button"
@@ -100,7 +100,7 @@ function ApplyDialog({
             disabled={!changes.length || apply.isPending}
             onClick={() => apply.mutate()}
           >
-            {apply.isPending && <Spinner />} Apply {changes.length || ""} change{changes.length === 1 ? "" : "s"}
+            {apply.isPending && <Spinner />} 应用{changes.length > 0 ? ` ${changes.length} 项` : ""}更改
           </button>
         </>
       }
@@ -109,20 +109,18 @@ function ApplyDialog({
         {profiles.isLoading && <Spinner />}
         {profiles.data && !list.length && (
           <p className="text-sm">
-            You have no channel profiles yet.{" "}
+            还没有频道配置。
             <Link to="/profiles" className="text-accent-500 hover:underline">
-              Create one
+              新建频道配置
             </Link>
-            .
+            。
           </p>
         )}
         {fromId && profiles.data && !list.some((p) => p.id === fromId) && (
-          <p className="muted text-xs">
-            The profile this project came from is not one of yours (it was deleted, or the project is someone else's).
-          </p>
+          <p className="muted text-xs">你无法访问项目原来的频道配置。该配置可能已删除，或项目来自其他用户。</p>
         )}
         {list.length > 0 && (
-          <Field label="Profile">
+          <Field label="频道配置">
             <select className="input" value={profileId} onChange={(e) => setChosen(e.target.value)}>
               {list.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -147,10 +145,10 @@ function ApplyDialog({
               ))}
             </ul>
           ) : (
-            <p className="muted text-sm">This project already matches the profile: nothing would change.</p>
+            <p className="muted text-sm">项目设置已与频道配置一致。</p>
           ))}
         <p className="muted text-xs">
-          Only the profile's settings are copied: format, type and style stay as they are, and nothing stays linked.
+          应用后将复制频道设置，保留项目形式、类型和画风。后续修改频道配置时，可再次应用来更新项目。
         </p>
       </div>
     </Modal>

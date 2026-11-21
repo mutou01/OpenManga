@@ -81,14 +81,14 @@ function checkPreset(c: Context<AppEnv>, preset: string | null | undefined) {
   const ok = preset.startsWith("template:")
     ? user(c).settings.projectTemplates?.some((t) => t.id === preset.slice(9))
     : PRODUCTION_PRESETS.some((p) => p.key === preset);
-  if (!ok) throw badRequest("Unknown preset or template");
+  if (!ok) throw badRequest("无法识别所选预设或模板");
 }
 
 /** Profile settings as given, with the logo checked: a watermark must be one of the caller's profile logos. */
 async function checkSettings(c: Context<AppEnv>, settings: ChannelProfile["settings"]) {
   const logo = settings.video?.watermark?.assetId;
   if (logo && !(await profileLogo(c.get("deps").db, user(c).id, logo)))
-    throw badRequest("The watermark must be a profile logo (upload one with POST /api/channel-profiles/logo)");
+    throw badRequest("水印必须使用频道配置的标识，请先上传标识");
   return settings;
 }
 
@@ -143,7 +143,7 @@ export async function applyProfile(
       }
       const mark = value as { assetId: string };
       const logo = await profileLogo(db, o.userId, mark.assetId);
-      if (!logo) throw badRequest(`The logo of profile "${profile.name}" is missing: upload it again`);
+      if (!logo) throw badRequest(`“${profile.name}”配置缺少标识，请重新上传`);
       const had = curV.watermark as { assetId: string } | null | undefined;
       const [old] = had
         ? await db
@@ -213,7 +213,7 @@ channelProfileRoutes.post("/channel-profiles", async (c) => {
     updatedAt: now,
   };
   const list = user(c).settings.channelProfiles ?? [];
-  if (list.length >= 50) throw badRequest("You have 50 channel profiles; delete one first");
+  if (list.length >= 50) throw badRequest("频道配置已达 50 个，请先删除一个");
   await saveProfiles(c, [...list, profile]);
   return c.json({ profile }, 201);
 });
@@ -295,7 +295,7 @@ channelProfileRoutes.post("/projects/:projectId/channel-profile", async (c) => {
   const { name } = await body(c, SaveProfile);
   const deps = c.get("deps");
   const list = user(c).settings.channelProfiles ?? [];
-  if (list.length >= 50) throw badRequest("You have 50 channel profiles; delete one first");
+  if (list.length >= 50) throw badRequest("频道配置已达 50 个，请先删除一个");
   const picked = Object.fromEntries(PROFILE_SETTING_KEYS.map((k) => [k, p.settings[k]]));
   const settings = ChannelProfileSettings.parse(picked);
   // Chapter cards name this project's chapters: not something a channel shares.

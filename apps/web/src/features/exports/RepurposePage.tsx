@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { assetUrl, get, patch, post } from "../../api/client.ts";
 import { qk, useAction } from "../../api/hooks.ts";
 import { clsx, EmptyState, ErrorBox, Field, NumberInput, PageHeader, Spinner } from "../../components/ui.tsx";
+import { statusLabel } from "../../lib/locale.ts";
 import { AiChip, useAiBody } from "../ai/AiPicker.tsx";
 import { useProject, useProjectId } from "../project/ProjectLayout.tsx";
 import { PreviewVideoButton } from "../video/VideoPreview.tsx";
@@ -27,11 +28,11 @@ type Job = { job: { status: string; failureReason?: string | null } };
 
 const VIDEO = new Set(["short", "trailer", "teaser"]);
 const KIND_LABEL: Record<RepurposeItem["kind"], string> = {
-  short: "Short",
-  trailer: "Trailer",
-  teaser: "Teaser",
-  carousel: "Carousel",
-  quote: "Quote image",
+  short: "短视频",
+  trailer: "预告片",
+  teaser: "先导片",
+  carousel: "轮播图片",
+  quote: "金句图片",
 };
 const secs = (ms: number) => `${Math.round(ms / 1000)} s`;
 
@@ -93,7 +94,7 @@ export function RepurposePage() {
       await patch(`/projects/${projectId}`, { settings: { repurpose: { items: list } } });
       setDirty(false);
     },
-    { invalidate: [["repurpose", projectId], qk.project(projectId)], success: "Plan saved" },
+    { invalidate: [["repurpose", projectId], qk.project(projectId)], success: "方案已保存" },
   );
   const copy = useAction(
     async () => {
@@ -101,7 +102,7 @@ export function RepurposePage() {
       if (items) await save.mutateAsync(items);
       return post<{ job: { id: string } }>(`/projects/${projectId}/repurpose/copy`, { ...aiText() });
     },
-    { success: "Writing titles and captions…", onSuccess: (r) => setJobId(r.job.id) },
+    { success: "正在撰写标题与发布文案…", onSuccess: (r) => setJobId(r.job.id) },
   );
   const job = useQuery({
     queryKey: ["social-copy", jobId],
@@ -123,7 +124,7 @@ export function RepurposePage() {
       Promise.all(list.map((it) => post(`/projects/${projectId}/exports`, exportBody(it, language)))),
     {
       invalidate: [qk.exports(projectId)],
-      success: (r) => `${r.length} export(s) queued — download them from Exports`,
+      success: (r) => `${r.length} 个导出已加入队列，可前往导出页下载`,
     },
   );
   const cands = plan.data?.candidates ?? [];
@@ -131,12 +132,12 @@ export function RepurposePage() {
   return (
     <div className="mx-auto max-w-5xl p-4 sm:p-6">
       <PageHeader
-        title="Repurpose"
-        subtitle="Shorts, a trailer, a teaser, a carousel and quote images from this project's own panels. Review the picks, then render each one as an export."
+        title="内容再利用"
+        subtitle="从项目画格制作短视频、预告片、先导片、轮播图片与金句图片。检查所选内容后，逐项渲染导出。"
         actions={
           <>
             <label className="flex items-center gap-1 text-sm">
-              <span className="muted">Shorts</span>
+              <span className="muted">短视频数量</span>
               <input
                 className="input w-16 py-1"
                 type="number"
@@ -152,7 +153,7 @@ export function RepurposePage() {
               disabled={!plan.data}
               onClick={() => plan.data && edit(plan.data.suggestion)}
             >
-              <Wand2 className="size-4" /> Suggest plan
+              <Wand2 className="size-4" /> 建议方案
             </button>
             <button
               type="button"
@@ -160,7 +161,7 @@ export function RepurposePage() {
               disabled={!items || !dirty || save.isPending}
               onClick={() => items && save.mutate(items)}
             >
-              <Save className="size-4" /> Save plan
+              <Save className="size-4" /> 保存方案
             </button>
           </>
         }
@@ -168,8 +169,8 @@ export function RepurposePage() {
       {plan.error && <ErrorBox error={plan.error} onRetry={() => plan.refetch()} />}
       {plan.isLoading && <Spinner />}
       {items && !items.length && (
-        <EmptyState icon={<Share2 className="size-8" />} title="Nothing to repurpose yet">
-          Generate panel artwork and voice the narration first; the plan is picked from panels with art.
+        <EmptyState icon={<Share2 className="size-8" />} title="暂无可再利用内容">
+          请先生成画格原画与旁白语音，方案将从已有原画的画格中选取内容。
         </EmptyState>
       )}
       {items && items.length > 0 && (
@@ -182,20 +183,20 @@ export function RepurposePage() {
               disabled={copy.isPending || Boolean(jobId)}
               onClick={() => copy.mutate()}
             >
-              <PenLine className="size-4" /> Write titles, captions and hooks
+              <PenLine className="size-4" /> 撰写标题、发布文案与开场
             </button>
             {jobId && (
               <span className="muted flex items-center gap-1 text-xs">
                 {jobStatus === "failed" || jobStatus === "cancelled" ? (
                   <span className="text-red-500">
-                    The copy job {jobStatus}: {job.data?.job.failureReason}{" "}
+                    文案任务{statusLabel(jobStatus)}， {job.data?.job.failureReason}{" "}
                     <button type="button" className="btn-ghost text-xs" onClick={() => setJobId(null)}>
-                      Dismiss
+                      关闭
                     </button>
                   </span>
                 ) : (
                   <>
-                    <Spinner /> Writing… ({jobStatus ?? "queued"})
+                    <Spinner /> 正在撰写…（{statusLabel(jobStatus ?? "queued")}）
                   </>
                 )}
               </span>
@@ -206,10 +207,10 @@ export function RepurposePage() {
               disabled={!ready.length || render.isPending}
               onClick={() => render.mutate(ready)}
             >
-              <Film className="size-4" /> Render all ({ready.length})
+              <Film className="size-4" /> 全部渲染（{ready.length}）
             </button>
             <Link to="/projects/$projectId/exports" params={{ projectId }} className="btn-ghost text-xs">
-              Exports
+              导出
             </Link>
           </div>
           <ul className="space-y-3">
@@ -274,13 +275,13 @@ function ItemCard({
         <span className="rounded bg-[var(--panel-2)] px-1.5 py-0.5 text-xs font-medium">{KIND_LABEL[it.kind]}</span>
         <input
           className="input min-w-0 flex-1 py-1"
-          aria-label="Name"
+          aria-label="名称"
           value={it.label}
           // The export's label is at most 60 characters: a longer name saved, then failed every render.
           maxLength={60}
           onChange={(e) => set({ label: e.target.value })}
         />
-        <button type="button" className="btn-ghost" aria-label="Remove" title="Remove" onClick={onRemove}>
+        <button type="button" className="btn-ghost" aria-label="移除" title="移除" onClick={onRemove}>
           <Trash2 className="size-4" />
         </button>
       </div>
@@ -288,7 +289,7 @@ function ItemCard({
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">
             {video && (
-              <Field label="Length (s)">
+              <Field label="时长（秒）">
                 <NumberInput
                   className="input w-24"
                   min={15}
@@ -298,7 +299,7 @@ function ItemCard({
                 />
               </Field>
             )}
-            <Field label="Frame">
+            <Field label="画面比例">
               <select
                 className="input"
                 value={it.aspect ?? (video ? "9:16" : "4:5")}
@@ -318,7 +319,7 @@ function ItemCard({
             )}
           </div>
           {it.kind === "quote" && (
-            <Field label="Quote">
+            <Field label="金句">
               <textarea
                 className="input min-h-16"
                 maxLength={300}
@@ -329,10 +330,10 @@ function ItemCard({
                 <select
                   className="input mt-1 text-xs"
                   value=""
-                  aria-label="Use a line of this panel"
+                  aria-label="使用此画格的台词"
                   onChange={(e) => e.target.value && set({ text: e.target.value.slice(0, 300) })}
                 >
-                  <option value="">Use a line of this panel…</option>
+                  <option value="">选择此画格的台词…</option>
                   {quotePanel.quotes.map((q) => (
                     <option key={q} value={q}>
                       {q.length > 90 ? `${q.slice(0, 90)}…` : q}
@@ -343,17 +344,17 @@ function ItemCard({
             </Field>
           )}
           {video && (
-            <Field label="Hook line" hint="Said by the narrator before the first shot; empty for none">
+            <Field label="开场台词" hint="在首个镜头前朗读，留空则省略">
               <input
                 className="input"
                 maxLength={200}
                 value={it.hook ?? ""}
-                placeholder="What would you do if the door opened on its own?"
+                placeholder="如果门自己打开了，你会怎么做？"
                 onChange={(e) => set({ hook: e.target.value })}
               />
             </Field>
           )}
-          <Field label="Title">
+          <Field label="标题">
             <input
               className="input"
               maxLength={150}
@@ -361,7 +362,7 @@ function ItemCard({
               onChange={(e) => set({ title: e.target.value })}
             />
           </Field>
-          <Field label="Caption">
+          <Field label="发布文案">
             <textarea
               className="input min-h-20"
               maxLength={2200}
@@ -377,13 +378,13 @@ function ItemCard({
               video && totalMs > capMs ? "text-amber-600 dark:text-amber-400" : "muted",
             )}
           >
-            {it.panelIds.length} panel(s)
+            {it.panelIds.length} 个画格
             {video &&
-              ` · ${secs(totalMs)}${totalMs > capMs ? ` — over ${secs(capMs)}, the render stops before the shot that passes it` : ""}`}
+              ` · ${secs(totalMs)}${totalMs > capMs ? ` — 超过 ${secs(capMs)}，渲染将在超出时长的镜头之前停止` : ""}`}
           </p>
           <details onToggle={(e) => setPicking(e.currentTarget.open)}>
             <summary className="cursor-pointer text-xs font-medium">
-              {it.kind === "quote" ? "Choose the panel" : "Adjust the picks"}
+              {it.kind === "quote" ? "选择画格" : "调整所选画格"}
             </summary>
             {picking && (
               <ul className="mt-1 max-h-64 divide-y divide-[var(--border)] overflow-y-auto rounded-lg border border-[var(--border)] text-xs">
@@ -408,7 +409,7 @@ function ItemCard({
                         )}
                         <span className="min-w-0 flex-1">
                           <span className="block truncate font-medium">{c.label}</span>
-                          <span className="muted block truncate">{c.text || "— no narration —"}</span>
+                          <span className="muted block truncate">{c.text || "— 无旁白 —"}</span>
                         </span>
                         {video && <span className="muted shrink-0 tabular-nums">{secs(c.holdMs)}</span>}
                       </label>
@@ -437,8 +438,8 @@ function ItemCard({
           <PreviewVideoButton
             projectId={projectId}
             scope={{ panelIds: it.panelIds }}
-            label="Preview"
-            title={`Preview — ${it.label || KIND_LABEL[it.kind]}`}
+            label="预览"
+            title={`预览 — ${it.label || KIND_LABEL[it.kind]}`}
             defaultAspect={it.aspect === "16:9" || it.aspect === "1:1" ? it.aspect : "9:16"}
             capMs={capMs}
           />
@@ -449,7 +450,7 @@ function ItemCard({
           disabled={busy || !it.panelIds.length || (it.kind === "quote" && !it.text.trim())}
           onClick={onRender}
         >
-          <Film className="size-4" /> Render
+          <Film className="size-4" /> 渲染
         </button>
       </div>
     </li>

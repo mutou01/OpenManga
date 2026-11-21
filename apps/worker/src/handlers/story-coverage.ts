@@ -29,7 +29,7 @@ export async function storyCoverage(deps: WorkerDeps, job: ProjectJob) {
     .select()
     .from(storyRevisions)
     .where(eq(storyRevisions.id, String(job.input.storyRevisionId)));
-  if (!rev || rev.projectId !== job.projectId) throw new InputError("Story revision no longer exists");
+  if (!rev || rev.projectId !== job.projectId) throw new InputError("故事修订版已不存在");
   const language = String(job.input.language);
   const chapterRows = await deps.db.execute<{
     id: string;
@@ -59,7 +59,7 @@ export async function storyCoverage(deps: WorkerDeps, job: ProjectJob) {
   const chapterPanels = await deps.db.execute<{ chapter_id: string; panels: number }>(sql`
     select pg.chapter_id, count(*)::int as panels from panels pn join pages pg on pg.id = pn.page_id
     where pn.project_id = ${job.projectId} group by pg.chapter_id`);
-  if (!chapterRows.length) throw new InputError("The project has no chapters to compare the story with");
+  if (!chapterRows.length) throw new InputError("项目没有可与故事比较的章节");
 
   const plan: (CoveragePlanChapter & { summary: string; start: number | null })[] = [...chapterRows].map((c) => {
     // Where the chapter starts in the source, from the analysis' excerpt, when it can be found.
@@ -81,7 +81,7 @@ export async function storyCoverage(deps: WorkerDeps, job: ProjectJob) {
   });
   const sceneInfo = new Map([...sceneRows].map((s) => [s.id, s]));
   const paragraphs = splitParagraphs(rev.content);
-  if (!paragraphs.length) throw new InputError("The story revision is empty");
+  if (!paragraphs.length) throw new InputError("故事修订版为空");
   const chunks = chunkParagraphs(paragraphs, CHUNK_CHARS);
   const squashedAt = (offset: number) => squash(rev.content.slice(0, offset)).length;
   const known = new Set(plan.flatMap((c) => [c.key, ...c.scenes.map((s) => s.key)]));

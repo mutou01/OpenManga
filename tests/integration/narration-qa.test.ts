@@ -251,7 +251,7 @@ test("the audio check's edges: access, an unreadable take, ignored findings, sta
 
   // A language with no voiced narration has nothing to measure: the job says so.
   const none = await check({ language: "de" }, "failed");
-  expect(none.failureReason).toContain("No voiced narration");
+  expect(none.failureReason).toContain("没有已配音的旁白");
 
   // Agents queue it through run_narration_lint, with no model and nothing to approve.
   const { token } = await alice.post<{ token: string }>(

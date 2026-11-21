@@ -26,9 +26,9 @@ import {
 
 type Tool = "pen" | "line" | "eraser" | "pose";
 const WIDTHS = [
-  ["Fine", 4],
-  ["Medium", 10],
-  ["Bold", 22],
+  ["细", 4],
+  ["中", 10],
+  ["粗", 22],
 ] as const;
 const INK = "#111111";
 
@@ -36,7 +36,7 @@ const INK = "#111111";
 async function loadBitmap(assetId: string) {
   const url = assetUrl(assetId, "preview");
   const r = await fetch(`${url}${url.includes("?") ? "&" : "?"}proxy=1`, { credentials: "same-origin" });
-  if (!r.ok) throw new Error("Could not load the current guide");
+  if (!r.ok) throw new Error("无法加载当前引导图");
   return createImageBitmap(await r.blob());
 }
 
@@ -236,12 +236,12 @@ export function GuideDrawer({
       if (c) g.drawImage(c, 0, 0);
       paintFigures(g, doc.figures, false);
       const blob = await new Promise<Blob | null>((res) => out.toBlob(res, "image/png"));
-      if (!blob) throw new Error("Could not encode the drawing");
+      if (!blob) throw new Error("无法编码画布图片");
       const form = new FormData();
       form.set("file", new File([blob], "guide.png", { type: "image/png" }));
       form.set("strength", guide?.strength ?? "loose");
       await api(`/panels/${panelId}/guide`, { method: "POST", body: form });
-      toast.success("Layout guide saved");
+      toast.success("布局引导图已保存");
       onSaved();
       onClose();
     } catch (e) {
@@ -266,7 +266,7 @@ export function GuideDrawer({
     <Modal
       open
       onClose={onClose}
-      title={guide ? "Edit layout guide" : "Draw layout guide"}
+      title={guide ? "编辑布局引导图" : "绘制布局引导图"}
       wide="full"
       footer={
         <>
@@ -277,10 +277,10 @@ export function GuideDrawer({
               disabled={!traceId}
               onChange={(e) => setShowTrace(e.target.checked)}
             />
-            Show {artworkId ? "panel art" : "current guide"} underneath (not saved)
+            显示下方的{artworkId ? "画格原图" : "当前引导图"}（仅供参考）
           </label>
           <button type="button" className="btn-secondary" onClick={onClose}>
-            Cancel
+            取消
           </button>
           <button
             type="button"
@@ -288,20 +288,20 @@ export function GuideDrawer({
             disabled={saving || loading || isEmpty(doc)}
             onClick={() => void save()}
           >
-            {saving && <Spinner />} Save guide
+            {saving && <Spinner />} 保存引导图
           </button>
         </>
       }
     >
       <div className="flex h-full min-h-0 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-1">
-          {toolButton("pen", "Pen", Pen)}
-          {toolButton("line", "Line", Minus)}
-          {toolButton("eraser", "Eraser", Eraser)}
-          {toolButton("pose", "Pose", PersonStanding)}
+          {toolButton("pen", "画笔", Pen)}
+          {toolButton("line", "直线", Minus)}
+          {toolButton("eraser", "橡皮擦", Eraser)}
+          {toolButton("pose", "姿势", PersonStanding)}
           <select
             className="input w-auto py-1 text-xs"
-            aria-label="Line width"
+            aria-label="线宽"
             value={width}
             onChange={(e) => setWidth(Number(e.target.value))}
           >
@@ -314,7 +314,7 @@ export function GuideDrawer({
           <button
             type="button"
             className="btn-secondary px-2 text-xs"
-            title="Add a stick figure; drag its joints with the Pose tool, or its body to move it"
+            title="添加简笔人形。使用姿势工具拖动关节调整姿势，拖动身体可移动整个人形。"
             onClick={() => {
               const n = doc.figures.length;
               setHist((h) =>
@@ -323,14 +323,14 @@ export function GuideDrawer({
               setTool("pose");
             }}
           >
-            <UserPlus className="size-4" /> Figure
+            <UserPlus className="size-4" /> 人形
           </button>
           <span className="ml-auto flex gap-1">
             <button
               type="button"
               className="btn-ghost p-1.5"
-              aria-label="Undo"
-              title="Undo"
+              aria-label="撤销"
+              title="撤销"
               disabled={hist.at === 0}
               onClick={() => setHist(undo)}
             >
@@ -339,8 +339,8 @@ export function GuideDrawer({
             <button
               type="button"
               className="btn-ghost p-1.5"
-              aria-label="Redo"
-              title="Redo"
+              aria-label="重做"
+              title="重做"
               disabled={hist.at === hist.stack.length - 1}
               onClick={() => setHist(redo)}
             >
@@ -349,8 +349,8 @@ export function GuideDrawer({
             <button
               type="button"
               className="btn-ghost p-1.5 text-red-500"
-              aria-label="Clear"
-              title="Clear everything"
+              aria-label="清空"
+              title="清空画布"
               disabled={isEmpty(doc)}
               onClick={() => setHist((h) => commit(h, { marks: [], figures: [], base: false }))}
             >
@@ -369,7 +369,7 @@ export function GuideDrawer({
               "max-h-full max-w-full touch-none rounded border border-[var(--border)] bg-white",
               tool === "pose" ? "cursor-grab" : "cursor-crosshair",
             )}
-            aria-label="Drawing canvas for the layout guide"
+            aria-label="布局引导图的绘图画布"
             onPointerDown={down}
             onPointerMove={move}
             onPointerUp={up}
@@ -377,8 +377,7 @@ export function GuideDrawer({
           />
         </div>
         <p className="muted text-xs">
-          Rough is fine: only the composition, framing and poses are used. Pose: drag a joint, or the dot in the middle
-          of the body to move the whole figure.
+          草图只需标出构图、取景和姿势。可拖动关节调整姿势，或拖动身体中央的圆点移动整个人物。
         </p>
       </div>
     </Modal>

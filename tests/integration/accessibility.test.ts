@@ -96,7 +96,7 @@ test("the narration transcript, an EPUB that describes its pages, and a reader l
   await done((await u.post<{ job: { id: string } }>(`/api/chapters/${chapterId}/narration/generate`, {}, 202)).job.id);
   const transcript = await (await u.raw("GET", `/api/projects/${projectId}/transcript`)).text();
   expect(transcript).toStartWith("# Readable");
-  expect(transcript).toContain("## Chapter 1:");
+  expect(transcript).toContain("## 第 1 章 · ");
   expect(transcript.split("\n").filter((l) => l.trim()).length).toBeGreaterThan(3);
   const ex = await u.post<{ job: { id: string } }>(
     `/api/projects/${projectId}/exports`,

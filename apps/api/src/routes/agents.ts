@@ -172,7 +172,7 @@ agentRoutes.post("/tokens", async (c) => {
 
 agentRoutes.patch("/connections/:id", async (c) => {
   const s = await ownService(c, uuidParam(c, "id"));
-  if (s.revokedAt) throw new ApiError(409, "conflict", "This connection is revoked");
+  if (s.revokedAt) throw new ApiError(409, "conflict", "此连接已撤销");
   const input = await body(c, asPatch(Grant));
   const deps = c.get("deps");
   const [row] = await deps.db

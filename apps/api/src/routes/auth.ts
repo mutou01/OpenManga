@@ -51,7 +51,7 @@ doc({
 authRoutes.post("/register", authLimit, registerLimit, async (c) => {
   const deps = c.get("deps");
   if (!deps.config.REGISTRATION_ENABLED)
-    throw new AuthError("registration_disabled", "Registration is disabled. Ask an administrator for an account.");
+    throw new AuthError("registration_disabled", "注册已关闭，请联系管理员创建账号。");
   const input = await body(c, RegisterInput);
   const u = await deps.auth.createUser(input);
   const s = await deps.auth.createSession(u.id, { ip: clientIp(c), userAgent: c.req.header("user-agent") });
@@ -225,9 +225,9 @@ authRoutes.post("/password-reset/request", authLimit, resetMailLimit, async (c) 
     const url = deps.urls.passwordResetUrl(r.token);
     await deps.mail.send({
       to: r.user.email,
-      subject: "Reset your OpenManga password",
-      text: `Hi ${r.user.username},\n\nUse this link within 1 hour to reset your password:\n${url}\n\nIf you did not request this, ignore this email.`,
-      html: `<p>Hi ${r.user.username},</p><p><a href="${url}">Reset your password</a> (valid for 1 hour).</p><p>If you did not request this, ignore this email.</p>`,
+      subject: "重置 OpenManga 密码",
+      text: `${r.user.username}，你好！\n\n请打开以下链接重置密码。链接有效期为 1 小时。\n${url}\n\n如果你没有申请重置密码，请忽略此邮件。`,
+      html: `<p>${r.user.username}，你好！</p><p><a href="${url}">重置密码</a>（有效期为 1 小时）。</p><p>如果你没有申请重置密码，请忽略此邮件。</p>`,
       metadata: { kind: "password_reset", resetUrl: url, userId: r.user.id },
     });
     await recordAudit(deps.db, {
@@ -237,7 +237,7 @@ authRoutes.post("/password-reset/request", authLimit, resetMailLimit, async (c) 
       requestId: c.get("requestId"),
     });
   }
-  return c.json({ ok: true, message: "If an account exists, a reset link has been sent." });
+  return c.json({ ok: true, message: "如果账号存在，系统已发送密码重置链接。" });
 });
 
 doc({
@@ -267,8 +267,7 @@ devMailRoutes.use("*", async (c, next) => {
   if (!cfg.devMailboxEnabled) throw notFound();
   // Every mail in here carries a password-reset link, so it is admin-only in every environment: making this
   // depend on NODE_ENV means one misconfigured deployment publishes account takeover to anonymous callers.
-  if (c.get("user")?.role !== "admin")
-    throw new ApiError(403, "forbidden", "The dev mailbox is restricted to administrators.");
+  if (c.get("user")?.role !== "admin") throw new ApiError(403, "forbidden", "只有管理员可以访问开发邮箱。");
   await next();
 });
 doc({ method: "GET", path: "/api/dev/mailbox", summary: "Dev mailbox: list emails", tag: "dev" });

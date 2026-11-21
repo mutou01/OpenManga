@@ -210,7 +210,7 @@ generationRoutes.post("/generations/:id/cancel", async (c) => {
   const job = await jobWithAccess(c, uuidParam(c, "id"), "generate");
   const deps = c.get("deps");
   const result = await deps.jobs.cancelGeneration(job.id);
-  if (result === "not_cancellable") throw conflict(`Job is already ${job.status}`);
+  if (result === "not_cancellable") throw conflict(`任务当前状态为 ${job.status}，无法取消`);
   await recordAudit(deps.db, {
     userId: user(c).id,
     projectId: job.projectId,
@@ -234,17 +234,13 @@ generationRoutes.post("/generations/:id/retry", async (c) => {
   // The retry runs as the caller, and a key is usable only by its owner: another member's keyed job would be claimed
   // here and then fail in the worker. Refused up front instead; the caller can run it again with their own key.
   if (job.userId !== user(c).id && (job.parameters.ai as { credentialId?: string } | null | undefined)?.credentialId)
-    throw new ApiError(
-      403,
-      "not_your_job",
-      "Another member ran this with their own provider key. Run it again with yours instead of retrying it.",
-    );
+    throw new ApiError(403, "not_your_job", "此任务由其他成员使用其密钥发起。请使用你的密钥发起新任务。");
   // A retry is a fresh paid call, so it goes through the same budget gate as the route that queued the original.
   if (job.projectId) await assertBudget(c, job.projectId);
   // A panel locked since the job failed is final: a retried draw would replace its artwork.
   if (job.targetType === "panel" && job.targetId && (job.kind === "panel_generation" || job.kind === "panel_edit")) {
     const [pn] = await deps.db.select({ s: panels.approvalStatus }).from(panels).where(eq(panels.id, job.targetId));
-    if (pn?.s === "locked") throw conflict("Panel is locked");
+    if (pn?.s === "locked") throw conflict("画格已锁定");
   }
   const created = await deps.jobs.retryGeneration(job.id, user(c).id);
   if (!created)
@@ -273,9 +269,9 @@ async function readManualAnswer(c: Context<AppEnv>) {
     const form = await c.req.formData();
     const file = form.get("file");
     if (file instanceof File) {
-      if (file.size > 2_000_000) throw badRequest("That answer is larger than 2 MB");
+      if (file.size > 2_000_000) throw badRequest("回答内容超过 2 MB");
       const text = (await file.text()).trim();
-      if (!text) throw badRequest("That file is empty");
+      if (!text) throw badRequest("该文件为空");
       return text;
     }
     const field = form.get("text");
@@ -355,8 +351,7 @@ doc({
 generationRoutes.post("/generations/:id/manual", async (c) => {
   const job = await jobWithAccess(c, uuidParam(c, "id"), "generate");
   if (job.parameters.manual !== true) throw notManual();
-  if (job.status !== "awaiting_input")
-    throw conflict(`This job is ${job.status}; only a job waiting for an answer can be given one.`);
+  if (job.status !== "awaiting_input") throw conflict(`任务当前状态为 ${job.status}，只有等待输入的任务可提交回答。`);
   const text = await readManualAnswer(c);
   const deps = c.get("deps");
   // Stored on the job, then requeued: the handler runs exactly as it would for a provider's reply, so the schema
@@ -383,7 +378,7 @@ generationRoutes.post("/generations/:id/manual", async (c) => {
       ),
     )
     .returning({ id: generationJobs.id });
-  if (!taken) throw conflict("This answer was already given, or the job is no longer waiting for one.");
+  if (!taken) throw conflict("已提交回答，或此任务已结束等待。");
   // Keyed by attempt, because this job has already been through the queue once: the queue dedupes by job id, so
   // handing it back under the same key would be dropped. Two clicks on the same answer still collapse into one.
   await deps.jobs.enqueueGeneration(job, `${job.id}:answer:${job.attempts}`);
@@ -455,7 +450,7 @@ generationRoutes.post("/projects/:projectId/generations/bulk", async (c) => {
   const scopeKinds = [scope.pageId, scope.sceneId, scope.chapterId, scope.panelIds, scope.references].filter(
     Boolean,
   ).length;
-  if (scopeKinds !== 1) throw badRequest("Provide exactly one of pageId, sceneId, chapterId, panelIds, references");
+  if (scopeKinds !== 1) throw badRequest("请选择一个生成范围（pageId、sceneId、chapterId、panelIds 或 references）");
   if (scope.references) return bulkReferences(c, p.id, scope.references, input);
   if (scope.pageId) await entityAccess(c, "page", scope.pageId, "generate");
   if (scope.sceneId) await entityAccess(c, "scene", scope.sceneId, "generate");
@@ -464,7 +459,7 @@ generationRoutes.post("/projects/:projectId/generations/bulk", async (c) => {
   // `panelIds` is capped by the schema, but a chapter or scene scope is only as small as the project: each panel
   // costs several queries plus a Sharp resize in this request, so an unbounded chapter stalls the whole API.
   if (ids.length > MAX_BULK_PANELS)
-    throw badRequest(`This scope has ${ids.length} panels; generate at most ${MAX_BULK_PANELS} at a time.`);
+    throw badRequest(`此范围有 ${ids.length} 个画格，每次最多生成 ${MAX_BULK_PANELS} 格。`);
   const rows = ids.length
     ? await deps.db
         .select()
@@ -580,7 +575,7 @@ async function bulkReferences(
   const deps = c.get("deps");
   const kinds: readonly string[] = REFERENCE_KINDS_FOR[subject];
   const kind = input.scope.referenceKind ?? (subject === "character" ? "full_body" : subject);
-  if (!kinds.includes(kind)) throw badRequest(`A ${subject} has no ${kind} reference`);
+  if (!kinds.includes(kind)) throw badRequest(`${subject} 不支持 ${kind} 类型的参考图`);
   const [project] = await deps.db
     .select({ settings: projects.settings })
     .from(projects)
@@ -999,11 +994,7 @@ generationRoutes.post("/generations/batches/:batchId/resume", async (c) => {
     )
     .limit(1);
   if (other)
-    throw new ApiError(
-      403,
-      "not_your_batch",
-      "Another member started this batch, and it runs on their provider key. Ask them to resume it, or start a new run.",
-    );
+    throw new ApiError(403, "not_your_batch", "此批次使用发起成员的密钥。请联系该成员继续处理，或发起新批次。");
   await assertBudget(c, p.id);
   const resumed = await c.get("deps").jobs.resumeBatch(batchId, {
     allowOverBudget: await overBudgetAllowed(c, p.id),

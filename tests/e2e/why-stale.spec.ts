@@ -20,8 +20,8 @@ test("why stale: a chapter whose text changed after planning is explained on the
   const { chapter } = await a.get<{ chapter: { sourceExcerpt: string } }>(`/chapters/${s.chapterId}`);
   await a.patch(`/chapters/${s.chapterId}`, { sourceExcerpt: `${chapter.sourceExcerpt}\nThe rain stopped.` });
   await page.goto(s.url);
-  await page.getByRole("button", { name: /^Plan \d+$/ }).click();
-  const why = page.getByRole("region", { name: "Why Plan is out of date" });
-  await expect(why.getByText(/^Its text changed after planning/)).toBeVisible();
-  await expect(why.getByText(/^Update: Re-planning replaces its \d+ pages?/)).toBeVisible();
+  await page.getByRole("button", { name: /^规划 \d+$/ }).click();
+  const why = page.getByRole("region", { name: "规划过期原因" });
+  await expect(why.getByText(/^规划后原文已修改/)).toBeVisible();
+  await expect(why.getByText(/^更新后将 · 重新规划将替换 \d+ 页/)).toBeVisible();
 });

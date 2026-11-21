@@ -32,9 +32,9 @@ async function checkRange(db: DbOrTx, projectId: string, from?: string | null, u
     .select({ id: chapters.id, order: chapters.order })
     .from(chapters)
     .where(and(eq(chapters.projectId, projectId), inArray(chapters.id, ids)));
-  if (rows.length !== new Set(ids).size) throw badRequest("A chapter is not in this project");
+  if (rows.length !== new Set(ids).size) throw badRequest("所选章节不属于此项目");
   const o = (id?: string | null) => rows.find((r) => r.id === id)?.order;
-  if (from && until && o(from)! > o(until)!) throw badRequest("The range ends before it starts");
+  if (from && until && o(from)! > o(until)!) throw badRequest("结束位置早于起始位置");
 }
 
 doc({
@@ -83,7 +83,7 @@ locationStateRoutes.post("/locations/:id/states", async (c) => {
   const input = await body(c, StateInput);
   const { db } = c.get("deps");
   await checkRange(db, p.id, input.fromChapterId, input.untilChapterId);
-  if ((await statesOf(db, id)).length >= 30) throw badRequest("A location has at most 30 states");
+  if ((await statesOf(db, id)).length >= 30) throw badRequest("每个地点最多保存 30 个状态");
   const [row] = await db
     .insert(locationStates)
     .values({ ...input, projectId: p.id, locationId: id })

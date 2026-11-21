@@ -21,11 +21,11 @@ export function VersionsTab({ panel, pageId }: { panel: EditorPanel; pageId: str
   const inv = [qk.panel(panel.id), qk.page(pageId)];
   const activate = useAction((assetId: string) => post(`/panels/${panel.id}/versions/${assetId}/activate`), {
     invalidate: inv,
-    success: "Version activated",
+    success: "已启用版本",
   });
   const remove = useAction((assetId: string) => del(`/panels/${panel.id}/versions/${assetId}`), {
     invalidate: inv,
-    success: "Version moved to trash",
+    success: "版本已移到回收站",
   });
 
   const upload = async (file: File) => {
@@ -34,7 +34,7 @@ export function VersionsTab({ panel, pageId }: { panel: EditorPanel; pageId: str
       const form = new FormData();
       form.set("file", file);
       await api(`/panels/${panel.id}/artwork/upload`, { method: "POST", body: form });
-      toast.success("Artwork uploaded");
+      toast.success("已上传图片");
       for (const key of inv) qc.invalidateQueries({ queryKey: key });
       await q.refetch();
     } catch (e) {
@@ -47,7 +47,7 @@ export function VersionsTab({ panel, pageId }: { panel: EditorPanel; pageId: str
   // version exists — not only alongside a list of generated ones.
   const uploadButton = (
     <label className={clsx("btn-secondary cursor-pointer", uploading && "pointer-events-none opacity-50")}>
-      {uploading ? <Spinner /> : <ImagePlus className="size-4" />} Upload artwork
+      {uploading ? <Spinner /> : <ImagePlus className="size-4" />} 上传图片
       <input
         type="file"
         className="sr-only"
@@ -68,7 +68,7 @@ export function VersionsTab({ panel, pageId }: { panel: EditorPanel; pageId: str
   if (!versions.length)
     return (
       <div className="space-y-3">
-        <EmptyState title="No artwork yet">Generate the panel, or upload your own image.</EmptyState>
+        <EmptyState title="暂无图片">生成分镜图片，或上传自己的图片。</EmptyState>
         <div className="flex justify-center">{uploadButton}</div>
       </div>
     );
@@ -84,7 +84,7 @@ export function VersionsTab({ panel, pageId }: { panel: EditorPanel; pageId: str
           disabled={compare.length !== 2}
           onClick={() => setOpen(true)}
         >
-          <Columns2 className="size-4" /> Compare selected ({compare.length}/2)
+          <Columns2 className="size-4" /> 比较所选版本（{compare.length}/2)
         </button>
         {uploadButton}
       </div>
@@ -101,17 +101,17 @@ export function VersionsTab({ panel, pageId }: { panel: EditorPanel; pageId: str
               )}
             >
               <a href={assetUrl(v.assetId)} target="_blank" rel="noreferrer" className="shrink-0">
-                <AssetImage assetId={v.assetId} alt={`Version ${v.versionNumber}`} className="size-20 rounded" />
+                <AssetImage assetId={v.assetId} alt={`版本 ${v.versionNumber}`} className="size-20 rounded" />
               </a>
               <div className="min-w-0 flex-1 text-xs">
                 <div className="flex items-center gap-1 font-medium">
                   v{v.versionNumber}{" "}
-                  {active && <CheckCircle2 className="size-3.5 text-emerald-500" aria-label="Active" />}
-                  {v.cancelled && <span className="chip bg-zinc-500/15">cancelled</span>}
+                  {active && <CheckCircle2 className="size-3.5 text-emerald-500" aria-label="当前使用" />}
+                  {v.cancelled && <span className="chip bg-zinc-500/15">已取消</span>}
                 </div>
                 <div className="muted">
                   {(v.operation ?? v.kind ?? "generation").replace(/_/g, " ")}
-                  {parent ? ` · from v${parent.versionNumber}` : ""}
+                  {parent ? ` · 源自 v${parent.versionNumber}` : ""}
                 </div>
                 <div className="muted">
                   {v.width}×{v.height} · {fmt.ago(v.createdAt)}
@@ -119,7 +119,7 @@ export function VersionsTab({ panel, pageId }: { panel: EditorPanel; pageId: str
                 <div className="mt-1 flex flex-wrap items-center gap-1">
                   <label className="flex items-center gap-1">
                     <input type="checkbox" checked={compare.includes(v.assetId)} onChange={() => toggle(v.assetId)} />{" "}
-                    compare
+                    比较
                   </label>
                   {!active && (
                     <button
@@ -127,7 +127,7 @@ export function VersionsTab({ panel, pageId }: { panel: EditorPanel; pageId: str
                       className="btn-ghost px-1.5 py-0.5 text-xs"
                       onClick={() => activate.mutate(v.assetId)}
                     >
-                      Activate
+                      启用
                     </button>
                   )}
                   {v.generationJobId && (
@@ -136,14 +136,14 @@ export function VersionsTab({ panel, pageId }: { panel: EditorPanel; pageId: str
                       params={{ projectId, jobId: v.generationJobId }}
                       className="btn-ghost px-1.5 py-0.5 text-xs"
                     >
-                      Job
+                      任务
                     </Link>
                   )}
                   {!active && (
                     <button
                       type="button"
                       className="btn-ghost px-1 py-0.5 text-red-500"
-                      aria-label={`Delete version ${v.versionNumber}`}
+                      aria-label={`删除版本 ${v.versionNumber}`}
                       onClick={() => remove.mutate(v.assetId)}
                     >
                       <Trash2 className="size-3.5" />
@@ -155,20 +155,20 @@ export function VersionsTab({ panel, pageId }: { panel: EditorPanel; pageId: str
           );
         })}
       </ul>
-      <Modal open={open} onClose={() => setOpen(false)} title="Compare versions" wide="xl">
+      <Modal open={open} onClose={() => setOpen(false)} title="比较版本" wide="xl">
         <div className="grid grid-cols-2 gap-3">
           {compare.map((id) => (
             <figure key={id} className="space-y-1">
               <img
                 src={assetUrl(id)}
-                alt={`Version ${byId.get(id)?.versionNumber}`}
+                alt={`版本 ${byId.get(id)?.versionNumber}`}
                 className="w-full rounded-lg bg-[var(--panel-2)] object-contain"
               />
               <figcaption className="flex items-center justify-between text-sm">
                 <span>v{byId.get(id)?.versionNumber}</span>
                 {q.data?.activeAssetId !== id && (
                   <button type="button" className="btn-secondary py-1" onClick={() => activate.mutate(id)}>
-                    Activate
+                    启用
                   </button>
                 )}
               </figcaption>

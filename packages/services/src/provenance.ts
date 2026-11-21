@@ -318,15 +318,12 @@ export async function buildProvenance(
     narration: {
       voices: voices.map((v) => ({
         voice: v.voice,
-        provider: ((v.options?.ai as { provider?: string } | undefined)?.provider ?? "local voice (Kokoro)") as string,
+        provider: ((v.options?.ai as { provider?: string } | undefined)?.provider ?? "本地音色（Kokoro）") as string,
       })),
     },
-    fonts: fonts.map((f) => ({ name: f, licence: FONT_LICENCES[f] ?? "not bundled with the app: check its licence" })),
+    fonts: fonts.map((f) => ({ name: f, licence: FONT_LICENCES[f] ?? "应用未附带此字体，请查看其许可证" })),
     licences: [...licenceOf.entries()].map(([assetId, licence]) => ({ assetId, ...licence })),
-    notes: [
-      "AI-generated artwork and text: check each provider's terms for how outputs may be used.",
-      "Content Credentials (C2PA) are not embedded in the files.",
-    ],
+    notes: ["画面和文本由 AI 生成。使用前请查看相应服务商的条款。", "文件中未嵌入内容凭据（C2PA）。"],
   };
 }
 export type Provenance = Awaited<ReturnType<typeof buildProvenance>>;
@@ -334,48 +331,46 @@ export type Provenance = Awaited<ReturnType<typeof buildProvenance>>;
 /** The same record as a page a person can read. */
 export function provenanceMarkdown(p: Provenance) {
   const lines = [
-    `# Provenance: ${p.project.title}`,
+    `# 来源记录 · ${p.project.title}`,
     "",
-    `Made with ${p.app.name} ${p.app.version}${p.app.sha ? ` (${p.app.sha.slice(0, 7)})` : ""} on ${p.createdAt}.`,
-    p.story ? `Story revision ${p.story.revision} (${p.story.revisionId}).` : "No story revision.",
+    `由 ${p.app.name} ${p.app.version}${p.app.sha ? ` (${p.app.sha.slice(0, 7)})` : ""} 生成于 ${p.createdAt}。`,
+    p.story ? `故事版本 ${p.story.revision}（${p.story.revisionId}）。` : "无故事版本。",
     "",
-    "## Models",
-    ...p.models.map(
-      (m) => `- ${m.kind}: ${m.provider ?? "?"} ${m.model ?? ""} (${m.uses} use${m.uses === 1 ? "" : "s"})`,
-    ),
+    "## 模型",
+    ...p.models.map((m) => `- ${m.kind}: ${m.provider ?? "?"} ${m.model ?? ""} （使用 ${m.uses} 次）`),
     "",
-    "## Panels",
+    "## 画格",
     ...p.panels.map(
       (x) =>
-        `- Chapter ${x.chapter}, page ${x.page}, panel ${x.panel}: ${
+        `- 第 ${x.chapter} 章 · 第 ${x.page} 页 · 第 ${x.panel} 格：${
           x.art
-            ? `${x.art.source}${x.art.job ? ` by ${x.art.job.provider} ${x.art.job.model ?? ""}, ${x.art.job.template ?? ""}` : ""}${x.art.tool ? `, tool ${x.art.tool}` : ""} · sha256 ${x.art.sha256.slice(0, 12)}`
-            : "no artwork"
-        }${x.clip ? ` · video clip by ${x.clip.job?.provider ?? "?"} ${x.clip.job?.model ?? ""}${x.clip.parts > 1 ? ` in ${x.clip.parts} parts` : ""} · sha256 ${x.clip.sha256.slice(0, 12)}` : ""}`,
+            ? `${x.art.source}${x.art.job ? ` · 服务商 ${x.art.job.provider} ${x.art.job.model ?? ""} · ${x.art.job.template ?? ""}` : ""}${x.art.tool ? ` · 工具 ${x.art.tool}` : ""} · sha256 ${x.art.sha256.slice(0, 12)}`
+            : "无画面"
+        }${x.clip ? ` · 视频片段来自 ${x.clip.job?.provider ?? "?"} ${x.clip.job?.model ?? ""}${x.clip.parts > 1 ? `（${x.clip.parts} 段）` : ""} · sha256 ${x.clip.sha256.slice(0, 12)}` : ""}`,
     ),
     "",
-    "## References",
+    "## 参考图",
     ...(p.references.length
       ? p.references.map(
           (r) =>
-            `- ${r.kind} ${r.name}: ${r.source}${r.uploadedName ? ` (${r.uploadedName})` : ""}${r.licence ? ` · licence: ${r.licence.text}${r.licence.url ? ` <${r.licence.url}>` : ""}` : ""}`,
+            `- ${r.kind} ${r.name}: ${r.source}${r.uploadedName ? ` (${r.uploadedName})` : ""}${r.licence ? ` · 许可证：${r.licence.text}${r.licence.url ? ` <${r.licence.url}>` : ""}` : ""}`,
         )
-      : ["- none"]),
+      : ["- 无"]),
     "",
     ...(p.music
       ? [
-          "## Music",
-          `- ${p.music.uploadedName ?? p.music.assetId}${p.music.licence ? ` · licence: ${p.music.licence.text}${p.music.licence.url ? ` <${p.music.licence.url}>` : ""}` : " · no licence note recorded"}`,
+          "## 音乐",
+          `- ${p.music.uploadedName ?? p.music.assetId}${p.music.licence ? ` · 许可证：${p.music.licence.text}${p.music.licence.url ? ` <${p.music.licence.url}>` : ""}` : " · 未记录许可说明"}`,
           "",
         ]
       : []),
-    "## Narration voices",
-    ...(p.narration.voices.length ? p.narration.voices.map((v) => `- ${v.voice} (${v.provider})`) : ["- none"]),
+    "## 旁白音色",
+    ...(p.narration.voices.length ? p.narration.voices.map((v) => `- ${v.voice} (${v.provider})`) : ["- 无"]),
     "",
-    "## Fonts",
+    "## 字体",
     ...p.fonts.map((f) => `- ${f.name}: ${f.licence}`),
     "",
-    "## Notes",
+    "## 备注",
     ...p.notes.map((n) => `- ${n}`),
     "",
   ];

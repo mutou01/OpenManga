@@ -55,7 +55,7 @@ export function InvitePage() {
     });
   const signup = (e: FormEvent) => {
     e.preventDefault();
-    if (form.password !== form.confirm) return setError(new Error("Passwords do not match"));
+    if (form.password !== form.confirm) return setError(new Error("两次输入的密码不一致"));
     void run(async () => {
       const r = await post<{ user: SessionUser; projectId: string }>("/auth/invite-signup", {
         token,
@@ -69,16 +69,13 @@ export function InvitePage() {
   };
   const home = (
     <Link to="/" className="text-accent-500 hover:underline">
-      Go to OpenManga
+      前往 OpenManga
     </Link>
   );
   if (!token || preview.error)
     return (
-      <AuthCard title="Invitation not available" footer={home}>
-        <p className="text-sm">
-          This invitation link is invalid, already used, revoked or expired. Ask the project's owner to invite you
-          again.
-        </p>
+      <AuthCard title="邀请不可用" footer={home}>
+        <p className="text-sm">此邀请链接无效、已使用、已撤销或已过期。请让项目所有者重新发送邀请。</p>
       </AuthCard>
     );
   if (!preview.data || me.isLoading)
@@ -88,48 +85,47 @@ export function InvitePage() {
       </div>
     );
   const inv = preview.data.invite;
-  const subtitle = `${inv.invitedBy ? `@${inv.invitedBy}` : "Someone"} invited ${inv.email} to “${inv.projectTitle}” as ${inv.role === "editor" ? "an editor" : "a viewer"}.`;
+  const subtitle = `${inv.invitedBy ? `@${inv.invitedBy}` : "有用户"}邀请 ${inv.email} 以${inv.role === "editor" ? "编辑者" : "查看者"}身份加入“${inv.projectTitle}”。`;
   const signedIn = me.data;
   if (signedIn) {
     const other = signedIn.email !== inv.email;
     return (
-      <AuthCard title="Join project" subtitle={subtitle} footer={home}>
+      <AuthCard title="加入项目" subtitle={subtitle} footer={home}>
         {other && (
           <p className="mb-3 text-sm">
-            You are signed in as {signedIn.username} ({signedIn.email}). This invitation is for {inv.email}: sign in
-            with that account to accept it.
+            当前登录账号为 {signedIn.username}（{signedIn.email}）。请使用 {inv.email} 对应的账号登录后接受邀请。
           </p>
         )}
-        <ErrorBox error={error} title="Could not accept" />
+        <ErrorBox error={error} title="无法接受邀请" />
         <button type="button" className="btn-primary w-full" disabled={busy || other} onClick={accept}>
-          {busy && <Spinner />} Accept invitation
+          {busy && <Spinner />} 接受邀请
         </button>
       </AuthCard>
     );
   }
   if (inv.accountExists)
     return (
-      <AuthCard title="Join project" subtitle={subtitle}>
-        <p className="mb-3 text-sm">An account for {inv.email} already exists. Sign in to accept the invitation.</p>
+      <AuthCard title="加入项目" subtitle={subtitle}>
+        <p className="mb-3 text-sm">邮箱 {inv.email} 已有对应账号。登录后即可接受邀请。</p>
         <Link
           to="/login"
           search={{ next: `${window.location.pathname}${window.location.search}` }}
           className="btn-primary w-full justify-center"
         >
-          Sign in
+          登录
         </Link>
       </AuthCard>
     );
   return (
-    <AuthCard title="Create your account" subtitle={subtitle}>
+    <AuthCard title="创建账号" subtitle={subtitle}>
       <form onSubmit={signup} className="space-y-3">
         <div>
-          <span className="label">Email</span>
+          <span className="label">邮箱</span>
           <div className="input muted truncate">{inv.email}</div>
         </div>
         <div>
           <label htmlFor="inv-username" className="label">
-            Username
+            用户名
           </label>
           <input
             id="inv-username"
@@ -141,12 +137,12 @@ export function InvitePage() {
             minLength={3}
             maxLength={32}
             pattern="[A-Za-z0-9_][A-Za-z0-9_.\-]{2,31}"
-            title="3-32 letters, digits, _ . -"
+            title="3–32 个字符，可使用英文字母、数字、下划线、句点和连字符"
           />
         </div>
         <div>
           <label htmlFor="inv-name" className="label">
-            Display name (optional)
+            显示名称（可选）
           </label>
           <input
             id="inv-name"
@@ -158,7 +154,7 @@ export function InvitePage() {
         </div>
         <div>
           <label htmlFor="inv-pw" className="label">
-            Password (min 10 characters)
+            密码（至少 10 个字符）
           </label>
           <input
             id="inv-pw"
@@ -173,7 +169,7 @@ export function InvitePage() {
         </div>
         <div>
           <label htmlFor="inv-pw2" className="label">
-            Confirm password
+            确认密码
           </label>
           <input
             id="inv-pw2"
@@ -186,9 +182,9 @@ export function InvitePage() {
             minLength={10}
           />
         </div>
-        <ErrorBox error={error} title="Could not create account" />
+        <ErrorBox error={error} title="无法创建账号" />
         <button type="submit" className="btn-primary w-full" disabled={busy}>
-          {busy && <Spinner />} Create account and join
+          {busy && <Spinner />} 创建账号并加入
         </button>
       </form>
     </AuthCard>

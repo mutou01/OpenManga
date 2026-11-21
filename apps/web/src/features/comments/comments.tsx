@@ -44,11 +44,11 @@ export type Thread = Comment & { replies: Comment[] };
  * connection it was also sees its name.
  */
 export function Source({ viaAgent, agentName }: { viaAgent: boolean; agentName: string | null }) {
-  if (!viaAgent) return <span className="muted">by hand</span>;
+  if (!viaAgent) return <span className="muted">手动编写</span>;
   return (
     <span
       className="chip inline-flex items-center gap-1 px-1.5 py-0 text-[11px]"
-      title={agentName ? `Written through your connection "${agentName}"` : "Written through an agent connection (MCP)"}
+      title={agentName ? `通过你的连接“${agentName}”编写` : "通过智能体连接编写（MCP）"}
     >
       <Bot className="size-3" /> MCP{agentName ? ` · ${agentName}` : ""}
     </span>
@@ -77,10 +77,10 @@ export function CommentBadge({ n, className = "" }: { n: number | undefined; cla
   return (
     <span
       className={`inline-flex items-center gap-0.5 rounded-full bg-accent-600 px-1.5 text-[10px] font-semibold leading-4 text-white ${className}`}
-      title={`${n} open comment thread${n === 1 ? "" : "s"}`}
+      title={`${n} 条待处理评论`}
     >
       <MessageSquare className="size-2.5" aria-hidden /> {n}
-      <span className="sr-only"> open comment threads</span>
+      <span className="sr-only"> 条待处理评论</span>
     </span>
   );
 }
@@ -153,7 +153,7 @@ function Composer({
         }}
       />
       <div className="flex flex-wrap items-center gap-1">
-        {others.length > 0 && <span className="muted text-[11px]">Mention:</span>}
+        {others.length > 0 && <span className="muted text-[11px]">提及成员</span>}
         {others.map((m) => (
           <button
             key={m.userId}
@@ -167,7 +167,7 @@ function Composer({
         <span className="ml-auto flex gap-1">
           {onCancel && (
             <button type="button" className="btn-ghost text-xs" onClick={onCancel}>
-              Cancel
+              取消
             </button>
           )}
           <button type="submit" className="btn-primary py-1 text-xs" disabled={busy || !text.trim()}>
@@ -194,34 +194,29 @@ function CommentItem({
     invalidate,
     onSuccess: () => setEditing(false),
   });
-  const remove = useAction(() => del(`/comments/${c.id}`), { invalidate, success: "Comment deleted" });
+  const remove = useAction(() => del(`/comments/${c.id}`), { invalidate, success: "评论已删除" });
   const mine = me && c.authorUserId === me.id;
-  if (c.deletedAt) return <p className="muted text-xs italic">Comment deleted</p>;
+  if (c.deletedAt) return <p className="muted text-xs italic">评论已删除</p>;
   return (
     <div className="group space-y-0.5">
       <div className="flex items-baseline gap-1.5 text-xs">
         <span className="font-medium">
-          {c.guestName ? `${c.guestName} (guest)` : c.authorName || c.author || "Former member"}
+          {c.guestName ? `${c.guestName}（访客）` : c.authorName || c.author || "已退出的成员"}
         </span>
         {!c.guestName && <Source viaAgent={c.viaAgent} agentName={c.agentName} />}
         <span className="muted">
           {fmt.ago(c.createdAt)}
-          {c.editedAt && " · edited"}
+          {c.editedAt && " · 已编辑"}
         </span>
         {mine && !editing && (
           <span className="ml-auto flex gap-0.5">
-            <button
-              type="button"
-              className="btn-ghost p-0.5"
-              aria-label="Edit comment"
-              onClick={() => setEditing(true)}
-            >
+            <button type="button" className="btn-ghost p-0.5" aria-label="编辑评论" onClick={() => setEditing(true)}>
               <Pencil className="size-3" />
             </button>
             <button
               type="button"
               className="btn-ghost p-0.5 text-red-500"
-              aria-label="Delete comment"
+              aria-label="删除评论"
               disabled={remove.isPending}
               onClick={() => remove.mutate()}
             >
@@ -233,9 +228,9 @@ function CommentItem({
       {editing ? (
         <Composer
           projectId={projectId}
-          placeholder="Edit comment"
+          placeholder="编辑评论"
           initial={c.body}
-          submitLabel="Save"
+          submitLabel="保存"
           busy={edit.isPending}
           onSubmit={(b) => edit.mutateAsync(b)}
           onCancel={() => setEditing(false)}
@@ -256,8 +251,8 @@ function BeforeAfter({ t }: { t: Thread }) {
   return (
     <div className="grid grid-cols-2 gap-1.5 text-[11px]">
       {[
-        ["When commented", t.artworkAssetId],
-        [t.resolvedAt ? "When resolved" : "Now", after],
+        ["评论时", t.artworkAssetId],
+        [t.resolvedAt ? "解决时" : "当前", after],
       ].map(([label, id]) => (
         <figure key={label} className="space-y-0.5">
           <img src={assetUrl(id!, "thumbnail")} alt={label!} className="aspect-square w-full rounded object-cover" />
@@ -288,7 +283,7 @@ export function ThreadView({ t, projectId, pinNo }: { t: Thread; projectId: stri
           {pinNo && (
             <span
               className="inline-flex size-4 items-center justify-center rounded-full bg-accent-600 font-semibold text-white"
-              title="Pinned spot on the artwork"
+              title="画稿上的标记位置"
             >
               {pinNo}
             </span>
@@ -298,21 +293,21 @@ export function ThreadView({ t, projectId, pinNo }: { t: Thread; projectId: stri
               projectId={projectId}
               scope={{ chapterId: t.chapterId }}
               label={mmss(t.timecodeMs)}
-              title={`The chapter's video at ${mmss(t.timecodeMs)}`}
+              title={`从 ${mmss(t.timecodeMs)} 预览章节视频`}
               className="chip px-1.5 py-0 text-[11px]"
               startAtMs={t.timecodeMs}
             />
           )}
           <label className="ml-auto flex items-center gap-1">
-            <span className="muted">Assigned to</span>
+            <span className="muted">负责人</span>
             <select
               className="input w-auto py-0 text-[11px]"
-              aria-label="Assigned to"
+              aria-label="负责人"
               value={t.assigneeUserId ?? ""}
               disabled={assign.isPending}
               onChange={(e) => assign.mutate(e.target.value || null)}
             >
-              <option value="">nobody</option>
+              <option value="">无人</option>
               {members.data?.members.map((m) => (
                 <option key={m.userId} value={m.userId}>
                   @{m.username}
@@ -336,8 +331,8 @@ export function ThreadView({ t, projectId, pinNo }: { t: Thread; projectId: stri
       {replying ? (
         <Composer
           projectId={projectId}
-          placeholder="Reply"
-          submitLabel="Reply"
+          placeholder="回复"
+          submitLabel="回复"
           busy={reply.isPending}
           onSubmit={(b) => reply.mutateAsync(b)}
           onCancel={() => setReplying(false)}
@@ -345,12 +340,12 @@ export function ThreadView({ t, projectId, pinNo }: { t: Thread; projectId: stri
       ) : (
         <div className="flex items-center gap-1 text-xs">
           <button type="button" className="btn-ghost py-0.5 text-xs" onClick={() => setReplying(true)}>
-            Reply
+            回复
           </button>
           {t.resolvedAt ? (
             <>
               <span className="muted inline-flex flex-wrap items-center gap-1">
-                Resolved{t.resolvedBy ? ` by @${t.resolvedBy}` : ""}
+                已解决{t.resolvedBy ? ` · 由 @${t.resolvedBy} 处理` : ""}
                 {t.resolvedViaAgent && <Source viaAgent agentName={t.resolvedAgentName} />}
               </span>
               <button
@@ -359,7 +354,7 @@ export function ThreadView({ t, projectId, pinNo }: { t: Thread; projectId: stri
                 disabled={resolve.isPending}
                 onClick={() => resolve.mutate(false)}
               >
-                <RotateCcw className="size-3" /> Reopen
+                <RotateCcw className="size-3" /> 重新打开
               </button>
             </>
           ) : (
@@ -369,7 +364,7 @@ export function ThreadView({ t, projectId, pinNo }: { t: Thread; projectId: stri
               disabled={resolve.isPending}
               onClick={() => resolve.mutate(true)}
             >
-              <Check className="size-3" /> Resolve
+              <Check className="size-3" /> 解决
             </button>
           )}
         </div>
@@ -416,7 +411,7 @@ function PinBoard({
         });
       }}
     >
-      <img src={assetUrl(assetId, "web")} alt="Panel artwork" className="block h-auto w-full" draggable={false} />
+      <img src={assetUrl(assetId, "web")} alt="画格画稿" className="block h-auto w-full" draggable={false} />
       {pins.map((p) => dot(p.anchor, String(p.n), "bg-accent-600"))}
       {picked && dot(picked, "+", "bg-amber-500")}
     </div>
@@ -475,7 +470,7 @@ export function PanelComments({ projectId, panelId }: { projectId: string; panel
         {art &&
           (pin ? (
             <button type="button" className="btn-ghost px-1.5 py-0.5 text-xs" onClick={() => setPin(null)}>
-              <X className="size-3" /> Remove the pin
+              <X className="size-3" /> 移除标记
             </button>
           ) : (
             <button
@@ -484,18 +479,18 @@ export function PanelComments({ projectId, panelId }: { projectId: string; panel
               aria-pressed={picking}
               onClick={() => setPicking((v) => !v)}
             >
-              <Crosshair className="size-3" /> {picking ? "Click the spot on the artwork" : "Pin a spot"}
+              <Crosshair className="size-3" /> {picking ? "点击画稿上的位置" : "标记位置"}
             </button>
           ))}
         <label className="ml-auto flex items-center gap-1">
-          <span className="muted">Assign to</span>
+          <span className="muted">分配给</span>
           <select
             className="input w-auto py-0 text-xs"
-            aria-label="Assign the new thread to"
+            aria-label="为新评论指定负责人"
             value={assignee}
             onChange={(e) => setAssignee(e.target.value)}
           >
-            <option value="">nobody</option>
+            <option value="">无人</option>
             {members.data?.members.map((m) => (
               <option key={m.userId} value={m.userId}>
                 @{m.username}
@@ -506,14 +501,14 @@ export function PanelComments({ projectId, panelId }: { projectId: string; panel
       </div>
       <Composer
         projectId={projectId}
-        placeholder="Comment on this panel"
-        submitLabel="Comment"
+        placeholder="评论此画格"
+        submitLabel="评论"
         busy={create.isPending}
         onSubmit={(b) => create.mutateAsync(b)}
       />
       {q.isLoading && <Spinner />}
       <ErrorBox error={q.error} />
-      {q.data && !threads.length && <p className="muted text-xs">No comments on this panel yet.</p>}
+      {q.data && !threads.length && <p className="muted text-xs">此画格暂无评论。</p>}
       <ul className="space-y-2">
         {threads
           .filter((t) => showResolved || !t.resolvedAt)
@@ -523,7 +518,7 @@ export function PanelComments({ projectId, panelId }: { projectId: string; panel
       </ul>
       {resolved > 0 && (
         <button type="button" className="btn-ghost text-xs" onClick={() => setShowResolved((v) => !v)}>
-          {showResolved ? "Hide" : "Show"} {resolved} resolved
+          {showResolved ? "隐藏" : "显示"} {resolved} 条已解决评论
         </button>
       )}
     </div>

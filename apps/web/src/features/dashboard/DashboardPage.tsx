@@ -34,6 +34,7 @@ import {
   Tabs,
   toast,
 } from "../../components/ui.tsx";
+import { projectTypeLabel } from "../../lib/locale.ts";
 
 type Filter = "active" | "archived" | "trash";
 
@@ -46,13 +47,13 @@ export function DashboardPage() {
   return (
     <div className="mx-auto max-w-7xl p-4 sm:p-6">
       <PageHeader
-        title="Projects"
-        subtitle="Structured story state, consistent characters, deterministic lettering."
+        title="项目"
+        subtitle="整理故事设定，保持角色一致，精确控制排字。"
         actions={
           <div className="flex gap-2">
             <ImportProjectButton />
             <Link to="/projects/new" className="btn-primary">
-              <Plus className="size-4" /> New project
+              <Plus className="size-4" /> 新建项目
             </Link>
           </div>
         }
@@ -61,9 +62,9 @@ export function DashboardPage() {
         value={filter}
         onChange={setFilter}
         tabs={[
-          { value: "active", label: "Recent" },
-          { value: "archived", label: "Archived" },
-          { value: "trash", label: "Trash" },
+          { value: "active", label: "最近" },
+          { value: "archived", label: "已归档" },
+          { value: "trash", label: "回收站" },
         ]}
       />
       <PendingInvites />
@@ -71,17 +72,16 @@ export function DashboardPage() {
       <ErrorBox error={q.error} onRetry={() => q.refetch()} />
       {q.data && q.data.projects.length === 0 && (
         <EmptyState
-          title={filter === "active" ? "No projects yet" : `Nothing in ${filter}`}
+          title={filter === "active" ? "还没有项目" : filter === "archived" ? "没有已归档的项目" : "回收站为空"}
           action={
             filter === "active" && (
               <Link to="/projects/new" className="btn-primary">
-                <Plus className="size-4" /> Create your first project
+                <Plus className="size-4" /> 创建第一个项目
               </Link>
             )
           }
         >
-          {filter === "active" &&
-            "Paste a story, extract the cast and world, design references, plan pages and generate panels."}
+          {filter === "active" && "粘贴故事，提取角色与世界设定，制作参考图，规划页面并生成画格。"}
         </EmptyState>
       )}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -118,9 +118,9 @@ function PendingInvites() {
   );
   if (!q.data?.invites.length) return null;
   return (
-    <section className="card mb-4 p-3" aria-label="Invitations">
+    <section className="card mb-4 p-3" aria-label="项目邀请">
       <h2 className="mb-2 flex items-center gap-2 text-sm font-medium">
-        <MailOpen className="size-4" /> Invitations
+        <MailOpen className="size-4" /> 项目邀请
       </h2>
       <ul className="divide-y divide-[var(--border)]">
         {q.data.invites.map((i) => (
@@ -128,8 +128,8 @@ function PendingInvites() {
             <div className="mr-auto min-w-0">
               <div className="truncate font-medium">{i.projectTitle}</div>
               <div className="muted text-xs">
-                {i.invitedBy ? `@${i.invitedBy}` : "Someone"} invited you as{" "}
-                {i.role === "editor" ? "an editor" : "a viewer"} · expires {fmt.date(i.expiresAt)}
+                {i.invitedBy ? `@${i.invitedBy}` : "有用户"}邀请你成为{i.role === "editor" ? "编辑者" : "查看者"} ·{" "}
+                {fmt.date(i.expiresAt)} 到期
               </div>
             </div>
             <button
@@ -138,7 +138,7 @@ function PendingInvites() {
               disabled={answer.isPending}
               onClick={() => answer.mutate({ id: i.id, accept: true })}
             >
-              <Check className="size-4" /> Accept
+              <Check className="size-4" /> 接受
             </button>
             <button
               type="button"
@@ -146,7 +146,7 @@ function PendingInvites() {
               disabled={answer.isPending}
               onClick={() => answer.mutate({ id: i.id, accept: false })}
             >
-              <X className="size-4" /> Decline
+              <X className="size-4" /> 拒绝
             </button>
           </li>
         ))}
@@ -164,7 +164,7 @@ function ImportProjectButton() {
     try {
       // Sent as a raw body: multipart would buffer the whole package, and a project export can be over a gigabyte.
       const r = await post<{ project: { id: string } }>(`/projects/import?name=${encodeURIComponent(file.name)}`, file);
-      toast.success("Import started");
+      toast.success("已开始导入");
       await navigate({ to: "/projects/$projectId/exports", params: { projectId: r.project.id } });
     } catch (e) {
       toast.error(e);
@@ -186,7 +186,7 @@ function ImportProjectButton() {
         }}
       />
       <button type="button" className="btn-secondary" disabled={busy} onClick={() => input.current?.click()}>
-        {busy ? <Spinner /> : <Upload className="size-4" />} Import project
+        {busy ? <Spinner /> : <Upload className="size-4" />} 导入项目
       </button>
     </>
   );
@@ -224,10 +224,10 @@ function ProjectCard({ p, filter }: { p: ProjectListItem; filter: Filter }) {
         className="block w-full overflow-hidden rounded-t-xl text-left"
         onClick={open}
         disabled={filter === "trash"}
-        aria-label={`Open ${p.title}`}
+        aria-label={`打开 ${p.title}`}
       >
         {/* Covers are portrait, so a landscape crop cut most of one away. 3:4 shows the whole cover. */}
-        <AssetImage assetId={p.thumbnailAssetId} alt={`${p.title} thumbnail`} className="aspect-[3/4] w-full" />
+        <AssetImage assetId={p.thumbnailAssetId} alt={`${p.title} 的缩略图`} className="aspect-[3/4] w-full" />
       </button>
       <div className="p-3">
         <div className="flex items-start gap-2">
@@ -236,29 +236,29 @@ function ProjectCard({ p, filter }: { p: ProjectListItem; filter: Filter }) {
               {p.title}
             </h3>
             <div className="muted text-xs capitalize">
-              {p.projectType.replace("_", " ")} · updated {fmt.ago(p.updatedAt)}
+              {projectTypeLabel(p.projectType)} · 更新于 {fmt.ago(p.updatedAt)}
             </div>
             {shared && (
-              <div
-                className="muted mt-1 flex items-center gap-1 text-xs"
-                title={`Shared with you by @${p.ownerUsername}`}
-              >
+              <div className="muted mt-1 flex items-center gap-1 text-xs" title={`由 @${p.ownerUsername} 分享给你`}>
                 <span className="chip bg-accent-600/15 text-[var(--text)]">
-                  <Users className="size-3" /> Shared
+                  <Users className="size-3" /> 已共享
                 </span>
                 <span className="truncate">
-                  @{p.ownerUsername} · {p.role}
+                  @{p.ownerUsername} · {p.role === "editor" ? "编辑者" : p.role === "viewer" ? "查看者" : "管理员"}
                 </span>
               </div>
             )}
           </div>
-          <StatusChip status={p.deletedAt ? "cancelled" : p.status} label={p.deletedAt ? "trash" : p.status} />
+          <StatusChip
+            status={p.deletedAt ? "cancelled" : p.status}
+            label={p.deletedAt ? "回收站" : p.status === "active" ? "使用中" : "已归档"}
+          />
           <div>
             <button
               ref={menuAnchor}
               type="button"
               className="btn-ghost p-1"
-              aria-label="Project actions"
+              aria-label="项目操作"
               onClick={() => setMenu((m) => !m)}
               disabled={busy}
             >
@@ -269,15 +269,15 @@ function ProjectCard({ p, filter }: { p: ProjectListItem; filter: Filter }) {
                 {filter !== "trash" && (
                   <>
                     <button type="button" className="btn-ghost w-full justify-start" onClick={open}>
-                      <FolderOpen className="size-4" /> Open
+                      <FolderOpen className="size-4" /> 打开
                     </button>
                     {p.role !== "viewer" && (
                       <button
                         type="button"
                         className="btn-ghost w-full justify-start"
-                        onClick={() => run(() => post(`/projects/${p.id}/duplicate`), "Project duplicated")}
+                        onClick={() => run(() => post(`/projects/${p.id}/duplicate`), "已复制项目")}
                       >
-                        <Copy className="size-4" /> Duplicate
+                        <Copy className="size-4" /> 复制
                       </button>
                     )}
                     <button
@@ -285,32 +285,32 @@ function ProjectCard({ p, filter }: { p: ProjectListItem; filter: Filter }) {
                       className="btn-ghost w-full justify-start"
                       onClick={() => navigate({ to: "/projects/$projectId/exports", params: { projectId: p.id } })}
                     >
-                      <Download className="size-4" /> Export
+                      <Download className="size-4" /> 导出
                     </button>
                     {shared ? (
                       <button
                         type="button"
                         className="btn-ghost w-full justify-start text-red-500"
                         disabled={!me}
-                        onClick={() => run(() => del(`/projects/${p.id}/members/${me?.id}`), "You left the project")}
+                        onClick={() => run(() => del(`/projects/${p.id}/members/${me?.id}`), "你已退出项目")}
                       >
-                        <LogOut className="size-4" /> Leave project
+                        <LogOut className="size-4" /> 退出项目
                       </button>
                     ) : p.status === "active" ? (
                       <button
                         type="button"
                         className="btn-ghost w-full justify-start"
-                        onClick={() => run(() => post(`/projects/${p.id}/status`, { action: "archive" }), "Archived")}
+                        onClick={() => run(() => post(`/projects/${p.id}/status`, { action: "archive" }), "已归档")}
                       >
-                        <Archive className="size-4" /> Archive
+                        <Archive className="size-4" /> 归档
                       </button>
                     ) : (
                       <button
                         type="button"
                         className="btn-ghost w-full justify-start"
-                        onClick={() => run(() => post(`/projects/${p.id}/status`, { action: "unarchive" }), "Restored")}
+                        onClick={() => run(() => post(`/projects/${p.id}/status`, { action: "unarchive" }), "已恢复")}
                       >
-                        <ArchiveRestore className="size-4" /> Unarchive
+                        <ArchiveRestore className="size-4" /> 取消归档
                       </button>
                     )}
                     {!shared && (
@@ -319,7 +319,7 @@ function ProjectCard({ p, filter }: { p: ProjectListItem; filter: Filter }) {
                         className="btn-ghost w-full justify-start text-red-500"
                         onClick={() => setConfirm("trash")}
                       >
-                        <Trash2 className="size-4" /> Move to trash
+                        <Trash2 className="size-4" /> 移到回收站
                       </button>
                     )}
                   </>
@@ -330,17 +330,17 @@ function ProjectCard({ p, filter }: { p: ProjectListItem; filter: Filter }) {
                       type="button"
                       className="btn-ghost w-full justify-start"
                       onClick={() =>
-                        run(() => post(`/projects/${p.id}/status`, { action: "restore" }), "Restored from trash")
+                        run(() => post(`/projects/${p.id}/status`, { action: "restore" }), "已从回收站恢复")
                       }
                     >
-                      <RotateCcw className="size-4" /> Restore
+                      <RotateCcw className="size-4" /> 恢复
                     </button>
                     <button
                       type="button"
                       className="btn-ghost w-full justify-start text-red-500"
                       onClick={() => setConfirm("delete")}
                     >
-                      <Trash2 className="size-4" /> Delete forever
+                      <Trash2 className="size-4" /> 永久删除
                     </button>
                   </>
                 )}
@@ -350,44 +350,44 @@ function ProjectCard({ p, filter }: { p: ProjectListItem; filter: Filter }) {
         </div>
         <dl className="muted mt-2 grid grid-cols-4 gap-1 text-center text-[11px]">
           <div>
-            <dt>Chapters</dt>
+            <dt>章节</dt>
             <dd className="text-sm text-[var(--text)]">{p.stats.chapters}</dd>
           </div>
           <div>
-            <dt>Panels</dt>
+            <dt>画格</dt>
             <dd className="text-sm text-[var(--text)]">{p.stats.panels}</dd>
           </div>
           <div>
-            <dt>Gens</dt>
+            <dt>生成</dt>
             <dd className="text-sm text-[var(--text)]">{p.stats.generations}</dd>
           </div>
           <div>
-            <dt>Spend</dt>
+            <dt>费用</dt>
             <dd className="text-sm text-[var(--text)]">{fmt.usd(p.stats.estimatedSpendUsd)}</dd>
           </div>
         </dl>
       </div>
       <ConfirmDialog
         open={confirm === "trash"}
-        title="Move to trash?"
+        title="移到回收站？"
         danger
-        confirmLabel="Move to trash"
+        confirmLabel="移到回收站"
         busy={busy}
         onClose={() => setConfirm(null)}
-        onConfirm={() => run(() => post(`/projects/${p.id}/status`, { action: "trash" }), "Moved to trash")}
+        onConfirm={() => run(() => post(`/projects/${p.id}/status`, { action: "trash" }), "已移到回收站")}
       >
-        “{p.title}” will be moved to trash. You can restore it later; nothing is deleted yet.
+        “{p.title}”将移到回收站，之后可以恢复。
       </ConfirmDialog>
       <ConfirmDialog
         open={confirm === "delete"}
-        title="Delete permanently?"
+        title="永久删除项目？"
         danger
-        confirmLabel="Delete forever"
+        confirmLabel="永久删除"
         busy={busy}
         onClose={() => setConfirm(null)}
-        onConfirm={() => run(() => del(`/projects/${p.id}`), "Project deleted")}
+        onConfirm={() => run(() => del(`/projects/${p.id}`), "项目已删除")}
       >
-        This permanently deletes “{p.title}”, all structured data and every generated file. This cannot be undone.
+        将永久删除“{p.title}”及其全部结构化数据和生成文件。此操作无法撤销。
       </ConfirmDialog>
     </div>
   );

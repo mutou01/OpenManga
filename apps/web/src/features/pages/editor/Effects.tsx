@@ -6,15 +6,15 @@ import { patch } from "../../../api/client.ts";
 import { SaveIndicator, useAutosave } from "../../../components/ui.tsx";
 
 const LABEL: Record<PanelEffect["type"], string> = {
-  speed: "Speed lines",
-  focus: "Focus lines",
-  impact: "Impact flash",
-  tone: "Screentone",
-  rain: "Rain",
-  snow: "Snow",
-  dust: "Dust",
-  glow: "Glow",
-  flashback: "Flashback tint",
+  speed: "速度线",
+  focus: "集中线",
+  impact: "冲击闪光",
+  tone: "网点",
+  rain: "雨",
+  snow: "雪",
+  dust: "尘埃",
+  glow: "辉光",
+  flashback: "回忆色调",
 };
 /** Which knobs each effect reads. */
 const KNOBS: Record<PanelEffect["type"], ("angle" | "centre" | "density" | "strength" | "size" | "color")[]> = {
@@ -75,7 +75,7 @@ export function Effects({
         max={1}
         step={0.05}
         value={list[i]![key]}
-        aria-label={`${LABEL[list[i]!.type]}: ${label}`}
+        aria-label={`${LABEL[list[i]!.type]}${label}`}
         onChange={(e) => set(i, { [key]: Number(e.target.value) })}
         className="flex-1"
       />
@@ -83,10 +83,10 @@ export function Effects({
   );
   return (
     <details className="rounded-lg border border-[var(--border)] p-2" open={list.length > 0}>
-      <summary className="cursor-pointer text-sm font-medium">Effects</summary>
+      <summary className="cursor-pointer text-sm font-medium">效果</summary>
       <fieldset disabled={locked} className="mt-2 space-y-2 text-xs">
         <div className="flex items-center">
-          <p className="muted mr-auto">Drawn over the art in every render, without AI. Up to 6.</p>
+          <p className="muted mr-auto">每次渲染都会叠加到图片上，无需调用 AI，最多 6 种。</p>
           <SaveIndicator state={state} />
         </div>
         {list.map((e, i) => (
@@ -96,7 +96,7 @@ export function Effects({
               <button
                 type="button"
                 className="btn-ghost p-1 text-red-500"
-                aria-label={`Remove ${LABEL[e.type]}`}
+                aria-label={`移除${LABEL[e.type]}`}
                 onClick={() => setList((l) => l.filter((_, k) => k !== i))}
               >
                 <Trash2 className="size-3.5" />
@@ -104,14 +104,14 @@ export function Effects({
             </div>
             {KNOBS[e.type].includes("angle") && (
               <label className="flex items-center gap-1">
-                <span className="w-16 shrink-0">Angle</span>
+                <span className="w-16 shrink-0">角度</span>
                 <input
                   type="range"
                   min={-180}
                   max={180}
                   step={5}
                   value={e.angle}
-                  aria-label={`${LABEL[e.type]}: angle`}
+                  aria-label={`${LABEL[e.type]}角度`}
                   onChange={(ev) => set(i, { angle: Number(ev.target.value) })}
                   className="flex-1"
                 />
@@ -128,7 +128,7 @@ export function Effects({
                       max={1}
                       step={0.05}
                       value={e[k]}
-                      aria-label={`${LABEL[e.type]}: centre ${k}`}
+                      aria-label={`${LABEL[e.type]}中心 ${k}`}
                       onChange={(ev) => set(i, { [k]: Number(ev.target.value) })}
                       className="flex-1"
                     />
@@ -136,16 +136,16 @@ export function Effects({
                 ))}
               </div>
             )}
-            {KNOBS[e.type].includes("size") && slider(i, "size", "Size")}
-            {KNOBS[e.type].includes("density") && slider(i, "density", "Density")}
-            {KNOBS[e.type].includes("strength") && slider(i, "strength", "Strength")}
+            {KNOBS[e.type].includes("size") && slider(i, "size", "尺寸")}
+            {KNOBS[e.type].includes("density") && slider(i, "density", "密度")}
+            {KNOBS[e.type].includes("strength") && slider(i, "strength", "强度")}
             {KNOBS[e.type].includes("color") && (
               <label className="flex items-center gap-1">
-                <span className="w-16 shrink-0">Colour</span>
+                <span className="w-16 shrink-0">颜色</span>
                 <input
                   type="color"
                   value={e.color}
-                  aria-label={`${LABEL[e.type]}: colour`}
+                  aria-label={`${LABEL[e.type]}颜色`}
                   onChange={(ev) => set(i, { color: ev.target.value })}
                 />
               </label>
@@ -156,7 +156,7 @@ export function Effects({
           <div className="flex gap-1">
             <select
               className="input py-1 text-xs"
-              aria-label="Effect to add"
+              aria-label="添加效果"
               value={adding}
               onChange={(e) => setAdding(e.target.value as PanelEffect["type"])}
             >
@@ -171,7 +171,7 @@ export function Effects({
               className="btn-secondary px-2 py-1 text-xs"
               onClick={() => setList((l) => [...l, fresh(adding)])}
             >
-              <Plus className="size-3.5" /> Add
+              <Plus className="size-3.5" /> 添加
             </button>
           </div>
         )}
