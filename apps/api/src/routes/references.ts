@@ -177,7 +177,7 @@ export function mountReferenceEndpoints(
   app.post(`/${versionPath}/:id/references/generate`, async (c) => {
     const id = uuidParam(c, "id");
     const v = await access(c, id, "generate");
-    if (v.status === "superseded") throw conflict("This version is superseded. Create or select a current version.");
+    if (v.status === "superseded") throw conflict("此版本已被替换，请创建或选择一个当前版本。");
     const input = await body(c, GenerateRef);
     const deps = c.get("deps");
     await assertBudget(c, v.projectId);
@@ -201,7 +201,7 @@ export function mountReferenceEndpoints(
   app.post(`/${versionPath}/:id/references/upload`, async (c) => {
     const id = uuidParam(c, "id");
     const v = await access(c, id, "write");
-    if (v.status === "superseded") throw conflict("This version is superseded.");
+    if (v.status === "superseded") throw conflict("此版本已被替换。");
     const up = await readImageUpload(c);
     const kind = String(up.form.get("kind") ?? "uploaded") as ReferenceKind;
     const deps = c.get("deps");
@@ -212,7 +212,7 @@ export function mountReferenceEndpoints(
         .from(locationStates)
         .innerJoin(locationVersions, eq(locationVersions.locationId, locationStates.locationId))
         .where(and(eq(locationStates.id, stateId), eq(locationVersions.id, id)));
-      if (!s) throw badRequest("That state belongs to another location");
+      if (!s) throw badRequest("该状态属于其他地点");
     }
     const { ref, asset } = await storeReference(c, subject, id, v.projectId, up, { kind, locationStateId: stateId });
     return c.json({ reference: ref, asset: { id: asset.id, width: asset.width, height: asset.height } }, 201);
@@ -302,7 +302,7 @@ doc({
 referenceRoutes.post("/references/:id/status", async (c) => {
   const ref = await refWithAccess(c, uuidParam(c, "id"));
   const { status } = await body(c, RefStatus);
-  if (!canTransition(ref.status, status)) throw conflict(`Cannot change a ${ref.status} reference to ${status}`);
+  if (!canTransition(ref.status, status)) throw conflict(`参考图状态无法从 ${ref.status} 更改为 ${status}`);
   const deps = c.get("deps");
   const [row] = await deps.db.update(referenceAssets).set({ status }).where(eq(referenceAssets.id, ref.id)).returning();
   // A library image shared into an episode keeps the library's own status.
@@ -353,7 +353,7 @@ referenceRoutes.post("/references/:id/primary", async (c) => {
         ? referenceAssets.propVersionId
         : referenceAssets.projectStyleId;
   const vid = ref.characterVersionId ?? ref.locationVersionId ?? ref.propVersionId ?? ref.projectStyleId;
-  if (!vid) throw badRequest("Reference has no subject");
+  if (!vid) throw badRequest("参考图缺少关联对象");
   await deps.db.transaction(async (tx) => {
     await tx.update(referenceAssets).set({ isPrimary: false }).where(eq(col, vid));
     await tx.update(referenceAssets).set({ isPrimary: true }).where(eq(referenceAssets.id, ref.id));
@@ -364,7 +364,7 @@ referenceRoutes.post("/references/:id/primary", async (c) => {
 doc({ method: "DELETE", path: "/api/references/:id", summary: "Move a reference image to trash", tag: "references" });
 referenceRoutes.delete("/references/:id", async (c) => {
   const ref = await refWithAccess(c, uuidParam(c, "id"));
-  if (ref.status === "locked") throw conflict("Locked references cannot be deleted");
+  if (ref.status === "locked") throw conflict("已锁定的参考图无法删除");
   const deps = c.get("deps");
   // Removing a shared library image from an episode only retires the episode's link; the library keeps the file.
   await deps.db

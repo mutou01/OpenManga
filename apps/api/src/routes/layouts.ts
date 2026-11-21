@@ -47,10 +47,10 @@ layoutRoutes.post("/layouts", async (c) => {
   const { db } = c.get("deps");
   const [pg] = await db.select().from(pages).where(eq(pages.id, input.pageId));
   const pns = await db.select().from(panels).where(eq(panels.pageId, input.pageId)).orderBy(asc(panels.order));
-  if (!pns.length) throw badRequest("That page has no panels to save");
-  if (pns.length > MAX_PANELS_PER_PAGE) throw badRequest(`A layout has at most ${MAX_PANELS_PER_PAGE} panels`);
+  if (!pns.length) throw badRequest("此页没有可保存的画格");
+  if (pns.length > MAX_PANELS_PER_PAGE) throw badRequest(`单页布局最多可包含 ${MAX_PANELS_PER_PAGE} 个画格`);
   const list = mine(c);
-  if (list.length >= 100) throw badRequest("You have 100 layouts; delete one first");
+  if (list.length >= 100) throw badRequest("布局已达 100 个，请先删除一个");
   const dir = pg?.readingDirection ?? project.readingDirection;
   const layout: CustomLayout = {
     id: randomUUID(),
@@ -105,11 +105,10 @@ const Apply = z.object({
 async function applyLayouts(c: Context<AppEnv>, projectId: string, chapterId: string | null) {
   const project = await projectAccess(c, projectId, "write");
   const fmt = project.settings.format;
-  if (fmt === "film" || fmt === "vertical")
-    throw conflict("Page layouts are for comic pages; film and strips use one frame per page");
+  if (fmt === "film" || fmt === "vertical") throw conflict("页面布局用于分页漫画，视频和条漫每页单格");
   const input = await body(c, Apply);
   const set = (project.settings.layouts ?? []).filter((l) => !input.layoutIds || input.layoutIds.includes(l.id));
-  if (!set.length) throw badRequest("Add a layout to the project first (project settings → Page layouts)");
+  if (!set.length) throw badRequest("请先在「项目设置 → 页面布局」中添加布局");
   const { db } = c.get("deps");
   const pgs = await db
     .select()

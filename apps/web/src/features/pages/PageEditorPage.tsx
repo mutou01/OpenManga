@@ -125,12 +125,12 @@ export function PageEditorPage() {
         e.preventDefault();
         if (sel.type === "panel") {
           if (canDeletePanels) setConfirmDelete(sel.ids[0]!);
-          else toast.info("Only the project owner can delete panels. Turn it off under Video shot instead.");
+          else toast.info("只有项目所有者可以删除分镜。你可以在“视频镜头”中停用该分镜。");
         } else {
           // A narration box is the narration line shown on the page: it is hidden from Narration, not deleted here.
           const narration = new Set(st.doc.bubbles.filter((b) => b.kind === "narration").map((b) => b.id));
           if (sel.ids.some((id) => narration.has(id)))
-            return toast.info("A narration caption is removed on the Narration page: untick “Caption on page”.");
+            return toast.info("请在旁白页面取消勾选“在页面上显示字幕”，以移除旁白字幕。");
           try {
             await Promise.all(sel.ids.map((id) => del(sel.type === "sfx" ? `/sfx/${id}` : `/dialogue/${id}`)));
             st.select(null);
@@ -207,9 +207,9 @@ export function PageEditorPage() {
         search={{ chapterId: data.chapter.id }}
         className="btn-ghost text-xs"
       >
-        ← Ch. {data.chapter.order}
+        ← 章节 {data.chapter.order}
       </Link>
-      <div className="text-sm font-medium">Page {data.page.order}</div>
+      <div className="text-sm font-medium">页面 {data.page.order}</div>
       <span className="muted hidden text-xs lg:inline">
         {data.page.width}×{data.page.height} · {data.readingDirection.toUpperCase()}
       </span>
@@ -219,8 +219,8 @@ export function PageEditorPage() {
           <button
             type="button"
             className="btn-ghost p-1.5"
-            aria-label="Undo"
-            title="Undo (Ctrl+Z)"
+            aria-label="撤销"
+            title="撤销（Ctrl+Z）"
             disabled={!canUndo}
             onClick={undo}
           >
@@ -229,8 +229,8 @@ export function PageEditorPage() {
           <button
             type="button"
             className="btn-ghost p-1.5"
-            aria-label="Redo"
-            title="Redo (Ctrl+Shift+Z)"
+            aria-label="重做"
+            title="重做（Ctrl+Shift+Z）"
             disabled={!canRedo}
             onClick={redo}
           >
@@ -249,7 +249,7 @@ export function PageEditorPage() {
               }
             }}
           >
-            <Plus className="size-3.5" /> Panel
+            <Plus className="size-3.5" /> 分镜
           </button>
         </div>
       )}
@@ -264,15 +264,15 @@ export function PageEditorPage() {
           className="flex items-center gap-2 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
           role="note"
         >
-          <MonitorSmartphone className="size-4" /> Desktop recommended — the page editor is read-only on small screens.
+          <MonitorSmartphone className="size-4" /> 建议使用桌面端，页面编辑器在小屏幕上仅支持查看。
         </div>
         <div className="min-h-0 flex-1">
           <EditorCanvas data={data} readOnly />
         </div>
         {/* Comments work on a phone even though editing does not: pick a panel, read and reply. */}
-        <section className="max-h-[50%] overflow-y-auto border-t border-[var(--border)] p-3" aria-label="Comments">
+        <section className="max-h-[50%] overflow-y-auto border-t border-[var(--border)] p-3" aria-label="评论">
           <label className="label" htmlFor="comment-panel">
-            Comments on
+            评论对象
           </label>
           <select
             id="comment-panel"
@@ -280,13 +280,13 @@ export function PageEditorPage() {
             value={narrowPanelId || selectedPanelId || ""}
             onChange={(e) => setNarrowPanelId(e.target.value)}
           >
-            <option value="">Choose a panel…</option>
+            <option value="">选择分镜……</option>
             {[...data.panels]
               .sort((a, b) => a.order - b.order)
               .map((p) => (
                 <option key={p.id} value={p.id}>
-                  Panel {p.order}
-                  {counts?.panels[p.id] ? ` (${counts.panels[p.id]} open)` : ""} — {p.storyBeat || "Untitled"}
+                  分镜 {p.order}
+                  {counts?.panels[p.id] ? `（${counts.panels[p.id]} 条待处理）` : ""} — {p.storyBeat || "未命名"}
                 </option>
               ))}
           </select>
@@ -306,7 +306,7 @@ export function PageEditorPage() {
         </div>
         <aside
           className="flex w-[23rem] shrink-0 flex-col border-l border-[var(--border)] bg-[var(--panel)]"
-          aria-label="Inspector"
+          aria-label="检查器"
         >
           <div className="px-3 pt-2">
             <Tabs<Tab>
@@ -314,15 +314,15 @@ export function PageEditorPage() {
               value={tab}
               onChange={setTab}
               tabs={[
-                { value: "panel", label: "Panel" },
-                { value: "prompt", label: "Prompt" },
-                { value: "versions", label: "Versions" },
-                { value: "lettering", label: "Lettering" },
+                { value: "panel", label: "分镜" },
+                { value: "prompt", label: "提示词" },
+                { value: "versions", label: "版本" },
+                { value: "lettering", label: "对白排版" },
                 {
                   value: "comments",
-                  label: counts?.pages[pageId] ? `Comments (${counts.pages[pageId]})` : "Comments",
+                  label: counts?.pages[pageId] ? `评论（${counts.pages[pageId]}）` : "评论",
                 },
-                { value: "page", label: "Page" },
+                { value: "page", label: "页面" },
               ]}
             />
           </div>
@@ -333,14 +333,14 @@ export function PageEditorPage() {
               <div className="space-y-3">
                 <p className="muted text-xs">
                   {selection?.type === "panel"
-                    ? `${selection.ids.length} panels selected — select one to edit it.`
-                    : "Select a panel on the canvas or in the list. Shift+click selects several."}
+                    ? `已选择 ${selection.ids.length} 个分镜，请选择其中一个进行编辑。`
+                    : "在画布或列表中选择分镜，按住 Shift 点击可多选。"}
                 </p>
                 {selection?.type === "panel" && selection.ids.length > 1 && (
                   <BulkGenerateButton
                     projectId={projectId}
                     scope={{ panelIds: selection.ids }}
-                    label={`Generate ${selection.ids.length} selected panels`}
+                    label={`生成所选 ${selection.ids.length} 个分镜`}
                   />
                 )}
                 <PanelList data={data} onDelete={canDeletePanels ? setConfirmDelete : undefined} />
@@ -353,10 +353,10 @@ export function PageEditorPage() {
               <div className="space-y-2">
                 <p className="muted text-xs">
                   {selection?.type === "panel" && selection.ids.length > 1
-                    ? `${selection.ids.length} panels selected — pick one to see its ${tab === "prompt" ? "prompt" : tab === "comments" ? "comments" : "artwork versions"}.`
-                    : `Pick a panel to see its ${tab === "prompt" ? "prompt and generation controls" : tab === "comments" ? "comments" : "artwork versions"}.`}
+                    ? `已选择 ${selection.ids.length} 个分镜，请选择其中一个查看${tab === "prompt" ? "提示词" : tab === "comments" ? "评论" : "图片版本"}。`
+                    : `请选择分镜，查看${tab === "prompt" ? "提示词和生成选项" : tab === "comments" ? "评论" : "图片版本"}。`}
                 </p>
-                <ul className="space-y-1" aria-label="Choose a panel">
+                <ul className="space-y-1" aria-label="选择分镜">
                   {[...data.panels]
                     .sort((a, b) => a.order - b.order)
                     .map((p) => (
@@ -367,7 +367,7 @@ export function PageEditorPage() {
                           onClick={() => select({ type: "panel", ids: [p.id] })}
                         >
                           <span className="font-semibold">{p.order}</span>
-                          <span className="truncate">{p.storyBeat || "Untitled panel"}</span>
+                          <span className="truncate">{p.storyBeat || "未命名分镜"}</span>
                           <CommentBadge n={counts?.panels[p.id]} className="ml-auto" />
                         </button>
                       </li>
@@ -384,7 +384,7 @@ export function PageEditorPage() {
                   onDelete={canDeletePanels ? setConfirmDelete : undefined}
                 />
                 <div>
-                  <div className="label">Reading order</div>
+                  <div className="label">阅读顺序</div>
                   <PanelList data={data} onDelete={canDeletePanels ? setConfirmDelete : undefined} />
                 </div>
               </div>
@@ -400,13 +400,13 @@ export function PageEditorPage() {
       </div>
       <ConfirmDialog
         open={Boolean(confirmDelete)}
-        title="Delete panel?"
+        title="删除分镜？"
         danger
-        confirmLabel="Delete panel"
+        confirmLabel="删除分镜"
         onClose={() => setConfirmDelete(null)}
         onConfirm={() => confirmDelete && void deletePanel(confirmDelete)}
       >
-        The panel and its spec are removed from the page. Its generated artwork remains in the asset library.
+        将从页面移除此分镜及其设定，已生成图片保留在素材库中。
       </ConfirmDialog>
     </div>
   );

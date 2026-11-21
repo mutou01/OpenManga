@@ -10,6 +10,7 @@ import { useAiBody } from "../ai/AiPicker.tsx";
 import { CheckPanelsButton } from "../generation/CheckPanels.tsx";
 import { useProjectId } from "../project/ProjectLayout.tsx";
 import { DuplicatesButton } from "./Duplicates.tsx";
+import { editorLabel } from "./editor/labels.ts";
 
 type Panel = PanelRow & { pageOrder: number };
 type Qa = { verdict?: string; stale?: boolean; assetId?: string; problems?: string[] } | null;
@@ -17,25 +18,25 @@ type Qa = { verdict?: string; stale?: boolean; assetId?: string; problems?: stri
 type Ctx = { repeated: Map<string, string> };
 
 const FILTERS: Record<string, { label: string; test: (p: Panel, ctx: Ctx) => boolean }> = {
-  all: { label: "All", test: () => true },
-  noArt: { label: "No artwork", test: (p: Panel) => !p.activeArtworkAssetId },
-  failed: { label: "Failed", test: (p: Panel) => p.status === "failed" },
-  review: { label: "Needs review", test: (p: Panel) => Boolean(p.review) },
+  all: { label: "全部", test: () => true },
+  noArt: { label: "无图片", test: (p: Panel) => !p.activeArtworkAssetId },
+  failed: { label: "失败", test: (p: Panel) => p.status === "failed" },
+  review: { label: "待审核", test: (p: Panel) => Boolean(p.review) },
   mismatch: {
-    label: "Check mismatch",
+    label: "检查不一致",
     test: (p: Panel) => {
       const qa = p.qa as Qa;
       return qa?.verdict === "mismatch" && !qa.stale && qa.assetId === p.activeArtworkAssetId;
     },
   },
   unchecked: {
-    label: "Not checked",
+    label: "未检查",
     test: (p: Panel) => {
       const qa = p.qa as Qa;
       return Boolean(p.activeArtworkAssetId) && (!qa || qa.stale || qa.assetId !== p.activeArtworkAssetId);
     },
   },
-  repeated: { label: "Repeated shot", test: (p: Panel, ctx: Ctx) => ctx.repeated.has(p.id) },
+  repeated: { label: "重复镜头", test: (p: Panel, ctx: Ctx) => ctx.repeated.has(p.id) },
 };
 type Filter = "all" | "noArt" | "failed" | "review" | "mismatch" | "unchecked" | "repeated";
 
@@ -114,7 +115,7 @@ export function StoryboardPage() {
     try {
       if (ask.kind === "check") await post(`/panels/${ask.panel.id}/check`, aiText());
       else await post(`/panels/${ask.panel.id}/generate`, aiImage());
-      toast.success(ask.kind === "check" ? "Check queued" : "Generation queued");
+      toast.success(ask.kind === "check" ? "检查任务已加入队列" : "生成任务已加入队列");
       setAsk(null);
     } catch (e) {
       toast.error(e);
@@ -127,13 +128,13 @@ export function StoryboardPage() {
   return (
     <div className="p-6">
       <PageHeader
-        title="Storyboard"
-        subtitle="Every panel of a chapter. Arrows move, Enter opens, C checks, G regenerates."
+        title="故事板"
+        subtitle="查看章节的所有分镜。方向键移动，Enter 打开，C 检查，G 重新生成。"
         actions={
           <>
             <select
               className="input w-56"
-              aria-label="Chapter"
+              aria-label="章节"
               value={chapterId}
               onChange={(e) =>
                 navigate({
@@ -145,7 +146,7 @@ export function StoryboardPage() {
             >
               {chapters.data?.chapters.map((c) => (
                 <option key={c.id} value={c.id}>
-                  Ch. {c.order} — {c.title}
+                  第 {c.order} — {c.title}
                 </option>
               ))}
             </select>
@@ -154,7 +155,7 @@ export function StoryboardPage() {
           </>
         }
       />
-      <div className="mb-4 flex flex-wrap gap-1" role="tablist" aria-label="Filter">
+      <div className="mb-4 flex flex-wrap gap-1" role="tablist" aria-label="筛选">
         {(Object.keys(FILTERS) as Filter[]).map((f) => {
           const n = (list.data?.panels ?? []).filter((p) => FILTERS[f]!.test(p, ctx)).length;
           return (
@@ -173,7 +174,7 @@ export function StoryboardPage() {
       </div>
       <ErrorBox error={list.error} onRetry={() => list.refetch()} />
       {list.isLoading && <Spinner className="size-6" />}
-      {list.data && !shown.length && <EmptyState title="Nothing here">No panel matches this filter.</EmptyState>}
+      {list.data && !shown.length && <EmptyState title="暂无内容">没有符合筛选条件的分镜。</EmptyState>}
       <div ref={grid} className="grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-3">
         {shown.map((p, i) => {
           const qa = p.qa as Qa;
@@ -200,17 +201,17 @@ export function StoryboardPage() {
             >
               <AssetImage
                 assetId={p.activeArtworkAssetId}
-                alt={`Page ${p.pageOrder} panel ${p.order}`}
+                alt={`第 ${p.pageOrder} 页第 ${p.order} 个分镜`}
                 className="aspect-video w-full"
               />
               <div className="space-y-1 p-2 text-xs">
                 <div className="flex items-center gap-1">
                   <span className="font-medium">
-                    p{p.pageOrder}·{p.order}
+                    页{p.pageOrder}·{p.order}
                   </span>
                   <span className="muted truncate">
-                    {p.shotType}
-                    {p.cameraAngle ? ` · ${p.cameraAngle}` : ""}
+                    {p.shotType && editorLabel(p.shotType)}
+                    {p.cameraAngle ? ` · ${editorLabel(p.cameraAngle)}` : ""}
                   </span>
                 </div>
                 <p className="muted line-clamp-2">{p.storyBeat}</p>
@@ -230,15 +231,15 @@ export function StoryboardPage() {
       </div>
       <ConfirmDialog
         open={Boolean(ask)}
-        title={ask?.kind === "check" ? "Check this panel?" : "Regenerate this panel?"}
-        confirmLabel={ask?.kind === "check" ? "Check" : "Regenerate"}
+        title={ask?.kind === "check" ? "检查此分镜？" : "重新生成此分镜？"}
+        confirmLabel={ask?.kind === "check" ? "检查" : "重新生成"}
         busy={busy}
         onClose={() => setAsk(null)}
         onConfirm={confirm}
       >
         {ask?.kind === "check"
-          ? "Runs the vision consistency check on this panel's artwork (one paid vision call)."
-          : "Generates new artwork for this panel (one paid image). The current version is kept in its history."}
+          ? "对本分镜图片进行视觉一致性检查（产生一次视觉调用费用）。"
+          : "为本分镜生成新图片（产生一张图片的费用），当前版本保留在历史记录中。"}
       </ConfirmDialog>
     </div>
   );

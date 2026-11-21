@@ -33,8 +33,8 @@ export function DeleteChapterButton({
         type="button"
         className="btn-ghost text-red-500"
         onClick={() => setOpen(true)}
-        aria-label={`Delete chapter ${chapter.order}`}
-        title="Delete chapter"
+        aria-label={`删除第 ${chapter.order} 章`}
+        title="删除章节"
       >
         <Trash2 className="size-4" />
       </button>
@@ -42,21 +42,20 @@ export function DeleteChapterButton({
         open={open}
         danger
         busy={remove.isPending}
-        title={`Delete chapter ${chapter.order}: ${chapter.title}?`}
-        confirmLabel="Delete chapter"
+        title={`删除第 ${chapter.order} 章“${chapter.title}”？`}
+        confirmLabel="删除章节"
         onClose={() => setOpen(false)}
         onConfirm={() => remove.mutate()}
       >
         <p>
-          This permanently removes the chapter with its scenes, pages, panels, lettering and narration
+          此操作会永久删除该章节及其场景、页面、画格、文字和旁白
           {stats
-            ? ` (${stats.pages} pages, ${stats.panels} panels${stats.narration !== undefined ? `, ${stats.narration} narration lines` : ""})`
+            ? `（${stats.pages} 页、${stats.panels} 个画格${stats.narration !== undefined ? `、${stats.narration} 条旁白` : ""}）`
             : ""}
-          . Later chapters are renumbered.
+          。后续章节会重新编号。
         </p>
         <p className="muted mt-2 text-sm">
-          Generated artwork and audio stay in the Assets library. Chapters with generations in progress can't be deleted
-          until those finish or are cancelled.
+          生成的图片和音频会保留在素材库。章节中正在进行的生成任务完成或取消后，才可删除该章节。
         </p>
       </ConfirmDialog>
     </>

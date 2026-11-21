@@ -40,15 +40,19 @@ export function epubFiles(m: BookMeta, pages: EpubPage[], hasCover: boolean, mod
   <rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles>
 </container>
 `;
-  const xhtml = (p: EpubPage, i: number) => `<?xml version="1.0" encoding="UTF-8"?>
+  const xhtml = (p: EpubPage, i: number) => {
+    const alt = p.alt?.trim();
+    const fallback = hasCover && i === 0 ? "封面" : `第 ${i + 1} 页`;
+    return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="${esc(m.language)}">
 <head><meta charset="UTF-8"/><title>${esc(m.title)} — ${i + 1}</title>
 <meta name="viewport" content="width=${p.width}, height=${p.height}"/>
 <style>html,body{margin:0;padding:0;width:${p.width}px;height:${p.height}px}img{display:block;width:${p.width}px;height:${p.height}px}</style></head>
-<body><img src="images/${p.file}" alt="${esc(p.alt?.trim() || `Page ${i + 1}`)}"/></body>
+<body><img src="images/${p.file}" alt="${esc(alt || fallback)}"${alt ? "" : ' xml:lang="zh-CN"'}/></body>
 </html>
 `;
+  };
   const mime = (f: string) => (f.endsWith(".png") ? "image/png" : "image/jpeg");
   const manifest = pages
     .map(
@@ -76,10 +80,10 @@ ${m.author ? `    <dc:creator>${esc(m.author)}</dc:creator>\n` : ""}${m.summary 
 ${described ? '    <meta property="schema:accessModeSufficient">textual</meta>\n' : ""}    <meta property="schema:accessibilityFeature">${described ? "alternativeText" : "none"}</meta>
     <meta property="schema:accessibilityFeature">readingOrder</meta>
     <meta property="schema:accessibilityHazard">none</meta>
-    <meta property="schema:accessibilitySummary">${esc(
+    <meta property="schema:accessibilitySummary" xml:lang="zh-CN">${esc(
       described
-        ? "A fixed-layout comic. Each page image has alternative text describing its panels in reading order, with what is said and the sound effects."
-        : "A fixed-layout comic of page images, in reading order.",
+        ? "这是一部固定版式漫画。每页都有按阅读顺序编排的替代文本，描述画格、对白和音效。"
+        : "这是一部固定版式漫画，漫画页面图片已按阅读顺序排列。",
     )}</meta>
   </metadata>
   <manifest>

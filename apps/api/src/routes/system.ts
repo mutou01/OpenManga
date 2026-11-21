@@ -88,7 +88,7 @@ miscRoutes.get("/projects/:projectId/events", requireUser, async (c) => {
   const userId = user(c).id;
   const open = streamsPerUser.get(userId) ?? 0;
   if (open >= MAX_STREAMS_PER_USER)
-    throw new ApiError(429, "too_many_streams", "Too many open event streams. Close a tab and try again.");
+    throw new ApiError(429, "too_many_streams", "已打开的实时连接过多，请关闭一个标签页后重试。");
   streamsPerUser.set(userId, open + 1);
   const stillValid = sessionStillValid(c);
   c.header("x-accel-buffering", "no");

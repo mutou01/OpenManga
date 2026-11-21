@@ -32,7 +32,7 @@ compareRoutes.post("/panels/:id/compare", async (c) => {
     .select({ approvalStatus: panels.approvalStatus })
     .from(panels)
     .where(eq(panels.id, panelId));
-  if (pn?.approvalStatus === "locked") throw conflict("Panel is locked");
+  if (pn?.approvalStatus === "locked") throw conflict("画格已锁定");
   await assertBudget(c, project.id);
   for (const ai of runs) await checkImageChoice(c, ai);
   const compareId = crypto.randomUUID();
@@ -140,9 +140,9 @@ compareRoutes.post("/panels/:id/compare/pick", async (c) => {
   const [job] = await deps.db.select().from(generationJobs).where(eq(generationJobs.id, jobId));
   if (!job || job.targetId !== panelId || typeof job.parameters.compare !== "string") throw notFound("Comparison run");
   const assetId = (job.result as { assetId?: string } | null)?.assetId;
-  if (job.status !== "completed" || !assetId) throw badRequest(`That run is ${job.status}`);
+  if (job.status !== "completed" || !assetId) throw badRequest(`此任务当前状态为 ${job.status}`);
   const [pn] = await deps.db.select().from(panels).where(eq(panels.id, panelId));
-  if (pn?.approvalStatus === "locked") throw conflict("Panel is locked");
+  if (pn?.approvalStatus === "locked") throw conflict("画格已锁定");
   await deps.db
     .update(panels)
     .set({ activeArtworkAssetId: assetId, status: "ready", qa: null })

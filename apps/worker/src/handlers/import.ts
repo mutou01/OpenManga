@@ -86,7 +86,7 @@ async function readManifest(uploadPath: string, dir: string, config: WorkerDeps[
   const isZip = head[0] === 0x50 && head[1] === 0x4b && head[2] === 0x03 && head[3] === 0x04;
   if (!isZip) {
     if (Bun.file(uploadPath).size > MAX_MANIFEST_BYTES)
-      throw new UnrecoverableError(`project.json is over ${MAX_MANIFEST_BYTES / 1024 / 1024} MB`);
+      throw new UnrecoverableError(`project.json 大小超过 ${MAX_MANIFEST_BYTES / 1024 / 1024} MB`);
     return { json: await Bun.file(uploadPath).text(), isZip, prefix: "", otherManifests: [] };
   }
   const names: string[] = [];
@@ -109,11 +109,11 @@ async function readManifest(uploadPath: string, dir: string, config: WorkerDeps[
     });
   } catch (e) {
     if (e instanceof UnrecoverableError) throw e;
-    throw new UnrecoverableError("The ZIP file is corrupt or unsupported");
+    throw new UnrecoverableError("ZIP 文件已损坏或格式不受支持");
   }
   // Shallowest match wins, so a stray nested copy cannot shadow the real one.
   const name = names.sort((a, b) => a.split("/").length - b.split("/").length || a.localeCompare(b))[0];
-  if (!name) throw new UnrecoverableError("The ZIP does not contain project.json");
+  if (!name) throw new UnrecoverableError("ZIP 缺少 project.json");
   return {
     json: new TextDecoder().decode(await found.read(name)),
     isZip,
@@ -140,22 +140,21 @@ export async function importProject(
   // Entries are streamed into here one chunk at a time, so peak memory is one asset rather than the package.
   const scratch = join(deps.config.TEMP_ROOT, "imports", `x-${job.id}`);
   try {
-    if (!uploadPath.startsWith(deps.config.TEMP_ROOT))
-      throw new UnrecoverableError("Import upload is missing; upload the file again");
+    if (!uploadPath.startsWith(deps.config.TEMP_ROOT)) throw new UnrecoverableError("找不到待导入文件，请重新上传");
     if (!(await Bun.file(uploadPath).exists()) || Bun.file(uploadPath).size === 0)
-      throw new UnrecoverableError("Import upload is missing; upload the file again");
+      throw new UnrecoverableError("找不到待导入文件，请重新上传");
     const upload = await readManifest(uploadPath, join(scratch, "manifest"), deps.config);
     deps.logger.info("import stage", { stage: "manifest", rssMb: rssMb() });
     let parsed: unknown;
     try {
       parsed = JSON.parse(upload.json);
     } catch {
-      throw new UnrecoverableError("project.json is not valid JSON");
+      throw new UnrecoverableError("project.json 的 JSON 格式无效");
     }
     const check = ProjectInterchange.safeParse(parsed);
     if (!check.success)
       throw new UnrecoverableError(
-        `Not a valid OpenManga project file: ${check.error.issues
+        `OpenManga 项目文件无效：${check.error.issues
           .slice(0, 5)
           .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
           .join("; ")}`,
@@ -177,7 +176,7 @@ export async function importProject(
         });
       } catch (e) {
         if (e instanceof UnrecoverableError) throw e;
-        throw new UnrecoverableError("The ZIP file is corrupt or unsupported");
+        throw new UnrecoverableError("ZIP 文件已损坏或格式不受支持");
       }
     }
     await progress(0.1);
@@ -186,9 +185,9 @@ export async function importProject(
     // A repository ZIP can hold several projects side by side; one import job restores one of them.
     if (upload.otherManifests.length)
       result.warnings.push(
-        `The archive contains ${upload.otherManifests.length + 1} projects; this import restored ${
-          upload.prefix || "the one at the root"
-        } and ignored ${upload.otherManifests.join(", ")}. Import the others separately.`,
+        `压缩包包含 ${upload.otherManifests.length + 1} 个项目。本次导入了 ${
+          upload.prefix || "根目录中的项目"
+        }，跳过了 ${upload.otherManifests.join("、")}。可单独导入其余项目。`,
       );
     deps.logger.info("import stage", { stage: "restored", assets: result.counts.assets, rssMb: rssMb() });
     return result;
@@ -210,7 +209,8 @@ export async function importProject(
 async function failedTitle(deps: WorkerDeps, projectId: string) {
   const [p] = await deps.db.select({ title: projects.title }).from(projects).where(eq(projects.id, projectId));
   const title = p?.title ?? "Imported project";
-  return title.startsWith("[import failed] ") ? title : `[import failed] ${title}`.slice(0, 200);
+  const prefix = "［导入失败］";
+  return title.startsWith(prefix) || title.startsWith("[import failed] ") ? title : `${prefix}${title}`.slice(0, 200);
 }
 
 async function restore(
@@ -246,7 +246,7 @@ async function restore(
   let missingFiles = 0;
 
   const [placeholder] = await tx.select().from(projects).where(eq(projects.id, projectId));
-  if (!placeholder) throw new UnrecoverableError("Project no longer exists");
+  if (!placeholder) throw new UnrecoverableError("项目已不存在");
   const existing = await tx
     .select({ id: chapters.id })
     .from(chapters)
@@ -257,7 +257,7 @@ async function restore(
     .from(characters)
     .where(and(eq(characters.projectId, projectId), isNull(characters.deletedAt)))
     .limit(1);
-  if (existing.length || existingChars.length) throw new UnrecoverableError("Imports can only target an empty project");
+  if (existing.length || existingChars.length) throw new UnrecoverableError("只能导入到空项目");
 
   /** source ref (e.g. "c-<uuid>") -> new row id */
   const refs = new Map<string, string>();
@@ -288,7 +288,7 @@ async function restore(
     if (cached) return cached;
     const entry = doc.assets[key];
     if (!entry) {
-      warn(`Asset ${key} is referenced but missing from the manifest`);
+      warn(`清单缺少被引用的素材 ${key}`);
       return null;
     }
     const data = files.has(entry.path) ? await files.read(entry.path) : new Uint8Array(0);
@@ -307,19 +307,19 @@ async function restore(
         const img = await probeImage(data);
         // Uploads are refused past this; an imported image is held to the same, or it would reach the thumbnailer.
         if (img.width * img.height > MAX_IMAGE_PIXELS) {
-          warn(`${entry.path} is ${img.width}x${img.height}, larger than ${MAX_IMAGE_PIXELS / 1e6} MP; skipped`);
+          warn(`${entry.path} 的尺寸为 ${img.width}×${img.height}，超过 ${MAX_IMAGE_PIXELS / 1e6} MP，已跳过`);
           return null;
         }
         meta = { mimeType: img.mime, width: img.width, height: img.height, durationMs: null };
       }
     } catch {
-      warn(`${entry.path} is not a valid ${type === "audio" ? "WAV file" : "PNG/JPEG/WebP image"}; skipped`);
+      warn(`${entry.path} 的${type === "audio" ? " WAV 音频" : " PNG、JPEG 或 WebP 图片"}格式无效，已跳过`);
       return null;
     }
     // Fail closed: a file that does not match the checksum in its own manifest has been altered or corrupted, and
     // importing it anyway would silently put content the package did not describe into the project.
     if (entry.sha256 && sha256Hex(data) !== entry.sha256)
-      throw new UnrecoverableError(`${entry.path} does not match the checksum recorded in the package`);
+      throw new UnrecoverableError(`${entry.path} 与导入包中记录的校验和不符`);
     const row = await deps.assets.store(
       {
         projectId,
@@ -375,7 +375,7 @@ async function restore(
     ["readingDirection", readingDirection.enumValues, p.readingDirection],
     ["colorMode", colorMode.enumValues, p.colorMode],
   ] as const)
-    if (!(values as readonly string[]).includes(value)) warn(`Unknown ${field} "${value}"; kept the default`);
+    if (!(values as readonly string[]).includes(value)) warn(`${field} 的值“${value}”不受支持，已保留默认值`);
   let styleId: string | null = null;
   if (doc.style) {
     let presetId: string | null = null;
@@ -827,7 +827,7 @@ async function restore(
     );
   const states = doc.bible.states.filter((s) => refs.has(s.character));
   if (states.length < doc.bible.states.length)
-    warn(`${doc.bible.states.length - states.length} story bible state(s) name a character not in the package`);
+    warn(`有 ${doc.bible.states.length - states.length} 条故事设定状态引用了导入包中不存在的角色`);
   if (states.length)
     await tx.insert(characterStates).values(
       states.map((s) => ({
@@ -843,14 +843,8 @@ async function restore(
     );
 
   const unreferenced = Object.keys(doc.assets).length - counts.assets!;
-  if (unreferenced > 0)
-    warn(
-      `${unreferenced} asset(s) in the manifest are not referenced by anything and were not imported (extracted and discarded)`,
-    );
-  if (missingFiles)
-    warnings.unshift(
-      `${missingFiles} asset file(s) were not included in the upload and were skipped (artwork, references or audio)`,
-    );
+  if (unreferenced > 0) warn(`清单中有 ${unreferenced} 个素材未被引用，解压后已跳过`);
+  if (missingFiles) warnings.unshift(`上传包缺少 ${missingFiles} 个素材文件（画格、参考图或音频），已跳过`);
   await progress(0.95);
   return { projectId, warnings, counts };
 }

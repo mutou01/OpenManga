@@ -58,7 +58,7 @@ export function ChapterPlayer({
     <div className="flex flex-wrap items-center gap-2">
       {index === null ? (
         <button type="button" className="btn-primary" disabled={!playable.length} onClick={() => playAt(0)}>
-          <Play className="size-4" /> Play chapter
+          <Play className="size-4" /> 播放章节
         </button>
       ) : (
         <>
@@ -72,18 +72,18 @@ export function ChapterPlayer({
               setPaused(!paused);
             }}
           >
-            {paused ? <Play className="size-4" /> : <Pause className="size-4" />} {paused ? "Resume" : "Pause"}
+            {paused ? <Play className="size-4" /> : <Pause className="size-4" />} {paused ? "继续" : "暂停"}
           </button>
           <button type="button" className="btn-secondary" onClick={stop}>
-            <Square className="size-4" /> Stop
+            <Square className="size-4" /> 停止
           </button>
           <span className="muted text-xs">
-            Segment {index + 1} / {playable.length}
+            片段 {index + 1} / {playable.length}
           </span>
         </>
       )}
       <span className="muted text-xs">
-        {playable.length}/{segments.length} synthesized · {fmt.ms(total)}
+        {playable.length}/{segments.length} 已合成 · {fmt.ms(total)}
       </span>
     </div>
   );

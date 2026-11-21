@@ -142,20 +142,19 @@ memberRoutes.post("/projects/:projectId/invites", inviteLimit, async (c) => {
   const deps = c.get("deps");
   const me = user(c);
   const byEmail = identifier.includes("@");
-  if (byEmail && !z.string().email().safeParse(identifier).success)
-    throw badRequest("That is not a valid email address");
+  if (byEmail && !z.string().email().safeParse(identifier).success) throw badRequest("邮箱地址无效");
   const [account] = await deps.db
     .select({ id: users.id })
     .from(users)
     .where(byEmail ? eq(users.email, identifier) : eq(users.username, identifier));
   if (!byEmail && !account) throw notFound("Account with that username");
-  if (account?.id === me.id) throw badRequest("You are already in this project");
+  if (account?.id === me.id) throw badRequest("你已加入此项目");
   if (account) {
     const [member] = await deps.db
       .select({ role: projectMembers.role })
       .from(projectMembers)
       .where(and(eq(projectMembers.projectId, p.id), eq(projectMembers.userId, account.id)));
-    if (member) throw conflict("They are already a member of this project");
+    if (member) throw conflict("该用户已经是此项目的成员");
   }
   const token = byEmail ? newOpaqueToken() : null;
   const invite = await deps.db.transaction(async (tx) => {
@@ -191,8 +190,8 @@ memberRoutes.post("/projects/:projectId/invites", inviteLimit, async (c) => {
     // Plain text only: the project title is the inviter's words, and none of it is meant to render as markup.
     await deps.mail.send({
       to: identifier,
-      subject: `${me.displayName || me.username} invited you to a project on OpenManga`,
-      text: `${me.displayName || me.username} invited you to "${p.title}" on OpenManga as ${role === "editor" ? "an editor" : "a viewer"}.\n\nOpen this link within 7 days to accept. If you have no account yet, it lets you create one for this address:\n${url}\n\nIf you were not expecting this, ignore this email.`,
+      subject: `${me.displayName || me.username} 邀请你加入 OpenManga 项目`,
+      text: `${me.displayName || me.username} 邀请你以${role === "editor" ? "编辑者" : "查看者"}身份加入“${p.title}”。\n\n请在 7 天内打开链接接受邀请。如果你还没有账号，可以通过该链接用此邮箱创建账号。\n${url}\n\n如果你没有预期收到这份邀请，可以忽略此邮件。`,
       metadata: { kind: "project_invite", inviteUrl: url, projectId: p.id, inviteId: invite.id },
     });
   }
@@ -237,7 +236,7 @@ memberRoutes.delete("/invites/:id", async (c) => {
     .set({ revokedAt: new Date() })
     .where(and(eq(projectInvites.id, id), pending()))
     .returning({ id: projectInvites.id });
-  if (!row) throw conflict("This invitation is no longer pending");
+  if (!row) throw conflict("此邀请已处理");
   await recordAudit(db, {
     userId: user(c).id,
     projectId: invite.projectId,
@@ -262,7 +261,7 @@ memberRoutes.patch("/projects/:projectId/members/:userId", async (c) => {
   const p = await projectAccess(c, uuidParam(c, "projectId"), "manage");
   const target = uuidParam(c, "userId");
   const { role } = await body(c, ChangeRole);
-  if (target === p.ownerUserId) throw badRequest("The owner's role can't be changed");
+  if (target === p.ownerUserId) throw badRequest("无法更改项目所有者的权限");
   const { db } = c.get("deps");
   const [before] = await db
     .select({ role: projectMembers.role })
@@ -297,8 +296,7 @@ memberRoutes.delete("/projects/:projectId/members/:userId", async (c) => {
   const me = user(c);
   const leaving = target === me.id;
   const p = await projectAccess(c, uuidParam(c, "projectId"), leaving ? "read" : "manage");
-  if (target === p.ownerUserId)
-    throw badRequest(leaving ? "The owner can't leave their own project" : "The owner can't be removed");
+  if (target === p.ownerUserId) throw badRequest(leaving ? "项目所有者无法退出自己的项目" : "无法移除项目所有者");
   const { db } = c.get("deps");
   const [row] = await db
     .delete(projectMembers)
@@ -441,7 +439,7 @@ memberRoutes.post("/invites/:id/decline", async (c) => {
 const TokenInput = z.object({ token: z.string().min(10).max(128) });
 /** An invite link is a secret: wrong ones are capped per address like a password-reset token. */
 const tokenGuard = (c: Context<AppEnv>) => failureGuard(c, "invite-token", 10, 3600);
-const invalidLink = () => new AuthError("invalid_token", "This invitation link is invalid, used or expired");
+const invalidLink = () => new AuthError("invalid_token", "邀请链接无效、已使用或已过期");
 
 doc({
   method: "POST",
@@ -466,11 +464,7 @@ memberRoutes.post("/invites/accept-link", requireUser, async (c) => {
   }
   // The link stands for its address: it joins only the account that owns that address.
   if (found.email !== me.email && found.userId !== me.id)
-    throw new ApiError(
-      403,
-      "invite_other_account",
-      "This invitation was sent to a different email address. Sign in with that account to accept it.",
-    );
+    throw new ApiError(403, "invite_other_account", "此邀请发给了其他电子邮箱，请登录对应账户接受邀请。");
   const invite = await accept(c, eq(projectInvites.tokenHash, hash), me.id);
   if (!invite) throw invalidLink();
   return c.json({ projectId: invite.projectId, role: invite.role });

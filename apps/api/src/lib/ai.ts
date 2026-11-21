@@ -34,7 +34,7 @@ export const credentialsRequired = () =>
   new ApiError(
     422,
     "credentials_required",
-    "This server has no shared API keys. Add your own provider key in Account → AI providers and pick it for this run.",
+    "服务器没有共享密钥。请在「账户 → AI 服务商」添加自己的密钥，并为本次任务选用它。",
   );
 
 /** Resolves (and validates) a text choice into the provider/model columns and job parameters. */
@@ -96,7 +96,7 @@ export async function ttsRun(c: Context<AppEnv>, ai: AiChoiceInput, voice?: stri
     if (e instanceof ProviderError) throw badRequest(e.message);
     throw e;
   }
-  if (!tts) throw new ApiError(503, "tts_disabled", "Narration synthesis is disabled");
+  if (!tts) throw new ApiError(503, "tts_disabled", "旁白合成功能已停用");
   if (!ai?.credentialId) return { provider: tts.provider, voice: null as string | null, options: {} };
   let chosen = voice?.trim() || null;
   if (!chosen) {
@@ -124,8 +124,8 @@ export async function assertServerBudget(c: Context<AppEnv>, extraUsd = 0) {
       402,
       "instance_budget_exceeded",
       server.exceeded
-        ? `No new AI work: ${instanceBudgetReason(server)}. An administrator can raise it in Admin → Usage; it resets on the 1st (UTC).`
-        : `This would pass this server's monthly AI budget of $${server.limitUsd.toFixed(2)} ($${server.spentUsd.toFixed(2)} spent this month, ~$${extraUsd.toFixed(2)} more requested). An administrator can raise it in Admin → Usage.`,
+        ? `${instanceBudgetReason(server)}。请联系管理员在「管理 → 用量」提高额度。预算于每月 1 日（UTC）重置。`
+        : `本次操作将超出服务器每月 AI 预算 $${server.limitUsd.toFixed(2)}（本月已用 $${server.spentUsd.toFixed(2)}，预计再用 $${extraUsd.toFixed(2)}）。请联系管理员在「管理 → 用量」提高额度。`,
       server,
     );
   return server;
@@ -162,7 +162,7 @@ export async function assertStorageRoom(c: Context<AppEnv>, projectId: string) {
     throw new ApiError(
       409,
       "storage_cap_exceeded",
-      `This project stores ${(use.bytes / 1024 ** 3).toFixed(2)} GB, over its ${s.capGb} GB cap. Free space (Project settings → Storage → Apply now, or the trash) or raise the cap.`,
+      `项目占用 ${(use.bytes / 1024 ** 3).toFixed(2)} GB，已超过 ${s.capGb} GB 的上限。可在「项目设置 → 存储」立即清理、清空回收站，或提高上限。`,
       use,
     );
 }
@@ -176,7 +176,7 @@ export async function assertBudget(c: Context<AppEnv>, projectId: string, extraU
     throw new ApiError(
       402,
       "budget_exceeded",
-      `This project's AI budget of $${b.limitUsd.toFixed(2)} ${b.exceeded ? "is used up" : "would be exceeded"} ($${b.spentUsd.toFixed(2)} spent${extraUsd ? `, ~$${extraUsd.toFixed(2)} more requested` : ""}${b.unpricedCalls ? `, ${b.unpricedCalls} call${b.unpricedCalls === 1 ? "" : "s"} could not be priced` : ""}). ${c.req.header("x-allow-over-budget") === "1" ? "Only the project's owner can raise it or go over it." : "Raise it in Project settings or confirm to go over."}`,
+      `${b.exceeded ? "已用完" : "本次将超出"}项目 AI 预算 $${b.limitUsd.toFixed(2)}（已用 $${b.spentUsd.toFixed(2)}${extraUsd ? `，预计再用 $${extraUsd.toFixed(2)}` : ""}${b.unpricedCalls ? `，${b.unpricedCalls} 次调用无法估价` : ""}）。${c.req.header("x-allow-over-budget") === "1" ? "只有项目所有者可以提高预算或确认超支。" : "请在项目设置提高预算，或确认超支。"}`,
       b,
     );
   return b;

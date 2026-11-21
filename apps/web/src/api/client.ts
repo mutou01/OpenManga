@@ -129,7 +129,7 @@ export const assetUrl = (
 export function errorMessage(e: unknown) {
   if (e instanceof ApiError) {
     if (e.code === "validation_error" && Array.isArray(e.details))
-      return `${e.message}: ${(e.details as { path: string; message: string }[]).map((d) => `${d.path || "input"} ${d.message}`).join("; ")}`;
+      return `${e.message}：${(e.details as { path: string; message: string }[]).map((d) => `${d.path || "输入"} ${d.message}`).join("；")}`;
     return e.message;
   }
   return e instanceof Error ? e.message : String(e);

@@ -30,33 +30,33 @@ test("full studio flow in the browser (mock AI)", async ({ page }) => {
 
   await test.step("register", async () => {
     await page.goto("/app/register");
-    await page.getByLabel("Username").fill(user.username);
-    await page.getByLabel("Email").fill(user.email);
-    await page.getByLabel("Password (min 10 characters)").fill(user.password);
-    await page.getByLabel("Confirm password").fill(user.password);
-    await page.getByRole("button", { name: "Create account" }).click();
-    await expect(page.getByRole("heading", { name: "Projects", exact: true })).toBeVisible();
+    await page.getByLabel("用户名").fill(user.username);
+    await page.getByLabel("邮箱").fill(user.email);
+    await page.getByLabel("密码（至少 10 个字符）").fill(user.password);
+    await page.getByLabel("确认密码").fill(user.password);
+    await page.getByRole("button", { name: "创建账号" }).click();
+    await expect(page.getByRole("heading", { name: "项目", exact: true })).toBeVisible();
   });
 
   await test.step("logout and login with username", async () => {
-    await page.getByRole("button", { name: "Sign out" }).click();
-    await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
-    await page.getByLabel("Username or email").fill(user.username);
-    await page.getByLabel("Password").fill(user.password);
-    await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page.getByRole("heading", { name: "Projects", exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "退出登录" }).click();
+    await expect(page.getByRole("heading", { name: "登录" })).toBeVisible();
+    await page.getByLabel("用户名或邮箱").fill(user.username);
+    await page.getByLabel("密码", { exact: true }).fill(user.password);
+    await page.getByRole("button", { name: "登录" }).click();
+    await expect(page.getByRole("heading", { name: "项目", exact: true })).toBeVisible();
   });
 
   await test.step("wizard: create project, analyze, review, apply", async () => {
-    await page.getByRole("link", { name: "New project" }).click();
-    await page.getByLabel("Title").fill(`E2E ${id}`);
-    await page.getByRole("button", { name: "Next" }).click();
-    await page.getByLabel(/Paste your story/).fill(STORY);
-    await page.getByRole("button", { name: /Create & analyze/ }).click();
-    await page.getByRole("button", { name: "Review" }).click({ timeout: 60_000 });
-    await expect(page.getByRole("heading", { name: /Characters \(/ })).toBeVisible();
-    await page.getByRole("button", { name: /Apply to project/ }).click();
-    await expect(page.getByRole("heading", { name: "Production pipeline" })).toBeVisible({ timeout: 30_000 });
+    await page.getByRole("link", { name: "新建项目" }).click();
+    await page.getByLabel("标题").fill(`E2E ${id}`);
+    await page.getByRole("button", { name: "下一步" }).click();
+    await page.getByLabel(/粘贴故事/).fill(STORY);
+    await page.getByRole("button", { name: /创建并分析/ }).click();
+    await page.getByRole("button", { name: "审核" }).click({ timeout: 60_000 });
+    await expect(page.getByRole("heading", { name: /角色（/ })).toBeVisible();
+    await page.getByRole("button", { name: /应用到项目/ }).click();
+    await expect(page.getByRole("heading", { name: "制作流程" })).toBeVisible({ timeout: 30_000 });
   });
 
   const projectUrl = page.url().replace(/\/$/, "");
@@ -127,7 +127,7 @@ test("full studio flow in the browser (mock AI)", async ({ page }) => {
       await page.goto(`${projectUrl}${path}`);
       await expect(page.locator("main")).toBeVisible();
       await page.waitForTimeout(800);
-      await expect(page.getByText("Something went wrong")).toHaveCount(0);
+      await expect(page.getByText("发生错误")).toHaveCount(0);
     }
     for (const path of ["/app/usage", "/app/account", "/app/admin", "/app/"]) {
       await page.goto(path);
@@ -137,7 +137,7 @@ test("full studio flow in the browser (mock AI)", async ({ page }) => {
 
   await test.step("generation inspector shows compiled prompt", async () => {
     await page.goto(`${projectUrl}/generation`);
-    await page.getByRole("link", { name: "Panel", exact: true }).first().click();
+    await page.getByRole("link", { name: "画格", exact: true }).first().click();
     await expect(page.getByText("STRICT EXCLUSIONS:").first()).toBeVisible();
   });
 
@@ -150,7 +150,7 @@ test("full studio flow in the browser (mock AI)", async ({ page }) => {
       .getByRole("button", { name: "Export anyway" })
       .click({ timeout: 15_000 })
       .catch(() => {});
-    await expect(page.getByText(/completed/i).first()).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText("已完成").first()).toBeVisible({ timeout: 60_000 });
   });
 
   await test.step("exports: run a print preflight and read its report with the soft proof", async () => {

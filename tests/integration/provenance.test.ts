@@ -97,8 +97,9 @@ test("a chapter's provenance: build, story, each panel's job and prompt, referen
   const md = await (
     await u.raw("GET", `/api/projects/${projectId}/provenance?chapterId=${chapterId}&format=md`)
   ).text();
-  expect(md).toStartWith("# Provenance: Origins");
-  expect(md).toContain("licence: CC BY 4.0, photo by A. Example");
+  expect(md).toStartWith("# 来源记录 · Origins");
+  expect(md).toContain("许可证：CC BY 4.0, photo by A. Example");
+  expect(md).toContain("## 模型");
 });
 
 test("an export ships the record next to its files when asked, and only then", async () => {

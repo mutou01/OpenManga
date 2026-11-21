@@ -63,33 +63,32 @@ export function ConnectPage() {
   return (
     <div className="mx-auto max-w-2xl p-4 sm:p-6">
       {q.isLoading && <Spinner />}
-      {q.error && <ErrorBox error={q.error} title="This connection request is no longer valid" />}
+      {q.error && <ErrorBox error={q.error} title="此连接请求已失效" />}
       {req && value && (
         <div className="card space-y-5 p-5">
           <div className="flex items-start gap-3">
             <Bot className="mt-1 size-8 shrink-0 text-accent-500" />
             <div>
-              <h1 className="text-lg font-semibold">{req.client.name} wants to connect to your OpenManga account</h1>
+              <h1 className="text-lg font-semibold">{req.client.name} 请求连接你的 OpenManga 账号</h1>
               <p className="muted text-sm">
-                Signed in as <strong>{me?.username}</strong>. After you allow it, you return to{" "}
-                <code>{req.redirectHost}</code>.
+                当前登录账号为 <strong>{me?.username}</strong>。允许连接后，将返回 <code>{req.redirectHost}</code>.
               </p>
             </div>
           </div>
           <div className="flex gap-2 rounded border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
             <TriangleAlert className="size-4 shrink-0 text-amber-500" />
             <div>
-              An external AI agent will act <strong>as you</strong> in OpenManga, within what you choose below. Anything
-              that generates images, uses a text model with your key, or synthesizes speech with a provider spends{" "}
-              <strong>your own provider credits</strong> and counts toward your project budgets. Your API keys
-              themselves are never shared with it. You can change or revoke this any time in Agent access.
+              外部 AI 智能体将<strong>以你的身份</strong>，在下方选择的权限范围内操作
+              OpenManga。生成图片、使用你的密钥调用文本模型或通过提供商合成语音，都会消耗
+              <strong>你自己的提供商额度</strong>，并计入项目预算。API
+              密钥本身不会共享给智能体。你可以随时在“智能体访问”中修改或撤销授权。
             </div>
           </div>
           <GrantEditor value={value} onChange={setGrant} offered={req.scopes.map((s) => s.scope)} />
           <ErrorBox error={error} />
           <div className="flex justify-end gap-2">
             <button type="button" className="btn-secondary" disabled={busy} onClick={() => answer(false)}>
-              Cancel
+              取消
             </button>
             <button
               type="button"
@@ -97,7 +96,7 @@ export function ConnectPage() {
               disabled={busy || !value.scopes.length || !value.name.trim()}
               onClick={() => answer(true)}
             >
-              {busy && <Spinner />} Allow
+              {busy && <Spinner />} 允许
             </button>
           </div>
         </div>

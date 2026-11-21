@@ -103,7 +103,7 @@ visionRoutes.post("/projects/:projectId/images/describe", async (c) => {
     try {
       return JSON.parse(String(up.form.get(name) ?? fallback)) as unknown;
     } catch {
-      throw badRequest(`${name}: must be valid JSON`);
+      throw badRequest(`${name} 须为有效的 JSON`);
     }
   };
   const raw = {
@@ -156,9 +156,9 @@ visionRoutes.post("/assets/:id/describe", async (c) => {
   const [asset] = await deps.db.select().from(assets).where(eq(assets.id, assetId));
   if (!asset) throw notFound("Asset");
   // An asset can exist outside a project (an avatar, say); describing one bills a project, so it needs one.
-  if (!asset.projectId) throw badRequest("That image does not belong to a project");
+  if (!asset.projectId) throw badRequest("该图片尚未关联项目");
   await projectAccess(c, asset.projectId, "generate");
-  if (!asset.mimeType.startsWith("image/")) throw badRequest("That asset is not an image");
+  if (!asset.mimeType.startsWith("image/")) throw badRequest("该素材不是图片");
   const input = await body(c, DescribeInput);
   const run = await checkDescribe(c, asset.projectId, input);
   const job = await queueDescribe(c, { projectId: asset.projectId, assetId, input, run });
@@ -182,7 +182,7 @@ visionRoutes.post("/panels/:id/guide/describe", async (c) => {
     .where(eq(panels.id, uuidParam(c, "id")));
   if (!panel) throw notFound("Panel");
   await projectAccess(c, panel.projectId, "generate");
-  if (!panel.guide) throw badRequest("This panel has no layout guide");
+  if (!panel.guide) throw badRequest("画格尚无布局参考图");
   const b = await body(c, DescribeGuideInput);
   const input = { ...b, aspects: ["pose" as const], custom: "", note: "rough layout sketch for one comic panel" };
   const run = await checkDescribe(c, panel.projectId, input);
@@ -218,7 +218,7 @@ visionRoutes.get("/image-descriptions", async (c) => {
     .from(projectMembers)
     .where(eq(projectMembers.userId, u.id));
   if (q.scope === "project") {
-    if (!q.projectId) throw badRequest("scope=project needs a projectId");
+    if (!q.projectId) throw badRequest("项目范围须指定 projectId");
     await projectAccess(c, q.projectId, "read");
   }
   const [at, id] = q.cursor?.split("|") ?? [];
@@ -281,7 +281,7 @@ visionRoutes.delete("/image-descriptions/:id", async (c) => {
   if (job.userId && job.userId !== user(c).id) throw notFound("Description");
   // Mid-flight is the only state worth refusing: the handler is holding this row. A job that has not started
   // (or is parked in a provider batch) is cancelled first, so binning a stuck item is possible.
-  if (job.status === "processing") throw conflict("That description is running; wait for it to finish or cancel it");
+  if (job.status === "processing") throw conflict("正在描述图片，请等待完成或取消任务");
   if (job.status === "queued" || job.status === "submitted") await deps.jobs.cancelGeneration(job.id);
 
   const assetId = (job.input as { assetId?: string }).assetId;

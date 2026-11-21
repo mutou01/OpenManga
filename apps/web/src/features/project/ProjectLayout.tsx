@@ -33,6 +33,8 @@ import { get } from "../../api/client.ts";
 import { qk, useProjectEvents } from "../../api/hooks.ts";
 import type { ProjectOverview } from "../../api/types.ts";
 import { ErrorBox, Popover, Spinner } from "../../components/ui.tsx";
+import { projectTypeLabel, readingDirectionLabel } from "../../lib/locale.ts";
+import { pageLabel } from "../../lib/title.ts";
 import { FloatingBatches } from "../generation/BatchStatus.tsx";
 
 export function useProjectId() {
@@ -54,9 +56,9 @@ const NAV = [
   { to: "/projects/$projectId/story", label: "Story", icon: BookText },
   { to: "/projects/$projectId/cast", label: "Cast", icon: Users },
   { to: "/projects/$projectId/world", label: "World", icon: Globe2 },
-  { to: "/projects/$projectId/board", label: "Board", icon: LayoutPanelTop },
-  { to: "/projects/$projectId/bible", label: "Bible", icon: ScrollText },
-  { to: "/projects/$projectId/timeline", label: "Timeline", icon: History },
+  { to: "/projects/$projectId/board", label: "Reference board", icon: LayoutPanelTop },
+  { to: "/projects/$projectId/bible", label: "Story bible", icon: ScrollText },
+  { to: "/projects/$projectId/timeline", label: "Story timeline", icon: History },
   { to: "/projects/$projectId/chapters", label: "Chapters", icon: FileText },
   { to: "/projects/$projectId/pages", label: "Pages", icon: LayoutGrid },
   { to: "/projects/$projectId/storyboard", label: "Storyboard", icon: GalleryVertical },
@@ -66,7 +68,7 @@ const NAV = [
   { to: "/projects/$projectId/prompts", label: "Prompt lab", icon: FlaskConical },
   { to: "/projects/$projectId/narration", label: "Narration", icon: Mic },
   { to: "/projects/$projectId/timing", label: "Timing", icon: Timer },
-  { to: "/projects/$projectId/describe", label: "Describe", icon: ScanEye },
+  { to: "/projects/$projectId/describe", label: "Describe image", icon: ScanEye },
   { to: "/projects/$projectId/assets", label: "Assets", icon: Images },
   { to: "/projects/$projectId/exports", label: "Exports", icon: Download },
   { to: "/projects/$projectId/repurpose", label: "Repurpose", icon: Share2 },
@@ -74,10 +76,6 @@ const NAV = [
   { to: "/projects/$projectId/usage", label: "Cost", icon: PiggyBank },
   { to: "/projects/$projectId/settings", label: "Settings", icon: Settings },
 ] as const;
-
-/** Film projects call pages "Shots" and vertical ones "Strip": each page is one frame of a continuous column. */
-const navLabel = (label: string, format: string | undefined) =>
-  label !== "Pages" ? label : format === "film" ? "Shots" : format === "vertical" ? "Strip" : label;
 
 type SearchResult = {
   characters: { id: string; name: string }[];
@@ -122,14 +120,14 @@ function ProjectSearch({ projectId }: { projectId: string }) {
         <Search className="muted absolute top-2 left-2 size-4" />
         <input
           className="input pl-8"
-          placeholder="Search project…"
+          placeholder="搜索项目…"
           value={q}
           onFocus={() => setOpen(true)}
           onChange={(e) => {
             setQ(e.target.value);
             setOpen(true);
           }}
-          aria-label="Search project"
+          aria-label="搜索项目"
         />
       </div>
       <Popover
@@ -142,10 +140,10 @@ function ProjectSearch({ projectId }: { projectId: string }) {
       >
         {isFetching && (
           <div className="muted flex items-center gap-2 p-2">
-            <Spinner /> Searching…
+            <Spinner /> 正在搜索…
           </div>
         )}
-        {data && total === 0 && <div className="muted p-2">No matches</div>}
+        {data && total === 0 && <div className="muted p-2">没有匹配结果</div>}
         {data?.characters.map((r) => (
           <button
             key={r.id}
@@ -183,7 +181,7 @@ function ProjectSearch({ projectId }: { projectId: string }) {
             className="btn-ghost w-full justify-start"
             onClick={() => go("/projects/$projectId/chapters/$chapterId", { chapterId: r.id })}
           >
-            📄 Ch. {r.order} {r.title}
+            📄 第 {r.order} 章 {r.title}
           </button>
         ))}
         {data?.panels.map((r) => (
@@ -193,7 +191,7 @@ function ProjectSearch({ projectId }: { projectId: string }) {
             className="btn-ghost w-full justify-start truncate"
             onClick={() => go("/projects/$projectId/pages/$pageId", { pageId: r.pageId }, { panelId: r.id })}
           >
-            🖼️ p{r.pageOrder}·{r.order} {r.storyBeat}
+            🖼️ 第 {r.pageOrder} 页 · 第 {r.order} 格 {r.storyBeat}
           </button>
         ))}
         {data?.dialogue.map((r) => (
@@ -234,11 +232,11 @@ export function ProjectLayout() {
     <div className="flex h-full">
       <aside
         className="hidden w-56 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--panel)] md:flex"
-        aria-label="Project navigation"
+        aria-label="项目导航"
       >
         <div className="px-4 pt-4 pb-2">
           <Link to="/" className="muted text-xs hover:underline">
-            ← All projects
+            ← 所有项目
           </Link>
           <div className="mt-1 flex items-center gap-2">
             <Clapperboard className="size-4 shrink-0 text-accent-500" />
@@ -247,16 +245,20 @@ export function ProjectLayout() {
             </div>
           </div>
           <div className="muted text-xs capitalize">
-            {p.projectType.replace("_", " ")} · {p.readingDirection.toUpperCase()}
+            {projectTypeLabel(p.projectType)} · {readingDirectionLabel(p.readingDirection)}
           </div>
           {p.seriesId && (
             <Link
               to="/series/$seriesId"
               params={{ seriesId: p.seriesId }}
               className="chip mt-1 inline-flex hover:bg-[var(--panel-2)]"
-              title={p.seriesRole === "library" ? "Shared with every episode of the series" : "Open the series"}
+              title={p.seriesRole === "library" ? "此系列的所有分集共享资源" : "打开系列"}
             >
-              {p.seriesRole === "library" ? "Series library" : `Series · episode ${p.episodeNumber ?? ""}`}
+              {p.seriesRole === "library"
+                ? "系列资源库"
+                : p.episodeNumber == null
+                  ? "系列分集"
+                  : `系列 · 第 ${p.episodeNumber} 集`}
             </Link>
           )}
         </div>
@@ -271,7 +273,7 @@ export function ProjectLayout() {
               className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm muted hover:bg-[var(--panel-2)] hover:text-[var(--text)]"
               activeProps={{ className: "!bg-accent-600/15 !text-[var(--text)] font-medium" }}
             >
-              <n.icon className="size-4" /> {navLabel(n.label, p.settings.format)}
+              <n.icon className="size-4" /> {pageLabel(n.label, p.settings.format)}
             </Link>
           ))}
         </nav>
@@ -279,7 +281,7 @@ export function ProjectLayout() {
       <div className="flex min-w-0 flex-1 flex-col">
         <nav
           className="flex gap-1 overflow-x-auto border-b border-[var(--border)] bg-[var(--panel)] px-2 py-1 md:hidden"
-          aria-label="Project navigation"
+          aria-label="项目导航"
         >
           {NAV.map((n) => (
             <Link
@@ -290,7 +292,7 @@ export function ProjectLayout() {
               className="btn-ghost shrink-0 text-xs"
               activeProps={{ className: "bg-[var(--panel-2)]" }}
             >
-              {navLabel(n.label, p.settings.format)}
+              {pageLabel(n.label, p.settings.format)}
             </Link>
           ))}
         </nav>
@@ -299,8 +301,7 @@ export function ProjectLayout() {
             role="note"
             className="border-b border-[var(--border)] bg-amber-500/10 px-4 py-1.5 text-xs text-amber-700 dark:text-amber-300"
           >
-            You have view access to this shared project: you can read it, comment on its panels and download its
-            exports, but not change it.
+            你拥有此共享项目的查看权限，可以阅读内容、评论画格和下载导出文件。
           </div>
         )}
         <main className="min-h-0 flex-1 overflow-y-auto">

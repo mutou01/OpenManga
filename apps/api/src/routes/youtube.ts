@@ -68,7 +68,7 @@ function enabledService(c: Context<AppEnv>) {
     throw new ApiError(
       503,
       "youtube_not_configured",
-      "YouTube stats are not set up on this server: an administrator sets GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET",
+      "服务器尚未配置 YouTube 统计。请联系管理员设置 GOOGLE_OAUTH_CLIENT_ID 和 GOOGLE_OAUTH_CLIENT_SECRET。",
     );
   return yt;
 }
@@ -223,11 +223,7 @@ youtubeAccountRoutes.delete("/channels/:id", async (c) => {
     .youtube.disconnect(conn)
     .catch((e) => {
       c.get("deps").logger.warn("youtube revoke failed", { connectionId: conn.id, error: (e as Error).message });
-      throw new ApiError(
-        503,
-        "youtube_unavailable",
-        "Google could not be reached to revoke this channel's access, so it stays connected. Try again shortly.",
-      );
+      throw new ApiError(503, "youtube_unavailable", "暂时无法连接 Google 撤销授权，频道仍保持连接。请稍后重试。");
     });
   return c.json({ ok: true });
 });
@@ -467,10 +463,10 @@ async function checkMeta(deps: Deps, p: Awaited<ReturnType<typeof projectAccess>
       .select({ id: exportsTable.id })
       .from(exportsTable)
       .where(and(eq(exportsTable.id, m.exportId), eq(exportsTable.projectId, p.id)));
-    if (!e) throw badRequest("exportId is not an export of this project");
+    if (!e) throw badRequest("所选导出不属于此项目（exportId）");
   }
   if (m.shortId && !(p.settings.repurpose?.items ?? []).some((i) => i.id === m.shortId))
-    throw badRequest("shortId is not an item of this project's repurposing plan");
+    throw badRequest("所选短视频不属于此项目的内容复用方案（shortId）");
 }
 
 doc({
@@ -487,18 +483,18 @@ youtubeRoutes.post("/projects/:projectId/youtube/links", googleLimit, async (c) 
   const deps = c.get("deps");
   const yt = enabledService(c);
   const videoId = parseYouTubeVideoId(input.video);
-  if (!videoId) throw badRequest("That is not a YouTube video link or id");
+  if (!videoId) throw badRequest("请输入有效的 YouTube 视频链接或 ID");
   await checkMeta(deps, p, input);
   const [{ n } = { n: 0 }] = await deps.db
     .select({ n: sql<number>`count(*)::int` })
     .from(youtubeLinks)
     .where(eq(youtubeLinks.projectId, p.id));
-  if (n >= MAX_LINKS) throw badRequest(`A project links at most ${MAX_LINKS} videos`);
+  if (n >= MAX_LINKS) throw badRequest(`单个项目最多关联 ${MAX_LINKS} 个视频`);
   const [dup] = await deps.db
     .select({ id: youtubeLinks.id })
     .from(youtubeLinks)
     .where(and(eq(youtubeLinks.projectId, p.id), eq(youtubeLinks.videoId, videoId)));
-  if (dup) throw conflict("That video is already linked to this project");
+  if (dup) throw conflict("此项目已关联该视频");
 
   // Read it with the caller's own token when it is on one of their channels, so the counters are authorized data.
   const mine = await deps.db
@@ -513,7 +509,7 @@ youtubeRoutes.post("/projects/:projectId/youtube/links", googleLimit, async (c) 
       throw new ApiError(
         422,
         "youtube_no_reader",
-        "Connect a YouTube channel first, or ask an administrator to set YOUTUBE_API_KEY, to link videos",
+        "请先连接 YouTube 频道，或联系管理员设置 YOUTUBE_API_KEY，以关联视频。",
       );
     [video] = await yt.videos([videoId], a.auth);
     conn = mine.find((m) => m.channelId === video?.channelId) ?? null;

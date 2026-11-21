@@ -20,8 +20,22 @@ import {
   StatusChip,
   TagInput,
 } from "../../components/ui.tsx";
-import { JsonBlock } from "../generation/shared.tsx";
+import { statusLabel } from "../../lib/locale.ts";
+import { JsonBlock, kindLabel } from "../generation/shared.tsx";
 import { useProjectId } from "../project/ProjectLayout.tsx";
+
+const TYPE_LABELS: Record<string, string> = {
+  character_reference: "角色参考图",
+  location_reference: "场景参考图",
+  prop_reference: "道具参考图",
+  style_reference: "风格参考图",
+  panel_art: "画格原画",
+  panel_mask: "画格蒙版",
+  cover: "封面",
+  export: "导出文件",
+  audio: "音频",
+};
+const assetTypeLabel = (type: string) => TYPE_LABELS[type] ?? type;
 
 const TYPES = [
   "character_reference",
@@ -56,15 +70,17 @@ type Detail = {
   marks: { tags: string[]; collections: string[]; favourite: boolean; licence: { text: string; url?: string } | null };
 };
 const SOURCE: Record<Detail["source"]["kind"], string> = {
-  generated: "Generated",
-  uploaded: "Uploaded",
-  derived: "Edited or derived from another file",
-  made: "Made by the app",
+  generated: "AI 生成",
+  uploaded: "上传",
+  derived: "由其他文件编辑或派生",
+  made: "应用生成",
 };
 
 function Thumb({ a, className }: { a: AssetRow; className: string }) {
   if (a.mimeType.startsWith("image/"))
-    return <AssetImage assetId={a.id} alt={a.type} className={className} trashed={Boolean(a.deletedAt)} />;
+    return (
+      <AssetImage assetId={a.id} alt={assetTypeLabel(a.type)} className={className} trashed={Boolean(a.deletedAt)} />
+    );
   const Icon = a.mimeType.startsWith("audio/") ? Music : FileArchive;
   return (
     <div className={`flex items-center justify-center bg-[var(--panel-2)] ${className}`}>
@@ -142,7 +158,7 @@ export function AssetsPage() {
     {
       invalidate: [qk.assets(projectId)],
       success: (r) =>
-        `${r.done} done${r.skipped.length ? `, ${r.skipped.length} skipped: ${r.skipped[0]!.reason}` : ""}`,
+        `已完成 ${r.done} 项${r.skipped.length ? `，跳过 ${r.skipped.length} 项，原因为 ${r.skipped[0]!.reason}` : ""}`,
       onSuccess: () => setPicked(new Set()),
     },
   );
@@ -159,21 +175,21 @@ export function AssetsPage() {
   return (
     <div className="mx-auto max-w-7xl p-6">
       <PageHeader
-        title="Assets"
+        title="素材"
         subtitle={
           q.data
-            ? `${fmt.bytes(q.data.storage.bytes)} canonical files · ${fmt.bytes(q.data.storage.variant_bytes)} derivatives`
-            : "Canonical images, audio and exports"
+            ? `原始文件 ${fmt.bytes(q.data.storage.bytes)} · 派生文件 ${fmt.bytes(q.data.storage.variant_bytes)}`
+            : "原始图片、音频与导出文件"
         }
       />
-      <div className="mb-3 flex flex-wrap gap-1" role="tablist" aria-label="Views">
+      <div className="mb-3 flex flex-wrap gap-1" role="tablist" aria-label="素材视图">
         {(
           [
-            ["", "All"],
-            ["favourite", "Favourites"],
-            ["unused", "Unused"],
-            ["duplicates", "Duplicates"],
-            ["trash", "Trash"],
+            ["", "全部"],
+            ["favourite", "收藏"],
+            ["unused", "未使用"],
+            ["duplicates", "重复文件"],
+            ["trash", "回收站"],
           ] as [View, string][]
         ).map(([v, label]) => (
           <button
@@ -194,28 +210,22 @@ export function AssetsPage() {
         ))}
       </div>
       <div className="mb-3 grid gap-2 sm:grid-cols-3 lg:grid-cols-4">
-        <input
-          className="input"
-          placeholder="Search name, type or tag"
-          aria-label="Search"
-          value={f.q}
-          onChange={set("q")}
-        />
-        <select className="input" value={f.type} onChange={set("type")} aria-label="Asset type">
-          <option value="">All types</option>
+        <input className="input" placeholder="搜索名称、类型或标签" aria-label="搜索" value={f.q} onChange={set("q")} />
+        <select className="input" value={f.type} onChange={set("type")} aria-label="素材类型">
+          <option value="">全部类型</option>
           {TYPES.map((t) => (
             <option key={t} value={t}>
-              {t.replace(/_/g, " ")}
+              {assetTypeLabel(t)}
             </option>
           ))}
         </select>
-        <select className="input" value={f.entity} onChange={set("entity")} aria-label="Character, place or prop">
-          <option value="">Anyone, anywhere</option>
+        <select className="input" value={f.entity} onChange={set("entity")} aria-label="角色、场景或道具">
+          <option value="">全部角色、场景与道具</option>
           {(
             [
-              ["character", "Characters", entities.data?.characters],
-              ["location", "Places", entities.data?.locations],
-              ["prop", "Props", entities.data?.props],
+              ["character", "角色", entities.data?.characters],
+              ["location", "场景", entities.data?.locations],
+              ["prop", "道具", entities.data?.props],
             ] as const
           ).map(([k, label, list]) =>
             list?.length ? (
@@ -229,14 +239,14 @@ export function AssetsPage() {
             ) : null,
           )}
         </select>
-        <select className="input" value={f.source} onChange={set("source")} aria-label="Source">
-          <option value="">Any source</option>
-          <option value="generated">Generated</option>
-          <option value="uploaded">Uploaded</option>
-          <option value="derived">Edited or derived</option>
+        <select className="input" value={f.source} onChange={set("source")} aria-label="来源">
+          <option value="">全部来源</option>
+          <option value="generated">AI 生成</option>
+          <option value="uploaded">上传</option>
+          <option value="derived">编辑或派生</option>
         </select>
-        <select className="input" value={f.model} onChange={set("model")} aria-label="Model">
-          <option value="">Any model</option>
+        <select className="input" value={f.model} onChange={set("model")} aria-label="模型">
+          <option value="">全部模型</option>
           {facets?.models.map((m) => (
             <option key={m} value={m}>
               {m}
@@ -244,12 +254,18 @@ export function AssetsPage() {
           ))}
         </select>
         <div className="flex min-w-0 gap-1 sm:col-span-2 lg:col-span-2">
-          <input className="input min-w-0 flex-1" type="date" aria-label="From" value={f.from} onChange={set("from")} />
-          <input className="input min-w-0 flex-1" type="date" aria-label="To" value={f.to} onChange={set("to")} />
+          <input
+            className="input min-w-0 flex-1"
+            type="date"
+            aria-label="起始日期"
+            value={f.from}
+            onChange={set("from")}
+          />
+          <input className="input min-w-0 flex-1" type="date" aria-label="结束日期" value={f.to} onChange={set("to")} />
         </div>
         {Boolean(facets?.tags.length) && (
-          <select className="input" value={f.tag} onChange={set("tag")} aria-label="Tag">
-            <option value="">Any tag</option>
+          <select className="input" value={f.tag} onChange={set("tag")} aria-label="标签">
+            <option value="">全部标签</option>
             {facets!.tags.map((t) => (
               <option key={t} value={t}>
                 #{t}
@@ -258,8 +274,8 @@ export function AssetsPage() {
           </select>
         )}
         {Boolean(facets?.collections.length) && (
-          <select className="input" value={f.collection} onChange={set("collection")} aria-label="Collection">
-            <option value="">Any collection</option>
+          <select className="input" value={f.collection} onChange={set("collection")} aria-label="合集">
+            <option value="">全部合集</option>
             {facets!.collections.map((t) => (
               <option key={t} value={t}>
                 {t}
@@ -270,23 +286,23 @@ export function AssetsPage() {
       </div>
       {picked.size > 0 && (
         <section
-          aria-label="Bulk actions"
+          aria-label="批量操作"
           className="card sticky top-2 z-10 mb-3 flex flex-wrap items-center gap-2 p-2 text-sm"
         >
-          <span className="font-medium">{picked.size} selected</span>
+          <span className="font-medium">已选择 {picked.size} 项</span>
           <input
             className="input w-40 py-1"
-            placeholder="Tag or collection"
-            aria-label="Tag or collection"
+            placeholder="标签或合集"
+            aria-label="标签或合集"
             value={bulkValue}
             onChange={(e) => setBulkValue(e.target.value)}
           />
           {(
             [
-              ["tag", "Tag"],
-              ["untag", "Untag"],
-              ["collect", "Add to collection"],
-              ["uncollect", "Take out of collection"],
+              ["tag", "标签"],
+              ["untag", "移除标签"],
+              ["collect", "加入合集"],
+              ["uncollect", "移出合集"],
             ] as const
           ).map(([a, label]) => (
             <button
@@ -300,38 +316,33 @@ export function AssetsPage() {
             </button>
           ))}
           <button type="button" className="btn-secondary py-1" onClick={() => bulk.mutate("favourite")}>
-            <Star className="size-4" /> Favourite
+            <Star className="size-4" /> 收藏
           </button>
           {view === "trash" ? (
             <button type="button" className="btn-secondary py-1" onClick={() => bulk.mutate("restore")}>
-              <RotateCcw className="size-4" /> Restore
+              <RotateCcw className="size-4" /> 恢复
             </button>
           ) : (
             <button type="button" className="btn-secondary py-1" onClick={() => bulk.mutate("trash")}>
-              <Trash2 className="size-4" /> Move to trash
+              <Trash2 className="size-4" /> 移入回收站
             </button>
           )}
           <button type="button" className="btn-ghost py-1" onClick={() => setPicked(new Set())}>
-            Clear
+            清空选择
           </button>
         </section>
       )}
       {view === "unused" && (
-        <p className="muted mb-2 text-xs">
-          Images nothing uses: not a panel's artwork, a reference, on the board, the cover or the thumbnail.
-        </p>
+        <p className="muted mb-2 text-xs">没有用于画格原画、参考图、素材板、封面或缩略图的图片。</p>
       )}
-      {view === "duplicates" && <p className="muted mb-2 text-xs">Files stored more than once, side by side.</p>}
+      {view === "duplicates" && <p className="muted mb-2 text-xs">并排显示重复存储的文件。</p>}
       {q.error && <ErrorBox error={q.error} onRetry={() => q.refetch()} />}
       {q.isLoading ? (
         <Spinner />
       ) : !q.data?.assets.length ? (
-        <EmptyState
-          icon={<Images className="size-8" />}
-          title={view === "trash" ? "Trash is empty" : "No assets match"}
-        />
+        <EmptyState icon={<Images className="size-8" />} title={view === "trash" ? "回收站为空" : "没有匹配的素材"} />
       ) : (
-        <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5" aria-label="Assets">
+        <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5" aria-label="素材">
           {q.data.assets.map((a) => (
             <div
               key={a.id}
@@ -343,14 +354,14 @@ export function AssetsPage() {
               <input
                 type="checkbox"
                 className="absolute top-2 left-2 z-[1] size-4"
-                aria-label={`Select ${a.type.replace(/_/g, " ")} ${a.id.slice(0, 8)}`}
+                aria-label={`选择 ${assetTypeLabel(a.type)} ${a.id.slice(0, 8)}`}
                 checked={picked.has(a.id)}
                 onChange={() => toggle(a.id)}
               />
               <button
                 type="button"
                 className="absolute top-1.5 right-1.5 z-[1] rounded-full bg-[var(--panel)]/80 p-1"
-                aria-label={a.favourite ? "Unfavourite" : "Favourite"}
+                aria-label={a.favourite ? "取消收藏" : "收藏"}
                 aria-pressed={a.favourite}
                 onClick={() => favourite.mutate(a)}
               >
@@ -360,7 +371,7 @@ export function AssetsPage() {
                 <Thumb a={a} className="aspect-square w-full" />
                 <div className="p-2 text-xs">
                   <div className="flex items-center justify-between gap-1">
-                    <span className="truncate font-medium">{a.type.replace(/_/g, " ")}</span>
+                    <span className="truncate font-medium">{assetTypeLabel(a.type)}</span>
                     <StatusChip status={a.status} />
                   </div>
                   <div className="muted">
@@ -437,11 +448,11 @@ function AssetDetail({
   const q = useQuery({ queryKey: ["asset", id], queryFn: () => get<Detail>(`/assets/${id}`) });
   const [confirm, setConfirm] = useState(false);
   const inv = [listKey, ["asset", id]] as const;
-  const trash = useAction(() => post(`/assets/${id}/trash`), { invalidate: inv, success: "Moved to trash" });
-  const restore = useAction(() => post(`/assets/${id}/restore`), { invalidate: inv, success: "Restored" });
+  const trash = useAction(() => post(`/assets/${id}/trash`), { invalidate: inv, success: "已移入回收站" });
+  const restore = useAction(() => post(`/assets/${id}/restore`), { invalidate: inv, success: "已恢复" });
   const remove = useAction(() => del(`/assets/${id}`), {
     invalidate: [listKey],
-    success: "Deleted permanently",
+    success: "已永久删除",
     onSuccess: onClose,
   });
   const saveMarks = useAction((m: Partial<Detail["marks"]>) => put(`/assets/${id}/marks`, m), {
@@ -449,7 +460,7 @@ function AssetDetail({
   });
   const a = q.data?.asset;
   return (
-    <Modal open onClose={onClose} title="Asset" wide>
+    <Modal open onClose={onClose} title="素材" wide>
       {q.error && <ErrorBox error={q.error} />}
       {!a || !q.data ? (
         <Spinner />
@@ -460,7 +471,7 @@ function AssetDetail({
               <AssetImage
                 assetId={a.id}
                 variant={null}
-                alt={a.type}
+                alt={assetTypeLabel(a.type)}
                 className="max-h-96 w-full rounded-lg"
                 fit="contain"
                 trashed={Boolean(a.deletedAt)}
@@ -474,26 +485,26 @@ function AssetDetail({
             <div className="space-y-3">
               <KeyValue
                 items={[
-                  ["Type", a.type],
+                  ["类型", assetTypeLabel(a.type)],
                   [
-                    "Status",
+                    "状态",
                     <StatusChip
                       key="s"
                       status={a.deletedAt ? "cancelled" : a.status}
-                      label={a.deletedAt ? "trashed" : a.status}
+                      label={a.deletedAt ? "已移入回收站" : statusLabel(a.status)}
                     />,
                   ],
                   ["MIME", a.mimeType],
-                  ["Size", `${a.width ? `${a.width}×${a.height} · ` : ""}${fmt.bytes(a.byteSize)}`],
+                  ["大小", `${a.width ? `${a.width}×${a.height} · ` : ""}${fmt.bytes(a.byteSize)}`],
                   [
                     "SHA-256",
                     <code key="h" className="text-xs break-all">
                       {a.sha256}
                     </code>,
                   ],
-                  ["Created", fmt.date(a.createdAt)],
+                  ["创建时间", fmt.date(a.createdAt)],
                   [
-                    "Generation",
+                    "生成任务",
                     a.generationJobId ? (
                       <Link
                         key="g"
@@ -516,7 +527,7 @@ function AssetDetail({
                   target="_blank"
                   rel="noreferrer"
                 >
-                  <ExternalLink className="size-4" /> Full resolution
+                  <ExternalLink className="size-4" /> 查看原图
                 </a>
                 {a.deletedAt ? (
                   <>
@@ -526,10 +537,10 @@ function AssetDetail({
                       onClick={() => restore.mutate()}
                       disabled={restore.isPending}
                     >
-                      <RotateCcw className="size-4" /> Restore
+                      <RotateCcw className="size-4" /> 恢复
                     </button>
                     <button type="button" className="btn-danger" onClick={() => setConfirm(true)}>
-                      <Trash2 className="size-4" /> Delete permanently
+                      <Trash2 className="size-4" /> 永久删除
                     </button>
                   </>
                 ) : (
@@ -539,19 +550,19 @@ function AssetDetail({
                     onClick={() => trash.mutate()}
                     disabled={trash.isPending}
                   >
-                    <Trash2 className="size-4" /> Move to trash
+                    <Trash2 className="size-4" /> 移入回收站
                   </button>
                 )}
               </div>
             </div>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
-            <section aria-label="Where it came from" className="space-y-1 text-sm">
-              <h3 className="font-medium">Where it came from</h3>
+            <section aria-label="素材来源" className="space-y-1 text-sm">
+              <h3 className="font-medium">素材来源</h3>
               <p>{SOURCE[q.data.source.kind]}</p>
               {q.data.source.job && (
                 <p className="muted text-xs">
-                  {q.data.source.job.kind.replace(/_/g, " ")}
+                  {kindLabel(q.data.source.job.kind)}
                   {q.data.source.job.provider ? ` · ${q.data.source.job.provider}` : ""}
                   {q.data.source.job.model ? ` · ${q.data.source.job.model}` : ""}
                   {q.data.source.job.templateName
@@ -559,37 +570,35 @@ function AssetDetail({
                     : ""}
                 </p>
               )}
-              {q.data.source.uploadedName && (
-                <p className="muted text-xs">From the file {q.data.source.uploadedName}</p>
-              )}
-              {q.data.source.tool && <p className="muted text-xs">Made with {q.data.source.tool}</p>}
-              <h3 className="pt-2 font-medium">Used by</h3>
+              {q.data.source.uploadedName && <p className="muted text-xs">来源文件 {q.data.source.uploadedName}</p>}
+              {q.data.source.tool && <p className="muted text-xs">制作工具 {q.data.source.tool}</p>}
+              <h3 className="pt-2 font-medium">使用位置</h3>
               {q.data.usedBy.length ? (
                 <ul className="text-xs">
                   {q.data.usedBy.map((u) => (
                     <li key={`${u.kind}-${u.label}`}>
-                      {u.kind === "panel" ? "Panel" : u.kind === "reference" ? "Reference of" : ""} {u.label}
+                      {u.kind === "panel" ? "画格" : u.kind === "reference" ? "参考素材" : ""} {u.label}
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="muted text-xs">Nothing uses it.</p>
+                <p className="muted text-xs">暂无使用位置。</p>
               )}
             </section>
-            <section aria-label="Filing" className="space-y-2 text-sm">
+            <section aria-label="归档" className="space-y-2 text-sm">
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
                   checked={q.data.marks.favourite}
                   onChange={(e) => saveMarks.mutate({ favourite: e.target.checked })}
                 />
-                Favourite
+                收藏
               </label>
-              <Field label="Tags">
+              <Field label="标签">
                 <TagInput
                   value={q.data.marks.tags}
                   onChange={(tags) => saveMarks.mutate({ tags })}
-                  placeholder="Add a tag"
+                  placeholder="添加标签"
                 />
               </Field>
               <LicenceField
@@ -597,31 +606,35 @@ function AssetDetail({
                 value={q.data.marks.licence}
                 onSave={(licence) => saveMarks.mutate({ licence })}
               />
-              <Field label="Collections">
+              <Field label="合集">
                 <TagInput
                   value={q.data.marks.collections}
                   onChange={(collections) => saveMarks.mutate({ collections })}
-                  placeholder="Add to a collection"
+                  placeholder="加入合集"
                 />
               </Field>
             </section>
           </div>
           {a.mimeType.startsWith("image/") && (
-            <section aria-label="Images like this" className="space-y-2">
+            <section aria-label="相似图片" className="space-y-2">
               {!like ? (
                 <button type="button" className="btn-secondary" onClick={() => setLike(true)}>
-                  <Search className="size-4" /> Find images like this
+                  <Search className="size-4" /> 查找相似图片
                 </button>
               ) : similar.isLoading ? (
                 <Spinner />
               ) : (
                 <>
-                  <h3 className="text-sm font-medium">Images like this</h3>
+                  <h3 className="text-sm font-medium">相似图片</h3>
                   <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
                     {similar.data?.similar.map((s) => (
                       <button key={s.id} type="button" className="text-left" onClick={() => onOpen(s.id)}>
-                        <AssetImage assetId={s.id} alt={s.type} className="aspect-square w-full rounded" />
-                        <span className="muted text-[10px]">{Math.round(s.score * 100)}% alike</span>
+                        <AssetImage
+                          assetId={s.id}
+                          alt={assetTypeLabel(s.type)}
+                          className="aspect-square w-full rounded"
+                        />
+                        <span className="muted text-[10px]">相似度 {Math.round(s.score * 100)}%</span>
                       </button>
                     ))}
                   </div>
@@ -631,7 +644,7 @@ function AssetDetail({
           )}
           {q.data.variants.length > 0 && (
             <div>
-              <h3 className="mb-1 text-sm font-medium">Derivatives</h3>
+              <h3 className="mb-1 text-sm font-medium">派生文件</h3>
               <table className="w-full text-xs">
                 <tbody>
                   {q.data.variants.map((v) => (
@@ -650,14 +663,14 @@ function AssetDetail({
           )}
           {(q.data.lineage.length > 0 || q.data.children.length > 0) && (
             <div className="text-sm">
-              <h3 className="mb-1 font-medium">Lineage</h3>
+              <h3 className="mb-1 font-medium">派生关系</h3>
               <div className="flex flex-wrap items-center gap-1 text-xs">
                 {[...q.data.lineage].reverse().map((l) => (
                   <span key={l.id} className="chip bg-[var(--panel-2)]">
                     {l.id.slice(0, 8)} →
                   </span>
                 ))}
-                <span className="chip bg-accent-600/20">this</span>
+                <span className="chip bg-accent-600/20">当前素材</span>
                 {q.data.children.map((c) => (
                   <span key={c.id} className="chip bg-[var(--panel-2)]">
                     → {c.id.slice(0, 8)}
@@ -667,21 +680,21 @@ function AssetDetail({
             </div>
           )}
           <div>
-            <h3 className="mb-1 text-sm font-medium">Metadata</h3>
+            <h3 className="mb-1 text-sm font-medium">元数据</h3>
             <JsonBlock value={a.metadata} maxHeight="14rem" />
           </div>
         </div>
       )}
       <ConfirmDialog
         open={confirm}
-        title="Delete permanently?"
+        title="永久删除？"
         danger
-        confirmLabel="Delete"
+        confirmLabel="删除"
         busy={remove.isPending}
         onClose={() => setConfirm(false)}
         onConfirm={() => remove.mutate()}
       >
-        The file and all derivatives are removed from storage. This cannot be undone.
+        将从存储中删除原始文件及所有派生文件，此操作无法撤销。
       </ConfirmDialog>
     </Modal>
   );
@@ -699,18 +712,18 @@ function LicenceField({
   const [url, setUrl] = useState(value?.url ?? "");
   const changed = text !== (value?.text ?? "") || url !== (value?.url ?? "");
   return (
-    <Field label="Licence and source" hint="Recorded in provenance records, e.g. “CC BY 4.0, photo by …”.">
+    <Field label="许可与来源" hint="将写入来源记录，例如“CC BY 4.0，摄影者……” 。">
       <div className="flex flex-wrap gap-1">
         <input
           className="input min-w-0 flex-1"
-          aria-label="Licence"
+          aria-label="许可说明"
           maxLength={500}
           value={text}
           onChange={(e) => setText(e.target.value)}
         />
         <input
           className="input min-w-0 flex-1"
-          aria-label="Licence link"
+          aria-label="许可链接"
           placeholder="https://…"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
@@ -721,7 +734,7 @@ function LicenceField({
           disabled={!changed}
           onClick={() => onSave(text.trim() ? { text: text.trim(), ...(url.trim() ? { url: url.trim() } : {}) } : null)}
         >
-          Save
+          保存
         </button>
       </div>
     </Field>

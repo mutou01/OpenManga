@@ -254,7 +254,7 @@ export function PanelNode({
           />
         ) : (
           <Text
-            text={server?.storyBeat || "Empty panel"}
+            text={server?.storyBeat || "空分镜"}
             width={w}
             height={h}
             padding={16}

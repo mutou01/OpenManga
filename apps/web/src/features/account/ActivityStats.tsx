@@ -18,19 +18,19 @@ type ActionRow = {
 type Stats = { since: string | null; enabled?: boolean; users?: number; pages: PageRow[]; actions: ActionRow[] };
 
 const RANGES = [
-  { days: 7, label: "Last 7 days" },
-  { days: 30, label: "Last 30 days" },
-  { days: 90, label: "Last 90 days" },
-  { days: 0, label: "All time" },
+  { days: 7, label: "最近 7 天" },
+  { days: 30, label: "最近 30 天" },
+  { days: 90, label: "最近 90 天" },
+  { days: 0, label: "全部时间" },
 ];
 const SHOWN = 20;
 
 function dur(ms: number) {
   const s = Math.round(ms / 1000);
-  if (s < 60) return `${s}s`;
+  if (s < 60) return `${s} 秒`;
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ${String(s % 60).padStart(2, "0")}s`;
-  return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`;
+  if (m < 60) return `${m} 分 ${String(s % 60).padStart(2, "0")} 秒`;
+  return `${Math.floor(m / 60)} 小时 ${String(m % 60).padStart(2, "0")} 分`;
 }
 
 function download(name: string, type: string, text: string) {
@@ -100,7 +100,7 @@ function ActivityView({ path, scope }: { path: string; scope: "user" | "instance
       <div className="flex flex-wrap items-center gap-2">
         <select
           className="input w-auto"
-          aria-label="Range"
+          aria-label="时间范围"
           value={days}
           onChange={(e) => setDays(Number(e.target.value))}
         >
@@ -110,34 +110,28 @@ function ActivityView({ path, scope }: { path: string; scope: "user" | "instance
             </option>
           ))}
         </select>
-        {instance && s && (
-          <span className="muted text-xs">
-            {s.users} {s.users === 1 ? "person" : "people"} with stats
-          </span>
-        )}
+        {instance && s && <span className="muted text-xs">{s.users} 人有活动记录</span>}
         <span className="mr-auto" />
         <button type="button" className="btn-secondary" disabled={!s} onClick={() => exportAs("csv")}>
-          Export CSV
+          导出 CSV
         </button>
         <button type="button" className="btn-secondary" disabled={!s} onClick={() => exportAs("json")}>
-          Export JSON
+          导出 JSON
         </button>
       </div>
       {q.isLoading && <Spinner />}
       {q.error && <ErrorBox error={q.error} />}
-      {s && !s.pages.length && !s.actions.length && (
-        <p className="muted text-sm">Nothing recorded in this range yet.</p>
-      )}
+      {s && !s.pages.length && !s.actions.length && <p className="muted text-sm">此时间范围内暂无记录。</p>}
       {s && s.pages.length > 0 && (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <caption className="mb-1 text-left font-medium">Screens by time spent</caption>
+            <caption className="mb-1 text-left font-medium">页面停留时长</caption>
             <thead className="muted text-left text-xs">
               <tr>
-                <th className="py-1 pr-2 font-normal">Screen</th>
-                <th className="px-2 text-right font-normal">Visits</th>
-                <th className="px-2 text-right font-normal">Time</th>
-                {instance && <th className="pl-2 text-right font-normal">Users</th>}
+                <th className="py-1 pr-2 font-normal">页面</th>
+                <th className="px-2 text-right font-normal">访问次数</th>
+                <th className="px-2 text-right font-normal">时长</th>
+                {instance && <th className="pl-2 text-right font-normal">用户数</th>}
               </tr>
             </thead>
             <tbody>
@@ -159,15 +153,15 @@ function ActivityView({ path, scope }: { path: string; scope: "user" | "instance
       {s && s.actions.length > 0 && (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <caption className="mb-1 text-left font-medium">Actions by use</caption>
+            <caption className="mb-1 text-left font-medium">操作使用情况</caption>
             <thead className="muted text-left text-xs">
               <tr>
-                <th className="py-1 pr-2 font-normal">Action</th>
-                <th className="px-2 font-normal">By</th>
-                <th className="px-2 text-right font-normal">Uses</th>
-                <th className="px-2 text-right font-normal">Failed</th>
-                <th className="px-2 text-right font-normal">Avg time</th>
-                {instance && <th className="pl-2 text-right font-normal">Users</th>}
+                <th className="py-1 pr-2 font-normal">操作</th>
+                <th className="px-2 font-normal">来源</th>
+                <th className="px-2 text-right font-normal">次数</th>
+                <th className="px-2 text-right font-normal">失败次数</th>
+                <th className="px-2 text-right font-normal">平均耗时</th>
+                {instance && <th className="pl-2 text-right font-normal">用户数</th>}
               </tr>
             </thead>
             <tbody>
@@ -175,11 +169,13 @@ function ActivityView({ path, scope }: { path: string; scope: "user" | "instance
                 <tr key={`${a.action} ${a.source}`} className="border-t border-[var(--border)]">
                   <td className="break-all py-1 pr-2 font-mono text-xs">{a.action}</td>
                   <td className="px-2 text-xs">
-                    {a.source === "web" ? (instance ? "Web" : "You") : a.source === "agent" ? "Agent" : "Run"}
+                    {a.source === "web" ? (instance ? "网页" : "你") : a.source === "agent" ? "智能体" : "执行任务"}
                   </td>
                   <td className="px-2 text-right tabular-nums">{a.count}</td>
                   <td className="px-2 text-right tabular-nums">{a.errors || ""}</td>
-                  <td className="px-2 text-right tabular-nums">{a.count ? `${Math.round(a.ms / a.count)} ms` : ""}</td>
+                  <td className="px-2 text-right tabular-nums">
+                    {a.count ? `${Math.round(a.ms / a.count)} 毫秒` : ""}
+                  </td>
                   {instance && <td className="pl-2 text-right tabular-nums">{a.users}</td>}
                 </tr>
               ))}
@@ -189,7 +185,7 @@ function ActivityView({ path, scope }: { path: string; scope: "user" | "instance
       )}
       {s && (s.pages.length > SHOWN || s.actions.length > SHOWN) && (
         <button type="button" className="btn-ghost text-xs" onClick={() => setAll(!all)}>
-          {all ? "Show top 20" : "Show all"}
+          {all ? "显示前 20 项" : "显示全部"}
         </button>
       )}
     </div>
@@ -207,11 +203,9 @@ export function MyActivity() {
   });
   return (
     <section className="card space-y-3 p-4">
-      <h2 className="font-medium">Your activity</h2>
+      <h2 className="font-medium">你的活动</h2>
       <p className="muted text-xs">
-        Which screens you spend time on and which actions you use, kept on this server only and never sent anywhere
-        else. Screens are recorded by type (such as "a page in the editor"), never which project, chapter or page, and
-        nothing you write is recorded. Export it to share in a feature request.
+        记录你使用的页面类型、停留时长和操作，仅保存在此服务器。记录按页面类型（例如“编辑器中的页面”）汇总，不包含具体项目、章节、页面或你编写的内容。你可以导出记录，随功能建议一起分享。
       </p>
       <label className="flex items-center gap-2 text-sm">
         <input
@@ -220,17 +214,17 @@ export function MyActivity() {
           disabled={toggle.isPending}
           onChange={(e) => toggle.mutate(e.target.checked)}
         />
-        Record my activity
+        记录我的活动
       </label>
       <ActivityView path="/me/activity" scope="user" />
       <button type="button" className="btn-ghost text-xs text-red-600" onClick={() => setConfirm(true)}>
-        Delete my activity
+        删除我的活动记录
       </button>
       <ConfirmDialog
         open={confirm}
         danger
-        title="Delete your activity?"
-        confirmLabel="Delete"
+        title="删除你的活动记录？"
+        confirmLabel="删除"
         onClose={() => setConfirm(false)}
         onConfirm={async () => {
           try {
@@ -242,7 +236,7 @@ export function MyActivity() {
           setConfirm(false);
         }}
       >
-        Every screen and action total recorded for you is deleted. Recording continues unless you turn it off.
+        将删除你的全部页面和操作统计。活动记录功能会继续运行，直到你将其关闭。
       </ConfirmDialog>
     </section>
   );
@@ -252,10 +246,9 @@ export function MyActivity() {
 export function AdminActivity() {
   return (
     <section className="card space-y-3 p-4">
-      <h2 className="font-medium">Activity</h2>
+      <h2 className="font-medium">活动</h2>
       <p className="muted text-xs">
-        Totals across everyone who records activity, kept on this server only. It shows how many people used each screen
-        or action, never who.
+        汇总所有开启活动记录的用户数据，仅保存在此服务器。显示每个页面或操作的使用人数，不显示具体用户。
       </p>
       <ActivityView path="/admin/activity" scope="instance" />
     </section>

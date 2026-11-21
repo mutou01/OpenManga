@@ -275,7 +275,7 @@ export async function runMaintenance(deps: WorkerDeps) {
       .set({
         status: "failed",
         failureCode: "stalled",
-        failureReason: "The worker stopped while processing this job. Retry it.",
+        failureReason: "后台进程在处理任务时停止，请重试。",
         finishedAt: now,
       })
       .where(inArray(generationJobs.id, stuck));
@@ -326,7 +326,7 @@ export async function runMaintenance(deps: WorkerDeps) {
       .set({
         status: "failed",
         failureCode: "batch_submit_failed",
-        failureReason: "The batch this panel was waiting in could not be submitted. Retry it.",
+        failureReason: "画格所属批次提交失败，请重试。",
         finishedAt: now,
       })
       .where(inArray(generationJobs.id, strandedIds));
@@ -340,7 +340,7 @@ export async function runMaintenance(deps: WorkerDeps) {
       .set({
         status: "failed",
         failureCode: "stalled",
-        failureReason: "Worker stopped during synthesis",
+        failureReason: "后台进程在合成时停止",
         finishedAt: now,
       })
       .where(inArray(audioJobs.id, stuckAudio));
@@ -350,7 +350,7 @@ export async function runMaintenance(deps: WorkerDeps) {
   if (stuckExports.length)
     await deps.db
       .update(exportJobs)
-      .set({ status: "failed", failureReason: "Worker stopped during export", finishedAt: now })
+      .set({ status: "failed", failureReason: "后台进程在导出时停止", finishedAt: now })
       .where(inArray(exportJobs.id, stuckExports));
 
   await deps.db.execute(

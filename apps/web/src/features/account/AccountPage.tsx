@@ -31,17 +31,14 @@ function NarrationDefaults() {
   const value = voice ?? saved;
   const save = useAction((narrationVoice: string) => patch("/auth/settings", { narrationVoice }), {
     invalidate: [qk.me],
-    success: "Default narration voice saved",
+    success: "默认旁白音色已保存",
     onSuccess: () => setVoice(undefined),
   });
   const voices = tts.data?.voices ?? [];
   return (
     <section className="card space-y-3 p-4">
-      <h2 className="font-medium">Narration</h2>
-      <Field
-        label="Default voice for new projects"
-        hint="Projects created from now on start with this voice. Existing projects keep the voice they were created with."
-      >
+      <h2 className="font-medium">旁白</h2>
+      <Field label="新项目的默认音色" hint="今后创建的项目将使用此音色。已有项目继续使用创建时的音色。">
         <select
           className="input"
           value={value}
@@ -51,9 +48,9 @@ function NarrationDefaults() {
             save.mutate(e.target.value);
           }}
         >
-          <option value="">Server default</option>
+          <option value="">服务器默认值</option>
           {/* A saved voice the server no longer offers stays selectable rather than silently switching. */}
-          {saved && !voices.some((v) => v.id === saved) && <option value={saved}>{saved} (unavailable)</option>}
+          {saved && !voices.some((v) => v.id === saved) && <option value={saved}>{saved} （不可用）</option>}
           {voices.map((v) => (
             <option key={v.id} value={v.id}>
               {v.name} {v.language ? `· ${v.language}` : ""}
@@ -61,7 +58,7 @@ function NarrationDefaults() {
           ))}
         </select>
       </Field>
-      {!tts.data?.enabled && <p className="muted text-xs">Speech synthesis is disabled on this server.</p>}
+      {!tts.data?.enabled && <p className="muted text-xs">此服务器已禁用语音合成。</p>}
     </section>
   );
 }
@@ -76,13 +73,13 @@ export function AccountPage() {
   const [error, setError] = useState<unknown>(null);
   const change = async (e: FormEvent) => {
     e.preventDefault();
-    if (pw.newPassword !== pw.confirm) return setError(new Error("Passwords do not match"));
+    if (pw.newPassword !== pw.confirm) return setError(new Error("两次输入的密码不一致"));
     setBusy(true);
     setError(null);
     try {
       await post("/auth/password", { currentPassword: pw.currentPassword, newPassword: pw.newPassword });
       setPw({ currentPassword: "", newPassword: "", confirm: "" });
-      toast.success("Password changed. Other sessions were signed out.");
+      toast.success("密码已修改，其他会话已退出登录。");
       await sessions.refetch();
     } catch (err) {
       setError(err);
@@ -92,15 +89,18 @@ export function AccountPage() {
   };
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-4 sm:p-6">
-      <PageHeader title="Account" subtitle={me ? `${me.username} · ${me.email} · ${me.role}` : undefined} />
+      <PageHeader
+        title="账号"
+        subtitle={me ? `${me.username} · ${me.email} · ${me.role === "admin" ? "管理员" : "用户"}` : undefined}
+      />
       <NarrationDefaults />
       <ProjectTemplates />
       <ProviderKeys />
       <YoutubeChannels returnTo="/account" />
       <MyActivity />
       <form onSubmit={change} className="card space-y-3 p-4">
-        <h2 className="font-medium">Change password</h2>
-        <Field label="Current password">
+        <h2 className="font-medium">修改密码</h2>
+        <Field label="当前密码">
           <input
             className="input"
             type="password"
@@ -110,7 +110,7 @@ export function AccountPage() {
             required
           />
         </Field>
-        <Field label="New password (min 10)">
+        <Field label="新密码（至少 10 个字符）">
           <input
             className="input"
             type="password"
@@ -121,7 +121,7 @@ export function AccountPage() {
             required
           />
         </Field>
-        <Field label="Confirm new password">
+        <Field label="确认新密码">
           <input
             className="input"
             type="password"
@@ -134,12 +134,12 @@ export function AccountPage() {
         </Field>
         <ErrorBox error={error} />
         <button type="submit" className="btn-primary" disabled={busy}>
-          {busy && <Spinner />} Update password
+          {busy && <Spinner />} 更新密码
         </button>
       </form>
       <div className="card p-4">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-medium">Active sessions</h2>
+          <h2 className="font-medium">活跃会话</h2>
           <button
             type="button"
             className="btn-danger"
@@ -153,7 +153,7 @@ export function AccountPage() {
               }
             }}
           >
-            Sign out everywhere
+            退出所有设备
           </button>
         </div>
         {sessions.isLoading && <Spinner />}
@@ -161,11 +161,11 @@ export function AccountPage() {
           {sessions.data?.sessions.map((s) => (
             <li key={s.id} className="py-2">
               <div className="flex items-center gap-2">
-                <span className="truncate">{s.userAgent ?? "Unknown device"}</span>
-                {s.current && <span className="chip bg-accent-600/20">this device</span>}
+                <span className="truncate">{s.userAgent ?? "未知设备"}</span>
+                {s.current && <span className="chip bg-accent-600/20">当前设备</span>}
               </div>
               <div className="muted text-xs">
-                IP {s.ip ?? "unknown"} · last used {fmt.ago(s.lastUsedAt)} · expires {fmt.date(s.expiresAt)}
+                IP {s.ip ?? "未知"} · 上次使用 {fmt.ago(s.lastUsedAt)} · 到期时间 {fmt.date(s.expiresAt)}
               </div>
             </li>
           ))}
@@ -184,24 +184,25 @@ function ProjectTemplates() {
       get<{ templates: { id: string; name: string; format: string; createdAt: string }[] }>("/production-presets"),
   });
   const remove = useAction((id: string) => del(`/auth/templates/${id}`), {
-    success: "Template deleted",
+    success: "模板已删除",
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["production-presets"] }),
   });
   if (!list.data?.templates.length) return null;
   return (
     <section className="card space-y-2 p-4">
-      <h2 className="font-medium">Project templates</h2>
+      <h2 className="font-medium">项目模板</h2>
       <ul className="divide-y divide-[var(--border)] text-sm">
         {list.data.templates.map((t) => (
           <li key={t.id} className="flex items-center gap-2 py-2">
             <span className="mr-auto">
               {t.name}{" "}
               <span className="muted text-xs">
-                · {t.format} · saved {fmt.ago(t.createdAt)}
+                · {{ comic: "漫画页面", film: "镜头", vertical: "长条漫画" }[t.format] ?? t.format} · 保存于{" "}
+                {fmt.ago(t.createdAt)}
               </span>
             </span>
             <button type="button" className="btn-ghost text-xs text-red-500" onClick={() => remove.mutate(t.id)}>
-              Delete
+              删除
             </button>
           </li>
         ))}

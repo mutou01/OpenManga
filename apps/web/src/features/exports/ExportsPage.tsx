@@ -24,6 +24,7 @@ import {
   Spinner,
   StatusChip,
 } from "../../components/ui.tsx";
+import { readingDirectionLabel } from "../../lib/locale.ts";
 import { ProgressBar } from "../generation/shared.tsx";
 import { useProject, useProjectId } from "../project/ProjectLayout.tsx";
 import { PreviewVideoButton } from "../video/VideoPreview.tsx";
@@ -33,30 +34,51 @@ import { CoverCheck, PRINT_SIZES, PreflightReport, type PreflightReportData, Pri
 import { CaptionsField, ShortsPicker } from "./ShortsPicker.tsx";
 import { YoutubePackageCard } from "./YoutubePackage.tsx";
 
+const LANGUAGE_LABELS: Record<string, string> = {
+  en: "英语",
+  es: "西班牙语",
+  pt: "葡萄牙语",
+  fr: "法语",
+  de: "德语",
+  it: "意大利语",
+  ja: "日语",
+  ko: "韩语",
+  zh: "中文（普通话）",
+  hi: "印地语",
+  id: "印度尼西亚语",
+  vi: "越南语",
+  th: "泰语",
+  tr: "土耳其语",
+  ru: "俄语",
+  ar: "阿拉伯语",
+  pl: "波兰语",
+  nl: "荷兰语",
+};
+
 const KINDS = [
-  { value: "png_pages", label: "PNG page sequence", chapter: true },
-  { value: "jpg_pages", label: "JPG page sequence", chapter: true },
+  { value: "png_pages", label: "PNG 页面序列", chapter: true },
+  { value: "jpg_pages", label: "JPG 页面序列", chapter: true },
   { value: "pdf", label: "PDF", chapter: true },
-  { value: "cbz", label: "CBZ comic archive (Komga, Kavita, comic readers)", chapter: true },
-  { value: "epub", label: "EPUB e-book (Kindle, Apple Books, Kobo)", chapter: true },
-  { value: "webtoon", label: "Webtoon vertical strip", chapter: true },
-  { value: "print_cover", label: "Print cover: back, spine and front with bleed (PDF)", chapter: true },
-  { value: "print_preflight", label: "Print preflight: DPI, ink, fonts, soft proof", chapter: true },
-  { value: "psd_pages", label: "Layered PSD per page (Photoshop, Clip Studio)", chapter: true },
+  { value: "cbz", label: "CBZ 漫画压缩包（Komga、Kavita 等阅读器）", chapter: true },
+  { value: "epub", label: "EPUB 电子书（Kindle、Apple Books、Kobo）", chapter: true },
+  { value: "webtoon", label: "长条漫画", chapter: true },
+  { value: "print_cover", label: "印刷封面（含出血的封底、书脊与封面 PDF）", chapter: true },
+  { value: "print_preflight", label: "印前检查（DPI、墨量、字体与软打样）", chapter: true },
+  { value: "psd_pages", label: "逐页分层 PSD（Photoshop、Clip Studio）", chapter: true },
   {
     value: "layered_package",
-    label: "Separated art and lettering (ZIP: text-free pages, SVG, manifest)",
+    label: "原画与文字分离包（ZIP，含无字页面、SVG 与清单）",
     chapter: true,
   },
-  { value: "narration_audio", label: "Narration audio package", chapter: true },
-  { value: "timeline", label: "Timeline manifest (JSON)", chapter: true },
-  { value: "project_json", label: "Project JSON", chapter: false },
-  { value: "zip_package", label: "Full project ZIP package", chapter: false },
-  { value: "agent_package", label: "Agent hand-off package (everything linked)", chapter: false },
-  { value: "video_pages", label: "Narrated video — page cut (MP4)", chapter: false },
-  { value: "video_panels", label: "Narrated video — panel cut, Ken Burns (MP4)", chapter: false },
-  { value: "video_shorts", label: "Shorts — a trailer of key shots, up to 3 min (MP4)", chapter: false },
-  { value: "youtube_package", label: "YouTube package (newest video + thumbnail + text)", chapter: false },
+  { value: "narration_audio", label: "旁白音频包", chapter: true },
+  { value: "timeline", label: "时间轴清单（JSON）", chapter: true },
+  { value: "project_json", label: "项目 JSON", chapter: false },
+  { value: "zip_package", label: "完整项目 ZIP 包", chapter: false },
+  { value: "agent_package", label: "Agent 交接包（包含完整关联）", chapter: false },
+  { value: "video_pages", label: "旁白视频（按页剪辑 MP4）", chapter: false },
+  { value: "video_panels", label: "旁白视频（按画格剪辑，Ken Burns 运镜 MP4）", chapter: false },
+  { value: "video_shorts", label: "短视频（关键镜头预告，最长 3 分钟 MP4）", chapter: false },
+  { value: "youtube_package", label: "YouTube 发布包（最新视频、缩略图与文案）", chapter: false },
 ] as const;
 const AREAS: Record<string, ("art" | "narration")[]> = {
   png_pages: ["art"],
@@ -261,7 +283,7 @@ export function ExportsPage() {
       }),
     {
       invalidate: [qk.exports(projectId)],
-      success: "Export queued",
+      success: "导出已加入队列",
       onSuccess: () => setNotReady(null),
     },
   );
@@ -287,7 +309,7 @@ export function ExportsPage() {
   const relevant = (readiness.data?.issues ?? []).filter((i) => (AREAS[kind] ?? []).includes(i.area));
   const cancel = useAction((id: string) => post(`/exports/${id}/cancel`), {
     invalidate: [qk.exports(projectId)],
-    success: "Cancellation sent",
+    success: "已发送取消请求",
   });
 
   // Deleting removes the files from disk now instead of at their 30-day expiry.
@@ -299,7 +321,7 @@ export function ExportsPage() {
         : del<{ exports: number; bytes: number }>(`/exports/${target}`),
     {
       invalidate: [qk.exports(projectId), qk.project(projectId)],
-      success: (r) => `Deleted ${r.exports} export(s), ${fmt.bytes(r.bytes)} freed`,
+      success: (r) => `已删除 ${r.exports} 个导出，释放 ${fmt.bytes(r.bytes)}`,
       onSuccess: () => setDeleting(null),
     },
   );
@@ -309,12 +331,12 @@ export function ExportsPage() {
   return (
     <div className="mx-auto max-w-6xl p-6">
       <PageHeader
-        title="Exports"
-        subtitle="Deterministic composition from structured pages. No AI calls."
+        title="导出"
+        subtitle="根据结构化页面合成导出文件，无需调用 AI。"
         actions={
           jobs.data?.jobs.some((j) => !running(j.status) && j.kind !== "project_import") ? (
             <button type="button" className="btn-ghost text-red-500" onClick={() => setDeleting("all")}>
-              <Trash2 className="size-4" /> Delete all exports
+              <Trash2 className="size-4" /> 删除全部导出
             </button>
           ) : undefined
         }
@@ -322,17 +344,17 @@ export function ExportsPage() {
       <YoutubePackageCard />
       <ConfirmDialog
         open={deleting !== null}
-        title={deleting === "all" ? "Delete all exports?" : "Delete this export?"}
-        confirmLabel="Delete"
+        title={deleting === "all" ? "删除全部导出？" : "删除此导出？"}
+        confirmLabel="删除"
         danger
         busy={remove.isPending}
         onClose={() => setDeleting(null)}
         onConfirm={() => deleting && remove.mutate(deleting)}
       >
         {deleting === "all"
-          ? "Every finished export of this project and its files are deleted from disk now. Running exports are kept."
-          : "This export and its files are deleted from disk now."}{" "}
-        This cannot be undone; export again to get the files back.
+          ? "将立即从磁盘删除此项目所有已结束的导出及其文件，正在运行的导出将保留。"
+          : "将立即从磁盘删除此导出及其文件。"}{" "}
+        此操作无法撤销，需要重新导出才能恢复文件。
       </ConfirmDialog>
       <div className="grid gap-4 lg:grid-cols-[22rem_1fr]">
         <form
@@ -363,7 +385,7 @@ export function ExportsPage() {
               if (o.jpgQuality) setJpgQuality(o.jpgQuality);
             }}
           />
-          <Field label="Format">
+          <Field label="格式">
             <select className="input" value={kind} onChange={(e) => setKind(e.target.value as Kind)}>
               {KINDS.map((k) => (
                 <option key={k.value} value={k.value}>
@@ -373,16 +395,16 @@ export function ExportsPage() {
             </select>
           </Field>
           {needsChapter && (
-            <Field label="Chapter">
+            <Field label="章节">
               <select
                 className="input"
                 value={wholeProject ? "all" : selectedChapter}
                 onChange={(e) => setChapterId(e.target.value)}
               >
-                {WHOLE_PROJECT.has(kind) && <option value="all">Whole project (all chapters)</option>}
+                {WHOLE_PROJECT.has(kind) && <option value="all">整个项目（全部章节）</option>}
                 {chapters.data?.chapters.map((c) => (
                   <option key={c.id} value={c.id}>
-                    Ch. {c.order} — {c.title}
+                    第 {c.order} 章 — {c.title}
                   </option>
                 ))}
               </select>
@@ -390,23 +412,23 @@ export function ExportsPage() {
           )}
           {(kind === "agent_package" || isVideo(kind) || kind === "youtube_package") && (
             <>
-              <Field label="Chapters">
+              <Field label="章节">
                 <select className="input" value={agentChapter} onChange={(e) => setAgentChapter(e.target.value)}>
                   <option value="">
-                    {isVideo(kind) || kind === "youtube_package" ? "Whole project (one video)" : "All chapters"}
+                    {isVideo(kind) || kind === "youtube_package" ? "整个项目（合并为一个视频）" : "全部章节"}
                   </option>
                   {chapters.data?.chapters.map((c) => (
                     <option key={c.id} value={c.id}>
-                      Ch. {c.order} — {c.title}
+                      第 {c.order} 章 — {c.title}
                     </option>
                   ))}
                 </select>
               </Field>
               {kind === "agent_package" && (
                 <p className="muted text-xs">
-                  ZIP with a README and manifest.json linking every page, panel (clean and lettered images), character
-                  and location reference, dialogue and narration segment with timings, so another agent or editor can
-                  stitch it together.
+                  ZIP 内含 README 和
+                  manifest.json，关联全部页面、画格原画与排字图、角色及场景参考图、对话和带时间信息的旁白，便于其他
+                  Agent 或编辑器继续制作。
                 </p>
               )}
             </>
@@ -419,7 +441,7 @@ export function ExportsPage() {
             kind === "psd_pages" ||
             kind === "layered_package" ||
             kind === "agent_package") && (
-            <Field label={`Scale ×${scale}`}>
+            <Field label={`缩放 ×${scale}`}>
               <input
                 type="range"
                 min={0.25}
@@ -435,7 +457,7 @@ export function ExportsPage() {
             kind === "cbz" ||
             kind === "epub" ||
             (kind === "webtoon" && webtoon.format === "jpg")) && (
-            <Field label={`JPG quality ${jpgQuality}`}>
+            <Field label={`JPG 质量 ${jpgQuality}`}>
               <input
                 type="range"
                 min={40}
@@ -449,13 +471,13 @@ export function ExportsPage() {
           {(kind === "psd_pages" || kind === "layered_package") && (
             <p className="muted text-xs">
               {kind === "psd_pages"
-                ? "One Photoshop file per page (zipped when there are several): a white background, a group per panel with its art, frame and hidden layout guide, then effects, captions and dialogue, each element its own named layer at its place on the page. Clip Studio Paint opens it too."
-                : "Per page: the lettered page, the page without lettering, the lettering as one vector SVG, and every panel's art, frame and guide and every bubble, caption and sound effect as its own transparent PNG. manifest.json gives each file's place on the page (x, y, width, height), its stacking order and its text."}
+                ? "每页生成一个 Photoshop 文件，多页时打包为 ZIP。包含白色背景、各画格的原画、边框与隐藏布局参考线，以及特效、说明文字和对话，每个元素均按页面位置放在独立命名图层中。也可用 Clip Studio Paint 打开。"
+                : "每页包含排字后的页面、无字页面、文字矢量 SVG，以及各画格原画、边框、参考线、气泡、说明文字和音效的独立透明 PNG。manifest.json 记录每个文件在页面中的位置、尺寸、图层顺序与文字。"}
             </p>
           )}
           {kind === "print_cover" && (
             <div className="grid grid-cols-2 gap-2">
-              <Field label="Print size">
+              <Field label="印刷尺寸">
                 <select
                   className="input"
                   value={pdf.pageSize === "source" ? "kdp_6x9" : pdf.pageSize}
@@ -468,24 +490,24 @@ export function ExportsPage() {
                   ))}
                 </select>
               </Field>
-              <Field label="Paper">
+              <Field label="纸张">
                 <select
                   className="input"
                   value={print.paper}
                   onChange={(e) => setPrint({ ...print, paper: e.target.value })}
                 >
-                  <option value="white">White</option>
-                  <option value="cream">Cream</option>
-                  <option value="color">Colour</option>
+                  <option value="white">白纸</option>
+                  <option value="cream">米色纸</option>
+                  <option value="color">彩色印刷用纸</option>
                 </select>
               </Field>
-              <Field label="Page count" hint="Empty: the interior's">
+              <Field label="页数" hint="留空时使用内页页数">
                 <input
                   type="number"
                   className="input"
                   min={1}
                   max={2000}
-                  placeholder="Interior"
+                  placeholder="内页页数"
                   value={print.pageCount}
                   onChange={(e) => setPrint({ ...print, pageCount: e.target.value })}
                 />
@@ -512,24 +534,25 @@ export function ExportsPage() {
                 />
               </div>
               <p className="muted col-span-2 text-xs">
-                One PDF of back, spine and front with 0.125" bleed: the project's cover art on the front with the title
-                and author, the title on the spine (79 pages or more), the description on the back above the barcode
-                area. The page count follows the interior with the contents and right-hand-start options below.
+                封底、书脊与封面合为一份 PDF，出血为 0.125 英寸。封面使用项目封面原画、标题与作者，79
+                页及以上时在书脊显示标题，封底简介位于条形码区上方。页数按内页及下方目录和章节右页起始选项计算。
               </p>
             </div>
           )}
           {PDF_OPTIONS.has(kind) && (
             <div className="grid grid-cols-2 gap-2">
-              <Field label="Page size">
+              <Field label="页面尺寸">
                 <select
                   className="input"
                   value={pdf.pageSize}
                   onChange={(e) => setPdf({ ...pdf, pageSize: e.target.value })}
                 >
                   {["source", "A4", "A5", "B5", "letter", "tankobon"].map((s) => (
-                    <option key={s}>{s}</option>
+                    <option key={s} value={s}>
+                      {{ source: "原始尺寸", letter: "美式信纸", tankobon: "单行本" }[s] ?? s}
+                    </option>
                   ))}
-                  <optgroup label="Amazon KDP print (full bleed)">
+                  <optgroup label="Amazon KDP 印刷（满版出血）">
                     {[
                       ["kdp_5x8", '5" × 8"'],
                       ["kdp_5_5x8_5", '5.5" × 8.5"'],
@@ -546,9 +569,8 @@ export function ExportsPage() {
               </Field>
               {pdf.pageSize.startsWith("kdp_") && (
                 <p className="muted col-span-2 text-xs">
-                  Interior file for Amazon KDP with bleed: art fills each page edge to edge and is trimmed 0.125" at the
-                  outside edges, so keep lettering off the very edge. Upload the cover separately. KDP expects 300 DPI,
-                  so raise the scale if the pages are small, and a paperback needs at least 24 pages.
+                  Amazon KDP 内页采用满版出血，外侧裁切 0.125 英寸，文字应避开页面边缘。封面需单独上传。当前导出预设按
+                  300 DPI 检查，小页面可提高缩放倍率，平装书至少需要 24 页。
                 </p>
               )}
               <Field label="DPI">
@@ -561,7 +583,7 @@ export function ExportsPage() {
                   onChange={(e) => setPdf({ ...pdf, dpi: num(e.target.value) })}
                 />
               </Field>
-              <Field label="Margin (mm)">
+              <Field label="页边距（毫米）">
                 <input
                   type="number"
                   className="input"
@@ -571,7 +593,7 @@ export function ExportsPage() {
                   onChange={(e) => setPdf({ ...pdf, marginMm: num(e.target.value) })}
                 />
               </Field>
-              <Field label="Bleed (mm)">
+              <Field label="出血（毫米）">
                 <input
                   type="number"
                   className="input"
@@ -581,16 +603,18 @@ export function ExportsPage() {
                   onChange={(e) => setPdf({ ...pdf, bleedMm: num(e.target.value) })}
                 />
               </Field>
-              <Field label="Reading direction">
+              <Field label="阅读方向">
                 <select
                   className="input"
                   value={pdf.readingDirection}
                   onChange={(e) => setPdf({ ...pdf, readingDirection: e.target.value })}
                 >
-                  <option value="">Project default ({overview?.project.readingDirection})</option>
-                  <option value="ltr">LTR</option>
-                  <option value="rtl">RTL</option>
-                  <option value="vertical">Vertical</option>
+                  <option value="">
+                    项目默认（{readingDirectionLabel(overview?.project.readingDirection ?? "ltr")}）
+                  </option>
+                  <option value="ltr">从左到右</option>
+                  <option value="rtl">从右到左</option>
+                  <option value="vertical">竖排</option>
                 </select>
               </Field>
             </div>
@@ -603,20 +627,20 @@ export function ExportsPage() {
                   checked={pdf.rectoChapters}
                   onChange={(e) => setPdf({ ...pdf, rectoChapters: e.target.checked })}
                 />{" "}
-                Start chapters on a right-hand page (adds blank pages)
+                章节从右页开始（补充空白页）
               </label>
               <label className="flex items-center gap-2">
                 <input type="checkbox" checked={pdf.toc} onChange={(e) => setPdf({ ...pdf, toc: e.target.checked })} />{" "}
-                Contents page
+                目录页
               </label>
             </div>
           )}
           {kind === "pdf" && (
             <details className="text-sm">
-              <summary className="cursor-pointer">Book metadata</summary>
+              <summary className="cursor-pointer">书籍元数据</summary>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <div className="col-span-2">
-                  <Field label="Title">
+                  <Field label="标题">
                     <input
                       className="input"
                       placeholder={overview?.project.title}
@@ -625,15 +649,15 @@ export function ExportsPage() {
                     />
                   </Field>
                 </div>
-                <Field label="Author">
+                <Field label="作者">
                   <input
                     className="input"
-                    placeholder={overview?.project.settings.author || "Project author"}
+                    placeholder={overview?.project.settings.author || "项目作者"}
                     value={bookMeta.author}
                     onChange={(e) => setBookMeta({ ...bookMeta, author: e.target.value })}
                   />
                 </Field>
-                <Field label="Language">
+                <Field label="语言">
                   <input
                     className="input"
                     placeholder={overview?.project.language}
@@ -642,7 +666,7 @@ export function ExportsPage() {
                   />
                 </Field>
                 <div className="col-span-2">
-                  <Field label="Subject" hint="Empty: the project description">
+                  <Field label="主题" hint="留空时使用项目简介">
                     <input
                       className="input"
                       value={bookMeta.subject}
@@ -651,7 +675,7 @@ export function ExportsPage() {
                   </Field>
                 </div>
                 <div className="col-span-2">
-                  <Field label="Keywords" hint="Comma-separated">
+                  <Field label="关键词" hint="用英文逗号分隔">
                     <input
                       className="input"
                       value={bookMeta.keywords}
@@ -664,7 +688,7 @@ export function ExportsPage() {
           )}
           {kind === "webtoon" && (
             <div className="grid grid-cols-2 gap-2">
-              <Field label="Width (px)">
+              <Field label="宽度（像素）">
                 <input
                   type="number"
                   className="input"
@@ -674,7 +698,7 @@ export function ExportsPage() {
                   onChange={(e) => setWebtoon({ ...webtoon, width: num(e.target.value) })}
                 />
               </Field>
-              <Field label="Gap (px)">
+              <Field label="间距（像素）">
                 <input
                   type="number"
                   className="input"
@@ -684,7 +708,7 @@ export function ExportsPage() {
                   onChange={(e) => setWebtoon({ ...webtoon, gap: num(e.target.value) })}
                 />
               </Field>
-              <Field label="Format">
+              <Field label="格式">
                 <select
                   className="input"
                   value={webtoon.format}
@@ -694,7 +718,7 @@ export function ExportsPage() {
                   <option value="png">PNG</option>
                 </select>
               </Field>
-              <Field label="Max chunk height">
+              <Field label="单张切片最大高度">
                 <input
                   type="number"
                   className="input"
@@ -711,13 +735,13 @@ export function ExportsPage() {
                   checked={webtoon.split}
                   onChange={(e) => setWebtoon({ ...webtoon, split: e.target.checked })}
                 />{" "}
-                Split into platform-safe chunks
+                按平台限制拆分切片
               </label>
             </div>
           )}
           {kind === "narration_audio" && (
             <div className="grid grid-cols-2 items-end gap-2">
-              <Field label="Audio format">
+              <Field label="音频格式">
                 <select
                   className="input"
                   value={audio.format}
@@ -734,31 +758,28 @@ export function ExportsPage() {
                   checked={audio.normalize}
                   onChange={(e) => setAudio({ ...audio, normalize: e.target.checked })}
                 />{" "}
-                Normalize loudness
+                统一响度
               </label>
             </div>
           )}
           {LETTERED.has(kind) && (
-            <Field
-              label="Lettering language"
-              hint="A translated edition: its translated bubbles and captions on the same art (Chapter → Translated lettering)."
-            >
+            <Field label="排字语言" hint="使用译文版本的气泡与说明文字，沿用原画（章节 → 翻译排字）。">
               <select className="input" value={editionLanguage} onChange={(e) => setEditionLanguage(e.target.value)}>
-                <option value="">Original</option>
+                <option value="">原文</option>
                 {NARRATION_LANGUAGES.filter((l) => l.code !== overview?.project.language).map((l) => (
                   <option key={l.code} value={l.code}>
-                    {l.name}
+                    {LANGUAGE_LABELS[l.code] ?? l.name}
                   </option>
                 ))}
               </select>
             </Field>
           )}
           {USES_LANGUAGE.has(kind) && (
-            <Field label={isVideo(kind) ? "Narration and lettering language" : "Narration language"}>
+            <Field label={isVideo(kind) ? "旁白与排字语言" : "旁白语言"}>
               <select className="input" value={lang} onChange={(e) => setLanguage(e.target.value)}>
                 {NARRATION_LANGUAGES.map((l) => (
                   <option key={l.code} value={l.code}>
-                    {l.name}
+                    {LANGUAGE_LABELS[l.code] ?? l.name}
                   </option>
                 ))}
               </select>
@@ -783,18 +804,18 @@ export function ExportsPage() {
                   <PreviewVideoButton
                     projectId={projectId}
                     scope={{ chapterId: agentChapter }}
-                    label="Preview in browser first"
-                    title="Preview before rendering"
+                    label="先在浏览器预览"
+                    title="渲染前预览"
                     className="btn-secondary w-full"
                     defaultAspect={aspect}
                     defaultMinHoldMs={video.minHoldMs}
                     hookId={kind === "video_panels" ? hookId || undefined : undefined}
                   />
                 ) : (
-                  <p className="muted text-xs">Pick a chapter to preview it in the browser before rendering.</p>
+                  <p className="muted text-xs">选择章节后，可在渲染前通过浏览器预览。</p>
                 )}
               </div>
-              <Field label="Resolution">
+              <Field label="分辨率">
                 <select
                   className="input"
                   value={video.height}
@@ -805,21 +826,21 @@ export function ExportsPage() {
                   <option value={1440}>1440p</option>
                 </select>
               </Field>
-              <Field label="Shape">
+              <Field label="画面比例">
                 <select className="input" value={aspect} onChange={(e) => setAspect(e.target.value as VideoAspect)}>
-                  <option value="16:9">16:9 landscape</option>
-                  <option value="9:16">9:16 vertical (Shorts, Reels)</option>
-                  <option value="1:1">1:1 square</option>
+                  <option value="16:9">16:9 横屏</option>
+                  <option value="9:16">9:16 竖屏（Shorts、Reels）</option>
+                  <option value="1:1">1:1 方形</option>
                 </select>
               </Field>
               {shorts && <CaptionsField value={captions} onChange={setCaptions} language={lang} />}
               {kind === "video_panels" && (
-                <Field label="Opening" hint="A hook variant plays first, then the intro card and the film.">
+                <Field label="开场" hint="先播放所选开场变体，再播放片头卡与正片。">
                   <select className="input" value={hookId} onChange={(e) => setHookId(e.target.value)}>
-                    <option value="">The film as it starts</option>
+                    <option value="">使用原始开场</option>
                     {hooks.map((h) => (
                       <option key={h.id} value={h.id}>
-                        Hook: {h.label}
+                        开场：{h.label}
                       </option>
                     ))}
                   </select>
@@ -833,27 +854,27 @@ export function ExportsPage() {
                 />
               )}
               {!shorts && (
-                <Field label="Only the first … minutes (for a check)">
+                <Field label="仅导出前几分钟（用于检查）">
                   <input
                     className="input"
                     type="number"
                     min={1}
                     step={1}
-                    placeholder="Whole video"
+                    placeholder="完整视频"
                     value={maxMinutes}
                     onChange={(e) => setMaxMinutes(e.target.value)}
                   />
                 </Field>
               )}
               {agentChapter && !shorts && (
-                <Field label="Pages (from – to)">
+                <Field label="页面范围（起始至结束）">
                   <div className="flex items-center gap-1">
                     <input
                       className="input"
                       type="number"
                       min={1}
-                      placeholder="first"
-                      aria-label="From page"
+                      placeholder="首页"
+                      aria-label="起始页"
                       value={pageRange.from}
                       onChange={(e) => setPageRange({ ...pageRange, from: e.target.value })}
                     />
@@ -862,15 +883,15 @@ export function ExportsPage() {
                       className="input"
                       type="number"
                       min={1}
-                      placeholder="last"
-                      aria-label="To page"
+                      placeholder="末页"
+                      aria-label="结束页"
                       value={pageRange.to}
                       onChange={(e) => setPageRange({ ...pageRange, to: e.target.value })}
                     />
                   </div>
                 </Field>
               )}
-              <Field label={kind === "video_pages" ? "Min seconds per page" : "Min seconds per panel"}>
+              <Field label={kind === "video_pages" ? "每页最短时长（秒）" : "每画格最短时长（秒）"}>
                 <input
                   className="input"
                   type="number"
@@ -883,7 +904,7 @@ export function ExportsPage() {
               </Field>
               {kind !== "video_pages" ? (
                 <div className="col-span-2">
-                  <Field label={`Ken Burns zoom ${Math.round(video.zoom * 100)}%`}>
+                  <Field label={`Ken Burns 缩放 ${Math.round(video.zoom * 100)}%`}>
                     <input
                       type="range"
                       min={0}
@@ -897,29 +918,28 @@ export function ExportsPage() {
                 </div>
               ) : (
                 <div className="col-span-2">
-                  <Field label="Page framing">
+                  <Field label="页面取景">
                     <select
                       className="input"
                       value={video.framing}
                       onChange={(e) => setVideo({ ...video, framing: e.target.value as typeof video.framing })}
                     >
-                      <option value="width">3/5 frame width, slow scroll (readable)</option>
-                      <option value="scroll">3/5 frame width, scroll the whole page (continuous)</option>
-                      <option value="height">Whole page visible (small text)</option>
+                      <option value="width">占画面宽度的 3/5，缓慢滚动（便于阅读）</option>
+                      <option value="scroll">占画面宽度的 3/5，连续滚动整页</option>
+                      <option value="height">显示整页（文字较小）</option>
                     </select>
                   </Field>
                 </div>
               )}
               <p className="muted col-span-2 text-xs">
                 {shorts
-                  ? "The picked shots in story order, each with its own narration, up to the chosen length and without the intro and outro cards. Vertical and square frames crop each panel's art around its focal point; nothing is generated again. The logo watermark still applies."
+                  ? "所选镜头按故事顺序播放，配各自的旁白，最长为指定时长，省略片头与片尾卡。竖屏和方形画面围绕焦点裁切画格原画，继续应用标志水印。"
                   : kind === "video_panels"
-                    ? "Each panel's clean artwork (cropped as on the page, no bubbles) fills the frame for its own narration over a blurred copy of itself. Wide shots slowly push in, close-ups pull out. Panels without art use their lettered page crop."
+                    ? "各画格原画按页面裁切填满画面，配各自的旁白，背景为原画的模糊副本。远景缓慢推进，特写缓慢拉远。缺少原画时使用已排字页面的对应区域。"
                     : video.framing === "scroll"
-                      ? "Each page is shown for the length of its own narration (at least the minimum) over a blurred copy of itself, scrolling from its top to its bottom over that time."
-                      : "Each page is shown for the length of its own narration (at least the minimum) over a blurred copy of itself; tall pages scroll at most 60 px/s."}{" "}
-                Hard cuts. Audio is loudness-normalised once over the whole film, the file is checked against the
-                narration length, and an .srt subtitle file is included.
+                      ? "每页按自身旁白时长播放，至少达到最短时长，以模糊副本为背景，在播放期间从顶部滚动到底部。"
+                      : "每页按自身旁白时长播放，至少达到最短时长，以模糊副本为背景，长页面滚动速度最高为每秒 60 像素。"}{" "}
+                镜头采用硬切，整片统一音频响度，导出文件会核对旁白时长，并附带 .srt 字幕文件。
               </p>
             </div>
           )}
@@ -927,18 +947,18 @@ export function ExportsPage() {
           {kind === "zip_package" && (
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={includeAssets} onChange={(e) => setIncludeAssets(e.target.checked)} />{" "}
-              Include reference, panel and audio files
+              包含参考图、画格与音频文件
             </label>
           )}
           <ConfirmDialog
             open={Boolean(notReady)}
-            title="Export anyway?"
-            confirmLabel="Export anyway"
+            title="仍要导出？"
+            confirmLabel="仍然导出"
             busy={create.isPending}
             onClose={() => setNotReady(null)}
             onConfirm={() => void submit(true)}
           >
-            <p className="mb-2">The readiness check found problems. The export will include a list of them.</p>
+            <p className="mb-2">导出就绪检查发现问题，导出文件将附带问题清单。</p>
             <ReadinessList issues={notReady ?? []} loading={false} />
           </ConfirmDialog>
           <label className="flex items-start gap-2 text-sm">
@@ -949,10 +969,9 @@ export function ExportsPage() {
               onChange={(e) => setProvenance(e.target.checked)}
             />
             <span>
-              Include a provenance record
+              包含来源记录
               <span className="muted block text-xs">
-                What made this output: the app version, story revision, each panel's model and prompt version, the
-                references, voices, fonts and licence notes (JSON and a readable page).
+                记录应用版本、故事修订版、各画格模型与提示词版本、参考素材、语音、字体及许可说明，提供 JSON 和可读页面。
               </span>
             </span>
           </label>
@@ -961,10 +980,10 @@ export function ExportsPage() {
             className="btn-primary w-full"
             disabled={create.isPending || (needsChapter && !selectedChapter) || (shorts && !shortsPick.length)}
           >
-            {create.isPending ? <Spinner /> : <FileDown className="size-4" />} Export
+            {create.isPending ? <Spinner /> : <FileDown className="size-4" />} 导出
           </button>
           {needsChapter && !chapters.isLoading && !chapters.data?.chapters.length && (
-            <p className="muted text-xs">Create a chapter first.</p>
+            <p className="muted text-xs">请先创建章节。</p>
           )}
         </form>
 
@@ -973,8 +992,8 @@ export function ExportsPage() {
           {jobs.isLoading ? (
             <Spinner />
           ) : !jobs.data?.jobs.length ? (
-            <EmptyState icon={<Download className="size-8" />} title="No exports yet">
-              Choose a format and export.
+            <EmptyState icon={<Download className="size-8" />} title="暂无导出">
+              选择格式后即可导出。
             </EmptyState>
           ) : (
             <ul className="space-y-2">
@@ -983,31 +1002,31 @@ export function ExportsPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">
                       {j.kind === "project_import"
-                        ? "Project import"
+                        ? "项目导入"
                         : j.kind === "carousel"
-                          ? "Carousel images (ZIP)"
+                          ? "轮播图片（ZIP）"
                           : j.kind === "quote_image"
-                            ? "Quote image"
+                            ? "金句图片"
                             : (KINDS.find((k) => k.value === j.kind)?.label ?? j.kind)}
                     </span>
                     {j.chapter && (
                       <span className="rounded bg-[var(--panel-2)] px-1.5 py-0.5 text-xs" title={j.chapter.title}>
-                        Ch. {j.chapter.order} — {j.chapter.title}
+                        第 {j.chapter.order} 章 — {j.chapter.title}
                       </span>
                     )}
                     <StatusChip status={j.status} />
                     <span className="muted text-xs">{fmt.ago(j.createdAt)}</span>
                     {(j.status === "queued" || j.status === "processing") && (
                       <button type="button" className="btn-ghost ml-auto" onClick={() => cancel.mutate(j.id)}>
-                        <XCircle className="size-4" /> Cancel
+                        <XCircle className="size-4" /> 取消
                       </button>
                     )}
                     {!running(j.status) && (
                       <button
                         type="button"
                         className="btn-ghost ml-auto p-1.5"
-                        aria-label="Delete export"
-                        title="Delete this export and its files"
+                        aria-label="删除导出"
+                        title="删除此导出及其文件"
                         onClick={() => setDeleting(j.id)}
                       >
                         <Trash2 className="size-4" />
@@ -1016,15 +1035,13 @@ export function ExportsPage() {
                   </div>
                   {j.status === "processing" && (
                     <div className="mt-2">
-                      <ProgressBar value={j.progress} label="Export progress" />
+                      <ProgressBar value={j.progress} label="导出进度" />
                     </div>
                   )}
                   {j.failureReason && <p className="mt-1 text-sm text-red-500">{j.failureReason}</p>}
                   {j.status === "completed" && (j.result?.warnings as string[] | undefined)?.length ? (
                     <details className="mt-1 text-xs text-amber-700 dark:text-amber-300">
-                      <summary className="cursor-pointer">
-                        {(j.result!.warnings as string[]).length} import warning(s)
-                      </summary>
+                      <summary className="cursor-pointer">{(j.result!.warnings as string[]).length} 条导入警告</summary>
                       <ul className="mt-1 list-disc space-y-0.5 pl-4">
                         {(j.result!.warnings as string[]).map((w) => (
                           <li key={w}>{w}</li>
@@ -1036,7 +1053,7 @@ export function ExportsPage() {
                     ? (() => {
                         const tc = j.result.targetCheck as { label: string; issues: TargetIssue[] };
                         return tc.issues.length ? (
-                          <ul className="mt-1 space-y-0.5 text-xs" aria-label={`${tc.label} check`}>
+                          <ul className="mt-1 space-y-0.5 text-xs" aria-label={`${tc.label} 检查`}>
                             {tc.issues.map((i) => (
                               <li key={i.code} className={i.level === "block" ? "text-red-600" : "text-amber-600"}>
                                 {tc.label}: {i.message}
@@ -1044,7 +1061,7 @@ export function ExportsPage() {
                             ))}
                           </ul>
                         ) : (
-                          <p className="mt-1 text-xs text-emerald-600">Within {tc.label}'s limits.</p>
+                          <p className="mt-1 text-xs text-emerald-600">符合 {tc.label} 的限制。</p>
                         );
                       })()
                     : null}
@@ -1088,7 +1105,7 @@ export function ExportsPage() {
 function ReadinessList({ issues, loading }: { issues: Issue[]; loading: boolean }) {
   if (loading) return null;
   const blocking = issues.filter((i) => i.severity === "block");
-  if (!issues.length) return <p className="text-xs text-emerald-600">Readiness check: nothing missing.</p>;
+  if (!issues.length) return <p className="text-xs text-emerald-600">导出就绪检查通过，无缺失项。</p>;
   return (
     <div
       className={
@@ -1098,9 +1115,7 @@ function ReadinessList({ issues, loading }: { issues: Issue[]; loading: boolean 
       }
     >
       <p className="font-medium">
-        {blocking.length
-          ? `Readiness check: ${blocking.length} problem(s) would ship in this export`
-          : "Readiness notes"}
+        {blocking.length ? `导出就绪检查发现 ${blocking.length} 个问题，将随文件一并导出` : "导出就绪提示"}
       </p>
       <ul className="mt-1 list-disc space-y-0.5 pl-4">
         {issues.map((i) => (
@@ -1120,15 +1135,15 @@ function CoverResult({ cover, guides }: { cover: CoverResultData; guides?: strin
   return (
     <div className="mt-2 space-y-2">
       <p className="muted text-xs">
-        {cover.pageCount} pages, spine {cover.spineIn.toFixed(3)}", full cover {cover.widthIn.toFixed(3)}" ×{" "}
-        {cover.heightIn.toFixed(3)}" with bleed.
+        {cover.pageCount} 页，书脊 {cover.spineIn.toFixed(3)} 英寸，含出血的完整封面 {cover.widthIn.toFixed(3)} ×{" "}
+        {cover.heightIn.toFixed(3)} 英寸。
       </p>
-      <PrintIssues issues={cover.issues} ok="Cover: nothing to fix." />
+      <PrintIssues issues={cover.issues} ok="封面检查通过，无需修正。" />
       {guides && (
         <img
           className="w-full max-w-xl rounded border border-[var(--border)]"
           src={assetUrl(guides)}
-          alt="Cover with trim, safe area, spine and barcode guides"
+          alt="带有裁切线、安全区、书脊与条形码参考线的封面"
         />
       )}
     </div>

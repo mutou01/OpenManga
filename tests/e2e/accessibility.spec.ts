@@ -26,7 +26,7 @@ test("alt text on the Panel tab, counted on Health", async () => {
   await alt.getByRole("button", { name: "Save alt text" }).click();
   await expect(page.getByText("Alt text saved")).toBeVisible();
   await page.goto(`${s.url}/health`);
-  const box = page.getByRole("region", { name: "Accessibility" });
-  await expect(box.getByText(/Alt text: 1 of \d+ panels written by hand/)).toBeVisible();
-  await expect(box.getByRole("link", { name: "Narration transcript" })).toBeVisible();
+  const box = page.getByRole("region", { name: "无障碍" });
+  await expect(box.getByText(/替代文本：\d+ 个画格中有 1 个已手动填写/)).toBeVisible();
+  await expect(box.getByRole("link", { name: "旁白文稿" })).toBeVisible();
 });

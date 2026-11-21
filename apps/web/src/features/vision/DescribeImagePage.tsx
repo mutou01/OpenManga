@@ -11,8 +11,8 @@ export function DescribeImagePage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
       <PageHeader
-        title="Describe an image"
-        subtitle="Upload a reference — a frame from a video, a page you like — and turn what it looks like into a style, a character or a location you can generate from."
+        title="图片描述"
+        subtitle="上传视频画面或喜欢的漫画页面等参考图，提取可用于生成的画风、角色或地点描述。"
       />
       <DescribeImage projectId={projectId} handleRef={handle} />
       <DescribeHistory

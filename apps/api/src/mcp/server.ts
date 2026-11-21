@@ -194,7 +194,7 @@ mcpRoutes.all("/mcp", async (c) => {
     if (n === 1) await deps.redis.expire(key, 61);
     if (n > deps.config.MCP_RATE_LIMIT_PER_MINUTE) {
       c.header("retry-after", "60");
-      throw new ApiError(429, "rate_limited", "Too many MCP requests from this connection. Please slow down.");
+      throw new ApiError(429, "rate_limited", "此连接的 MCP 请求过于频繁，请稍后重试。");
     }
   } catch (e) {
     if (e instanceof ApiError) throw e;

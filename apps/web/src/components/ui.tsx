@@ -23,11 +23,12 @@ import {
 import { createPortal } from "react-dom";
 import { create } from "zustand";
 import { assetUrl, errorMessage } from "../api/client.ts";
+import { statusLabel, UI_LOCALE } from "../lib/locale.ts";
 
 export { clsx };
 
 export function Spinner({ className }: { className?: string }) {
-  return <Loader2 className={clsx("animate-spin", className ?? "size-4")} aria-label="Loading" />;
+  return <Loader2 className={clsx("animate-spin", className ?? "size-4")} aria-label="加载中" />;
 }
 
 export function PageHeader({
@@ -72,15 +73,15 @@ export function Pager({
     <div className={clsx("flex items-center justify-end gap-2 text-sm", className)}>
       {busy && <Spinner />}
       <span className="muted">
-        {(page * size + 1).toLocaleString()}–{Math.min(total, (page + 1) * size).toLocaleString()} of{" "}
-        {total.toLocaleString()}
+        第 {(page * size + 1).toLocaleString(UI_LOCALE)}–{Math.min(total, (page + 1) * size).toLocaleString(UI_LOCALE)}{" "}
+        条，共 {total.toLocaleString(UI_LOCALE)} 条
       </span>
       <button
         type="button"
         className="btn-secondary"
         disabled={page <= 0}
         onClick={() => onPage(page - 1)}
-        aria-label="Previous page"
+        aria-label="上一页"
       >
         <ChevronLeft className="size-4" />
       </button>
@@ -89,7 +90,7 @@ export function Pager({
         className="btn-secondary"
         disabled={page >= last}
         onClick={() => onPage(page + 1)}
-        aria-label="Next page"
+        aria-label="下一页"
       >
         <ChevronRight className="size-4" />
       </button>
@@ -120,7 +121,7 @@ export function EmptyState({
 
 export function ErrorBox({
   error,
-  title = "Something went wrong",
+  title = "发生错误",
   onRetry,
 }: {
   error: unknown;
@@ -140,7 +141,7 @@ export function ErrorBox({
       </div>
       {onRetry && (
         <button type="button" className="btn-secondary" onClick={onRetry}>
-          Retry
+          重试
         </button>
       )}
     </div>
@@ -179,10 +180,10 @@ export function StatusChip({ status, label }: { status: string; label?: string }
   return (
     <span
       className={clsx("chip", STATUS_STYLE[status] ?? STATUS_STYLE.draft)}
-      title={status === "submitted" ? "Waiting in a provider batch — results arrive within 24h" : undefined}
+      title={status === "submitted" ? "等待服务商批量处理，结果通常在 24 小时内返回" : undefined}
     >
       {spinning && <Loader2 className="size-3 animate-spin" />}
-      {label ?? (status === "submitted" ? "in batch" : status.replace(/_/g, " "))}
+      {label ?? statusLabel(status)}
     </span>
   );
 }
@@ -246,7 +247,7 @@ export function Modal({
           <h2 id={id} className="font-semibold">
             {title}
           </h2>
-          <button type="button" className="btn-ghost p-1" onClick={onClose} aria-label="Close">
+          <button type="button" className="btn-ghost p-1" onClick={onClose} aria-label="关闭">
             <X className="size-4" />
           </button>
         </div>
@@ -265,7 +266,7 @@ export function ConfirmDialog({
   open,
   title,
   children,
-  confirmLabel = "Confirm",
+  confirmLabel = "确认",
   danger,
   busy,
   disabled,
@@ -290,7 +291,7 @@ export function ConfirmDialog({
       footer={
         <>
           <button type="button" className="btn-secondary" onClick={onClose}>
-            Cancel
+            取消
           </button>
           <button
             type="button"
@@ -363,7 +364,7 @@ export function Toaster() {
               </Link>
             )}
           </div>
-          <button type="button" className="muted" onClick={() => dismiss(t.id)} aria-label="Dismiss">
+          <button type="button" className="muted" onClick={() => dismiss(t.id)} aria-label="关闭提示">
             <X className="size-3.5" />
           </button>
         </div>
@@ -469,7 +470,7 @@ export function SaveIndicator({ state }: { state: "idle" | "saving" | "saved" | 
       aria-live="polite"
     >
       {state === "saving" && <Spinner className="size-3" />}
-      {state === "saving" ? "Saving…" : state === "saved" ? "Saved" : "Error saving"}
+      {state === "saving" ? "正在保存…" : state === "saved" ? "已保存" : "保存失败"}
     </span>
   );
 }
@@ -595,14 +596,14 @@ export const fmt = {
     if (v < 1024 ** 3) return `${(v / 1024 ** 2).toFixed(1)} MB`;
     return `${(v / 1024 ** 3).toFixed(2)} GB`;
   },
-  date: (s: string | null | undefined) => (s ? new Date(s).toLocaleString() : "—"),
+  date: (s: string | null | undefined) => (s ? new Date(s).toLocaleString(UI_LOCALE) : "—"),
   ago: (s: string | null | undefined) => {
     if (!s) return "—";
     const d = (Date.now() - new Date(s).getTime()) / 1000;
-    if (d < 60) return "just now";
-    if (d < 3600) return `${Math.floor(d / 60)}m ago`;
-    if (d < 86400) return `${Math.floor(d / 3600)}h ago`;
-    return `${Math.floor(d / 86400)}d ago`;
+    if (d < 60) return "刚刚";
+    if (d < 3600) return `${Math.floor(d / 60)} 分钟前`;
+    if (d < 86400) return `${Math.floor(d / 3600)} 小时前`;
+    return `${Math.floor(d / 86400)} 天前`;
   },
   ms: (n: number | null | undefined) => {
     const v = Number(n ?? 0);
@@ -612,7 +613,7 @@ export const fmt = {
         ? `${(v / 1000).toFixed(1)} s`
         : `${Math.floor(v / 60000)}m ${Math.round((v % 60000) / 1000)}s`;
   },
-  num: (n: number | null | undefined) => Number(n ?? 0).toLocaleString(),
+  num: (n: number | null | undefined) => Number(n ?? 0).toLocaleString(UI_LOCALE),
 };
 
 export function KeyValue({ items }: { items: [ReactNode, ReactNode][] }) {
@@ -651,7 +652,7 @@ export function TagInput({
         <span key={t} className="chip bg-[var(--panel-2)]">
           {t}
           {!disabled && (
-            <button type="button" aria-label={`Remove ${t}`} onClick={() => onChange(value.filter((x) => x !== t))}>
+            <button type="button" aria-label={`移除 ${t}`} onClick={() => onChange(value.filter((x) => x !== t))}>
               <X className="size-3" />
             </button>
           )}

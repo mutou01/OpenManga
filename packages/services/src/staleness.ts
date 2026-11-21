@@ -226,7 +226,7 @@ export async function publishingStaleness(
   const youtube: string[] = [];
   if (project.settings.youtubePackage?.titles.length) {
     if (src.youtubeText && src.youtubeText !== (await youtubeSourceFingerprint(db, project)))
-      youtube.push("the title or the chapters changed since it was written");
+      youtube.push("编写文案后修改了项目标题或章节");
     // The package export adds chapter timestamps from the newest whole-project video; a newer video moves them.
     const [r] = await db.execute<{ newer: boolean }>(sql`
       select coalesce((select max(v.finished_at) from export_jobs v
@@ -235,12 +235,12 @@ export async function publishingStaleness(
         > (select max(y.finished_at) from export_jobs y
           where y.project_id = ${project.id} and y.kind = 'youtube_package' and y.status = 'completed'
             and y.chapter_id is null), false) as newer`);
-    if (r?.newer) youtube.push("the video was rendered again after the package was exported, moving its timestamps");
+    if (r?.newer) youtube.push("导出套件后重新渲染了视频，时间戳已改变");
   }
   const thumb = project.settings.thumbnail;
   const thumbnail =
     thumb && src.thumbnailTitle !== undefined && src.thumbnailTitle !== project.title
-      ? [`the project title changed from "${src.thumbnailTitle}" after the headline was set`]
+      ? [`设置标题字后，项目标题已从“${src.thumbnailTitle}”改为当前标题`]
       : [];
   return [
     { key: "youtube_text" as const, stale: youtube.length > 0, reasons: youtube },
@@ -327,29 +327,29 @@ export async function pipelineStaleness(
     {
       key: "story",
       count: story.stale ? 1 : 0,
-      note: "The story was revised after it was analysed: an update re-analyses it and waits for your review",
+      note: "分析后故事有更新，重新分析后需审核变更",
     },
     {
       key: "plan",
       count: counts.plan + stale.plans.length,
-      note: `${counts.plan} chapter(s) without a plan, ${stale.plans.length} whose text changed after planning`,
+      note: `${counts.plan} 章尚未规划，${stale.plans.length} 章在规划后修改了原文`,
     },
-    { key: "prompts", count: counts.prompts, note: "pages with panels to draw and no prepared prompt" },
+    { key: "prompts", count: counts.prompts, note: `${counts.prompts} 页有待绘制画格且尚未准备提示词` },
     {
       key: "art",
       count: counts.missing_art + staleArt.length,
-      note: `${counts.missing_art} panel(s) without artwork, ${staleArt.length} edited after their artwork`,
+      note: `${counts.missing_art} 个画格尚未绘制，${staleArt.length} 个画格在绘制后有修改`,
     },
     {
       key: "narration",
       count: counts.narration + stale.narration.length,
-      note: `${counts.narration} chapter(s) with panels but no narration, ${stale.narration.length} changed after it was written`,
+      note: `${counts.narration} 章尚未编写旁白，${stale.narration.length} 章在编写旁白后有修改`,
     },
-    { key: "audio", count: counts.audio, note: "narration segments without up-to-date audio" },
+    { key: "audio", count: counts.audio, note: `${counts.audio} 条旁白需要重新合成音频` },
     {
       key: "render",
       count: !render.rendered || render.changed ? 1 : 0,
-      note: render.rendered ? "the video is older than what it is drawn from" : "no whole-project video yet",
+      note: render.rendered ? "视频素材已更新，需要重新渲染" : "尚未渲染整部视频",
     },
   ];
   return { stages, staleArt, stale };

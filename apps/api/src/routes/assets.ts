@@ -324,13 +324,13 @@ assetRoutes.delete("/assets/:id", requireUser, async (c) => {
   const [a] = await deps.db.select().from(assets).where(eq(assets.id, id));
   if (!a?.projectId) throw notFound("Asset");
   await projectAccess(c, a.projectId, "delete");
-  if (!a.deletedAt) throw conflict("Move the asset to trash first");
+  if (!a.deletedAt) throw conflict("请先将素材移至回收站");
   const [ref] = await deps.db
     .select({ id: referenceAssets.id })
     .from(referenceAssets)
     .where(and(eq(referenceAssets.assetId, id), eq(referenceAssets.status, "locked")))
     .limit(1);
-  if (ref) throw conflict("Asset is a locked reference");
+  if (ref) throw conflict("此素材是已锁定的参考图");
   if (await usedByOtherProjects(deps.db, a)) throw conflict(SHARED);
   await deps.db.update(panels).set({ activeArtworkAssetId: null }).where(eq(panels.activeArtworkAssetId, id));
   await deps.db.update(projects).set({ coverAssetId: null }).where(eq(projects.coverAssetId, id));
@@ -366,7 +366,7 @@ cdnRoutes.get("/a/:id", async (c) => {
   if (a.deletedAt && c.req.query("trash") !== "1") throw notFound("Asset");
   if (a.visibility !== "public") {
     const me = c.get("user");
-    if (!me) throw new ApiError(401, "unauthenticated", "Please sign in");
+    if (!me) throw new ApiError(401, "unauthenticated", "请先登录");
     // An image with no project (one attached to or drawn in an expert chat) is its owner's alone. A project's file
     // is the project's, whoever made it: someone who has left the project no longer sees it.
     if (!a.projectId) {
@@ -531,7 +531,7 @@ assetRoutes.post("/projects/:projectId/assets/bulk", requireUser, async (c) => {
   const p = await projectAccess(c, uuidParam(c, "projectId"), "write");
   const input = await body(c, Bulk);
   if (["tag", "untag", "collect", "uncollect"].includes(input.action) && !input.value)
-    throw badRequest("Give the tag or collection as value");
+    throw badRequest("请在 value 字段提供标签或分组");
   const { db } = c.get("deps");
   const rows = await db
     .select()
@@ -602,7 +602,7 @@ assetRoutes.get("/assets/:id/similar", requireUser, async (c) => {
   if (!a?.projectId) throw notFound("Asset");
   await projectAccess(c, a.projectId, "read");
   const mine = await featuresOf(deps, a);
-  if (!mine) throw badRequest("Only images can be compared");
+  if (!mine) throw badRequest("只能对比图片");
   // ponytail: the newest 600 images, features made on demand (at most 120 per request); a scan job if projects outgrow it
   const candidates = await deps.db
     .select()

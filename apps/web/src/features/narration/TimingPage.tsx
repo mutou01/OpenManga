@@ -5,6 +5,7 @@ import { useState } from "react";
 import { get, post } from "../../api/client.ts";
 import { qk, useAction } from "../../api/hooks.ts";
 import { clsx, EmptyState, ErrorBox, Field, PageHeader, Spinner } from "../../components/ui.tsx";
+import { statusLabel } from "../../lib/locale.ts";
 import { AiChip, useAiBody } from "../ai/AiPicker.tsx";
 import { useProjectId } from "../project/ProjectLayout.tsx";
 import { PreviewVideoButton } from "../video/VideoPreview.tsx";
@@ -55,13 +56,13 @@ type RetimeJob = {
   };
 };
 
-const sec = (ms: number) => `${(ms / 1000).toFixed(1)} s`;
+const sec = (ms: number) => `${(ms / 1000).toFixed(1)} 秒`;
 const signed = (ms: number) => `${ms >= 0 ? "+" : "−"}${sec(Math.abs(ms))}`;
 const KIND: Record<Report["issues"][number]["kind"], { label: string; tone: string }> = {
-  long: { label: "Long", tone: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
-  still: { label: "Still", tone: "bg-red-500/15 text-red-700 dark:text-red-300" },
-  flash: { label: "Flash", tone: "bg-sky-500/15 text-sky-700 dark:text-sky-300" },
-  silence: { label: "Dead air", tone: "bg-violet-500/15 text-violet-700 dark:text-violet-300" },
+  long: { label: "过长", tone: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
+  still: { label: "静止过久", tone: "bg-red-500/15 text-red-700 dark:text-red-300" },
+  flash: { label: "闪过", tone: "bg-sky-500/15 text-sky-700 dark:text-sky-300" },
+  silence: { label: "空白静音", tone: "bg-violet-500/15 text-violet-700 dark:text-violet-300" },
 };
 
 /**
@@ -80,15 +81,12 @@ export function TimingPage() {
   const chapterId = search.chapterId ?? project.data?.chapters.find((c) => c.audio.voiced)?.id;
   return (
     <div className="mx-auto max-w-6xl p-4 sm:p-6">
-      <PageHeader
-        title="Timing"
-        subtitle="The real narration lengths against your shot lengths and target runtime. Fixes reuse existing art; nothing new is drawn."
-      />
+      <PageHeader title="节奏调整" subtitle="对照实际旁白时长、镜头时长与目标片长，使用已有画稿调整节奏。" />
       {project.error && <ErrorBox error={project.error} onRetry={() => project.refetch()} />}
       {project.isLoading && <Spinner />}
       {project.data && !project.data.chapters.length && (
-        <EmptyState icon={<Timer className="size-8" />} title="No chapters yet">
-          Plan a chapter and voice its narration first.
+        <EmptyState icon={<Timer className="size-8" />} title="暂无章节">
+          请先规划章节并合成旁白。
         </EmptyState>
       )}
       {project.data && project.data.chapters.length > 0 && <EditInWords projectId={projectId} />}
@@ -97,10 +95,10 @@ export function TimingPage() {
           <table className="mb-6 w-full min-w-[34rem] text-sm">
             <thead className="muted text-left text-xs">
               <tr>
-                <th className="py-1 pr-2 font-medium">Chapter</th>
-                <th className="py-1 pr-2 font-medium">Length</th>
-                <th className="py-1 pr-2 font-medium">Voiced</th>
-                <th className="py-1 font-medium">Off</th>
+                <th className="py-1 pr-2 font-medium">章节</th>
+                <th className="py-1 pr-2 font-medium">时长</th>
+                <th className="py-1 pr-2 font-medium">已配音</th>
+                <th className="py-1 font-medium">问题</th>
               </tr>
             </thead>
             <tbody>
@@ -155,7 +153,7 @@ function ChapterTiming({ projectId, chapterId }: { projectId: string; chapterId:
   const invalidate = [key, ["timing", projectId], ["video-preview"]] as const;
   const apply = useAction((body: Record<string, unknown>) => post(`/chapters/${chapterId}/timing/apply`, body), {
     invalidate,
-    success: "Applied",
+    success: "已应用",
   });
   if (q.isLoading) return <Spinner />;
   if (q.error) return <ErrorBox error={q.error} onRetry={() => q.refetch()} />;
@@ -171,16 +169,16 @@ function ChapterTiming({ projectId, chapterId }: { projectId: string; chapterId:
             {r.targetMs != null && (
               <span className="muted text-sm font-normal">
                 {" "}
-                of a {sec(r.targetMs)} target ({signed(r.totalMs - r.targetMs)})
+                目标 {sec(r.targetMs)} ({signed(r.totalMs - r.targetMs)})
               </span>
             )}
           </div>
           <p className="muted text-xs">
-            Shots should hold {sec(r.settings.minShotMs)}–{sec(r.settings.maxShotMs)} (the target runtime's shot
-            lengths). {r.audio.voiced}/{r.audio.segments} narration segments voiced; unvoiced ones count as silent.
+            镜头应停留 {sec(r.settings.minShotMs)}–{sec(r.settings.maxShotMs)}（依据目标片长设置）。 已配音{" "}
+            {r.audio.voiced}/{r.audio.segments} 个旁白片段，未配音片段按静音计算。
           </p>
         </div>
-        <Field label="Minimum hold (s)">
+        <Field label="最短停留（秒）">
           <input
             className="input w-28"
             type="number"
@@ -197,14 +195,14 @@ function ChapterTiming({ projectId, chapterId }: { projectId: string; chapterId:
         <PreviewVideoButton
           projectId={projectId}
           scope={{ chapterId }}
-          title="Preview — timing"
+          title="预览 — 节奏调整"
           defaultMinHoldMs={r.settings.minHoldMs}
         />
       </div>
 
       {/* Every shot's hold as a bar: the shot-length band is the shaded range. */}
       <div className="card space-y-1 p-3">
-        <h2 className="text-sm font-medium">Shots</h2>
+        <h2 className="text-sm font-medium">镜头</h2>
         <ol className="max-h-80 space-y-0.5 overflow-y-auto text-xs">
           {r.shots.map((s) => (
             <li key={s.key} className="flex items-center gap-2">
@@ -236,7 +234,7 @@ function ChapterTiming({ projectId, chapterId }: { projectId: string; chapterId:
 
       {r.issues.length > 0 && (
         <div className="card space-y-1 p-3 text-sm">
-          <h2 className="font-medium">What is off</h2>
+          <h2 className="font-medium">节奏问题</h2>
           <ul className="space-y-0.5 text-xs">
             {r.issues.map((i, k) => (
               <li key={`${i.key}-${i.kind}-${k}`} className="flex flex-wrap items-center gap-2">
@@ -250,11 +248,11 @@ function ChapterTiming({ projectId, chapterId }: { projectId: string; chapterId:
       )}
 
       <FixList
-        title="Spread a long line over the next shots"
-        hint="The line keeps playing over the next pictures of its scene, so one picture is not on screen for all of it."
+        title="将长旁白延续到后续镜头"
+        hint="旁白在同一场景的后续镜头中继续播放，避免整行旁白都停留在同一幅画面。"
         items={r.fixes.spread.map((f) => ({
           id: f.lineId,
-          label: `${r.shots.find((s) => s.key === f.fromKey)?.label} — over ${f.shots} shots`,
+          label: `${r.shots.find((s) => s.key === f.fromKey)?.label} — 跨 ${f.shots} 个镜头`,
           effect: f,
           onApply: () => apply.mutate({ spread: { lineId: f.lineId, untilPanelId: f.untilPanelId } }),
         }))}
@@ -262,8 +260,8 @@ function ChapterTiming({ projectId, chapterId }: { projectId: string; chapterId:
         busy={apply.isPending}
       />
       <FixList
-        title="Rebalance holds"
-        hint="A shot's own minimum hold, within the shot-length settings and never below its narration."
+        title="重新平衡停留时长"
+        hint="在镜头时长设置范围内调整单个镜头的最短停留时间，且不短于其旁白。"
         items={r.fixes.holds.map((f) => ({
           id: f.panelId,
           label: `${r.shots.find((s) => s.key === f.key)?.label} — ${sec(f.holdMs)}, ${f.reason}`,
@@ -311,11 +309,11 @@ function FixList({
                       `${shots.find((s) => s.key === h.key)?.label ?? h.key}: ${sec(h.beforeMs)} → ${sec(h.afterMs)}`,
                   )
                   .join(" · ")}{" "}
-                · chapter {signed(it.effect.deltaMs)}
+                · 章节时长变化 {signed(it.effect.deltaMs)}
               </div>
             </div>
             <button type="button" className="btn-secondary py-1 text-xs" disabled={busy} onClick={it.onApply}>
-              <Check className="size-3.5" /> Apply
+              <Check className="size-3.5" /> 应用
             </button>
           </li>
         ))}
@@ -358,7 +356,7 @@ function Retime({
           .map((l) => ({ lineId: l.id, words: Math.max(3, budget(l.id, l.words)) })),
       }),
     {
-      success: "Rewrite queued",
+      success: "改写已排队",
       onSuccess: (r) => {
         setJobId(r.job.id);
         setKeep(new Set());
@@ -375,7 +373,7 @@ function Retime({
     },
     {
       invalidate: [...invalidate, qk.narration(chapterId)],
-      success: "Applied; the changed lines are being voiced again",
+      success: "已应用，正在重新合成修改过的旁白",
       onSuccess: () => setJobId(null),
     },
   );
@@ -383,11 +381,10 @@ function Retime({
   return (
     <div className="card space-y-3 p-3">
       <div>
-        <h2 className="text-sm font-medium">Trim or expand narration</h2>
+        <h2 className="text-sm font-medium">缩短或扩写旁白</h2>
         <p className="muted text-xs">
-          A text job rewrites only the lines you tick, each to its word budget
-          {report.targetMs != null ? " (pre-filled to land on the target)" : ""}. You read the rewrite before anything
-          changes, and only the lines you keep are voiced again.
+          仅改写勾选的旁白行，使其符合各自的目标词数
+          {report.targetMs != null ? "（已按目标片长预填）" : ""}。先审阅改写结果，应用后仅重新合成保留的旁白行。
         </p>
       </div>
       {!jobId && (
@@ -398,7 +395,7 @@ function Retime({
                 <input
                   type="checkbox"
                   className="mt-1"
-                  aria-label="Rewrite this line"
+                  aria-label="改写此行"
                   checked={picked.has(l.id)}
                   onChange={(e) => {
                     const next = new Set(picked);
@@ -414,7 +411,7 @@ function Retime({
                   type="number"
                   min={3}
                   max={400}
-                  aria-label="Word budget"
+                  aria-label="目标词数"
                   value={budget(l.id, l.words)}
                   onChange={(e) => setBudgets({ ...budgets, [l.id]: Number(e.target.value) })}
                 />
@@ -429,7 +426,7 @@ function Retime({
               disabled={!picked.size || start.isPending}
               onClick={() => start.mutate()}
             >
-              <Scissors className="size-4" /> Rewrite {picked.size} line(s)
+              <Scissors className="size-4" /> 改写 {picked.size} 行
             </button>
           </div>
         </>
@@ -437,14 +434,14 @@ function Retime({
       {jobId && job.data?.job.status !== "completed" && (
         <p className="muted flex items-center gap-2 text-xs">
           {job.data?.job.status === "failed" ? (
-            <span className="text-red-500">The rewrite failed: {job.data.job.failureReason}</span>
+            <span className="text-red-500">改写失败： {job.data.job.failureReason}</span>
           ) : (
             <>
-              <Spinner /> Rewriting… ({job.data?.job.status ?? "queued"})
+              <Spinner /> 正在改写…（{statusLabel(job.data?.job.status ?? "queued")}）
             </>
           )}
           <button type="button" className="btn-ghost text-xs" onClick={() => setJobId(null)}>
-            Back
+            返回
           </button>
         </p>
       )}
@@ -476,7 +473,7 @@ function Retime({
                 </label>
               </li>
             ))}
-            {!proposals.length && <li className="muted">The model returned no changes.</li>}
+            {!proposals.length && <li className="muted">模型未返回修改。</li>}
           </ul>
           <div className="flex flex-wrap gap-2">
             <button
@@ -485,10 +482,10 @@ function Retime({
               disabled={!keep.size || applyRetime.isPending}
               onClick={() => applyRetime.mutate()}
             >
-              <Wand2 className="size-4" /> Apply {keep.size} and re-voice
+              <Wand2 className="size-4" /> 应用 {keep.size} 行并重新配音
             </button>
             <button type="button" className="btn-ghost" onClick={() => setJobId(null)}>
-              Discard
+              放弃
             </button>
           </div>
         </>

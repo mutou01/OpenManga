@@ -78,11 +78,11 @@ videoEditRoutes.post("/projects/:projectId/video-edits/:jobId/apply", async (c) 
       ),
     );
   if (!job) throw notFound("Video edit");
-  if (job.status !== "completed") throw conflict("The proposal has not finished yet");
+  if (job.status !== "completed") throw conflict("方案尚未生成完成");
   const input = await body(c, Apply);
   const proposed = ((job.result?.edits ?? []) as { op: VideoEditOp }[]).map((e) => e.op);
   const ops = input.ops ?? proposed;
-  if (!ops.length) throw badRequest("No edits to apply");
+  if (!ops.length) throw badRequest("暂无可应用的修改");
   let applied: Awaited<ReturnType<typeof applyVideoEdits>>;
   try {
     applied = await applyVideoEdits(deps.db, p, ops);

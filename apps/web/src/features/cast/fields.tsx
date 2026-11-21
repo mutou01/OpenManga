@@ -59,7 +59,7 @@ export function ListRow<T extends Record<string, unknown>>({
       <TagInput
         value={(value[k] as string[] | undefined) ?? []}
         disabled={disabled}
-        placeholder="Type and press Enter"
+        placeholder="输入后按回车键"
         onChange={(list) => onChange({ ...value, [k]: list })}
       />
     </div>
@@ -77,14 +77,14 @@ export function FieldGroup({ title, children }: { title: string; children: React
 
 export const VERSION_ACTIONS: Record<string, { status: string; label: string }[]> = {
   draft: [
-    { status: "approved", label: "Approve" },
-    { status: "superseded", label: "Supersede" },
+    { status: "approved", label: "审核通过" },
+    { status: "superseded", label: "替换" },
   ],
   approved: [
-    { status: "locked", label: "Lock" },
-    { status: "draft", label: "Back to draft" },
-    { status: "superseded", label: "Supersede" },
+    { status: "locked", label: "锁定" },
+    { status: "draft", label: "退回草稿" },
+    { status: "superseded", label: "替换" },
   ],
-  locked: [{ status: "superseded", label: "Supersede" }],
+  locked: [{ status: "superseded", label: "替换" }],
   superseded: [],
 };

@@ -97,7 +97,7 @@ export class AuthService {
         .from(users)
         .where(or(eq(users.username, data.username), eq(users.email, data.email)))
         .limit(1);
-      if (existing.length) throw new AuthError("conflict", "Username or email is already in use");
+      if (existing.length) throw new AuthError("conflict", "用户名或邮箱已被使用");
       const [u] = await tx
         .insert(users)
         .values({ username: data.username, email: data.email, displayName: data.displayName ?? null, role })
@@ -121,11 +121,11 @@ export class AuthService {
       .limit(1);
     if (!row) {
       await dummyVerify(password);
-      throw new AuthError("invalid_credentials", "Invalid username/email or password");
+      throw new AuthError("invalid_credentials", "用户名、邮箱或密码有误");
     }
     if (!(await verifyPassword(password, row.hash)))
-      throw new AuthError("invalid_credentials", "Invalid username/email or password");
-    if (row.user.status !== "active") throw new AuthError("disabled", "This account is disabled");
+      throw new AuthError("invalid_credentials", "用户名、邮箱或密码有误");
+    if (row.user.status !== "active") throw new AuthError("disabled", "此账号已停用");
     return toSessionUser(row.user);
   }
 
@@ -233,7 +233,7 @@ export class AuthService {
           ),
         )
         .returning({ userId: passwordResetTokens.userId });
-      if (!row) throw new AuthError("invalid_token", "This reset link is invalid or has expired");
+      if (!row) throw new AuthError("invalid_token", "密码重置链接无效或已过期");
       await tx
         .update(passwordCredentials)
         .set({ passwordHash: hash })
@@ -252,7 +252,7 @@ export class AuthService {
   async changePassword(userId: string, current: string, next: string, alsoRevoke?: (tx: Tx) => Promise<void>) {
     const [row] = await this.db.select().from(passwordCredentials).where(eq(passwordCredentials.userId, userId));
     if (!row || !(await verifyPassword(current, row.passwordHash)))
-      throw new AuthError("invalid_credentials", "Current password is incorrect");
+      throw new AuthError("invalid_credentials", "当前密码有误");
     const pw = RegisterInput.shape.password.parse(next);
     const hash = await hashPassword(pw);
     await this.db.transaction(async (tx) => {

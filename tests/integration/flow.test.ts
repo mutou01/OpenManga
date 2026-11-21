@@ -74,10 +74,18 @@ describe("auth", () => {
     await anon.post("/api/auth/password-reset/request", { identifier: "nobody" }); // no enumeration
     // The mailbox route is admin-only (it hands out live reset links), so read the stored mail directly here.
     await anon.get("/api/dev/mailbox", 401);
-    const mails = await h.deps.db.execute<{ to: string; metadata: { resetUrl: string } }>(
-      sql`select "to", metadata from dev_emails order by created_at desc limit 10`,
-    );
+    const mails = await h.deps.db.execute<{
+      to: string;
+      subject: string;
+      text_body: string;
+      html_body: string;
+      metadata: { resetUrl: string };
+    }>(sql`select "to", subject, text_body, html_body, metadata from dev_emails order by created_at desc limit 10`);
     const email = [...mails].find((e) => e.to === "bob@example.com")!;
+    expect(email.subject).toBe("重置 OpenManga 密码");
+    expect(email.text_body).toContain("链接有效期为 1 小时");
+    expect(email.html_body).toContain("重置密码");
+    expect(email.text_body).toContain(email.metadata.resetUrl);
     const token = new URL(email.metadata.resetUrl).searchParams.get("token")!;
     await anon.post("/api/auth/password-reset/confirm", { token, password: "bob new password" });
     await anon.post("/api/auth/password-reset/confirm", { token, password: "bob other password" }, 400); // one-time
@@ -738,6 +746,11 @@ describe("full production flow (mock AI)", () => {
         const names = new TextDecoder("latin1").decode(buf);
         for (const f of ["manifest.json", "README.md", "narration/timeline.json", ".lettered.png", "characters/"])
           expect(names).toContain(f);
+        const entries = unzipSync(buf);
+        const readme = new TextDecoder().decode(entries["README.md"]);
+        expect(readme).toContain("智能体交接包");
+        expect(readme).toContain("建议的视频组装方式");
+        expect(JSON.parse(new TextDecoder().decode(entries["manifest.json"])).formatVersion).toBe(1);
       }
       if (kind === "pdf") expect(new TextDecoder().decode(buf.slice(0, 5))).toBe("%PDF-");
       // Whole-project exports hold every page of every chapter, plus the cover where the kind prints one.
@@ -792,10 +805,11 @@ describe("full production flow (mock AI)", () => {
   test("readiness gate, narration languages, audio cancel and consistency check", async () => {
     // an empty panel makes the chapter "not ready" for image exports
     const added = await alice.post<{ panel: { id: string } }>(`/api/pages/${pageId}/panels`, {}, 201);
-    const r1 = await alice.get<{ issues: { code: string; severity: string; chapterId: string }[] }>(
+    const r1 = await alice.get<{ issues: { code: string; severity: string; chapterId: string; message: string }[] }>(
       `/api/projects/${projectId}/readiness?chapterId=${chapterId}`,
     );
     expect(r1.issues.some((i) => i.code === "missing_artwork" && i.severity === "block")).toBe(true);
+    expect(r1.issues.find((i) => i.code === "missing_artwork")?.message).toContain("缺少画面");
     const gated = await alice.raw("POST", `/api/projects/${projectId}/exports`, { kind: "png_pages", chapterId });
     expect(gated.status).toBe(409);
     const gatedBody = (await gated.json()) as { error: { code: string; details: { issues: { code: string }[] } } };
@@ -1371,7 +1385,11 @@ describe("full production flow (mock AI)", () => {
     await h.workerDeps.db.execute(
       sql`insert into generation_jobs (project_id, kind, queue, status, target_type, target_id) values (${pid}, 'chapter_plan', 'text-ai', 'processing', 'chapter', ${ids[1]})`,
     );
-    await alice.del(`/api/chapters/${ids[1]}`, 409);
+    const blocked = await alice.del<{ error: { code: string; message: string } }>(`/api/chapters/${ids[1]}`, 409);
+    expect(blocked.error).toMatchObject({
+      code: "conflict",
+      message: "此章有 1 项生成任务正在运行，请等待完成或取消任务后再删除。",
+    });
     await h.workerDeps.db.execute(sql`update generation_jobs set status = 'failed' where target_id = ${ids[1]}`);
 
     await alice.del(`/api/chapters/${ids[1]}`);
@@ -1746,6 +1764,13 @@ describe("full production flow (mock AI)", () => {
     );
     expect(edited.project.settings.youtubePackage?.titles).toEqual(["My own title"]);
 
+    const missingChapter = await alice.post<{ error: { code: string; message: string } }>(
+      `/api/projects/${projectId}/exports`,
+      { kind: "timeline" },
+      400,
+    );
+    expect(missingChapter.error).toMatchObject({ code: "bad_request", message: "请选择要导出的章节或页面" });
+
     // Exports make no AI calls and render nothing new: without a finished video there is nothing to package.
     const ex = await alice.post<{ job: { id: string } }>(
       `/api/projects/${projectId}/exports`,
@@ -1763,7 +1788,7 @@ describe("full production flow (mock AI)", () => {
       { label: "youtube package", timeoutMs: 60_000 },
     );
     expect(done.status).toBe("failed");
-    expect(done.failureReason).toContain("Render the");
+    expect(done.failureReason).toContain("请先渲染章节视频");
   });
 
   test("target runtime: a budget per chapter that chapter plans aim at", async () => {

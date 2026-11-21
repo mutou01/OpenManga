@@ -65,12 +65,11 @@ export function PronunciationSection({
   return (
     <section className="card space-y-3 p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="mr-auto font-medium">Pronunciation</h2>
+        <h2 className="mr-auto font-medium">发音</h2>
         <AiChip cap="tts" />
       </div>
       <p className="muted text-xs">
-        How the narrator says names and terms. Only the voice hears the spoken form: narration, subtitles and lettering
-        keep the written one. Changing an entry marks the audio of the lines it affects as out of date.
+        设置旁白中姓名和术语的读法。读音仅用于语音，旁白文本、字幕和漫画文字仍保留原词。修改条目后，受影响的旁白音频会标记为过期。
       </p>
       {rows.length > 0 && (
         <ul className="space-y-2">
@@ -81,16 +80,16 @@ export function PronunciationSection({
             >
               <input
                 className="input"
-                aria-label="Written term"
-                placeholder="Written (e.g. Qi)"
+                aria-label="书面词语"
+                placeholder="原词（例如 Qi）"
                 maxLength={100}
                 value={r.term}
                 onChange={(e) => edit(r.key, { term: e.target.value })}
               />
               <input
                 className="input"
-                aria-label="Spoken as"
-                placeholder="Spoken (e.g. chee)"
+                aria-label="朗读方式"
+                placeholder="读音（例如 chee）"
                 maxLength={200}
                 value={r.spoken}
                 onChange={(e) => edit(r.key, { spoken: e.target.value })}
@@ -102,7 +101,7 @@ export function PronunciationSection({
                     checked={r.caseSensitive}
                     onChange={(e) => edit(r.key, { caseSensitive: e.target.checked })}
                   />
-                  Match case
+                  区分大小写
                 </label>
                 <label className="flex items-center gap-1">
                   <input
@@ -110,13 +109,13 @@ export function PronunciationSection({
                     checked={r.wholeWord}
                     onChange={(e) => edit(r.key, { wholeWord: e.target.checked })}
                   />
-                  Whole word
+                  全词匹配
                 </label>
                 <button
                   type="button"
                   className="btn-ghost p-1"
-                  aria-label={`Preview ${r.term || "entry"}`}
-                  title="Hear the spoken form with the project's voice"
+                  aria-label={`试听 ${r.term || "条目"}`}
+                  title="使用项目音色试听此读音"
                   disabled={!r.spoken.trim() || playing !== null}
                   onClick={() => preview(r)}
                 >
@@ -125,7 +124,7 @@ export function PronunciationSection({
                 <button
                   type="button"
                   className="btn-ghost p-1"
-                  aria-label={`Remove ${r.term || "entry"}`}
+                  aria-label={`移除 ${r.term || "条目"}`}
                   onClick={() => update(rows.filter((x) => x.key !== r.key))}
                 >
                   <Trash2 className="size-4" />
@@ -141,7 +140,7 @@ export function PronunciationSection({
         disabled={rows.length >= 500}
         onClick={() => setRows([...rows, row()])}
       >
-        <Plus className="size-4" /> Add entry
+        <Plus className="size-4" /> 添加条目
       </button>
     </section>
   );

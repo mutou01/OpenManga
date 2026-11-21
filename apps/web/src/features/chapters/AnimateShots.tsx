@@ -41,14 +41,13 @@ export function AnimateShots({ chapterId }: { chapterId: string }) {
   const changed = () => setEstimate(null);
   return (
     <details className="card p-4">
-      <summary className="cursor-pointer font-semibold">Animate shots</summary>
+      <summary className="cursor-pointer font-semibold">制作镜头动画</summary>
       <div className="mt-3 space-y-2 text-sm">
         <p className="muted">
-          Make a video clip of every drawn shot of this chapter. Videos play each clip in place of its still. Check the
-          price first: paid models run on your key for their provider.
+          为本章每个已绘制镜头生成视频片段，视频中会用片段呈现该镜头。请先查看费用，付费模型会使用你提供的服务商密钥。
         </p>
         <div className="grid gap-2 sm:grid-cols-4">
-          <Field label="Model">
+          <Field label="模型">
             <select
               className="input"
               value={model}
@@ -64,7 +63,7 @@ export function AnimateShots({ chapterId }: { chapterId: string }) {
               ))}
             </select>
           </Field>
-          <Field label="Length per shot (s)" hint="Longer than the model's longest clip: made in parts that continue">
+          <Field label="单个镜头时长（秒）" hint="超过模型单段时长上限，将分段续接生成">
             <input
               className="input"
               type="number"
@@ -77,7 +76,7 @@ export function AnimateShots({ chapterId }: { chapterId: string }) {
               }}
             />
           </Field>
-          <Field label="Resolution">
+          <Field label="分辨率">
             <select
               className="input"
               value={resolution}
@@ -100,18 +99,18 @@ export function AnimateShots({ chapterId }: { chapterId: string }) {
                 changed();
               }}
             />
-            Only shots without a clip
+            仅处理缺少视频片段的镜头
           </label>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" className="btn-secondary" disabled={price.isPending} onClick={() => price.mutate()}>
-            Check the price
+            查看费用
           </button>
           {estimate && (
             <>
               <span>
-                {estimate.shots} shots · {estimate.seconds} s of video ·{" "}
-                <strong>{estimate.usd ? fmt.usd(estimate.usd) : "free"}</strong>
+                {estimate.shots} 个镜头 · {estimate.seconds} 秒视频 ·{" "}
+                <strong>{estimate.usd ? fmt.usd(estimate.usd) : "免费"}</strong>
               </span>
               <button
                 type="button"
@@ -119,7 +118,7 @@ export function AnimateShots({ chapterId }: { chapterId: string }) {
                 disabled={!estimate.shots || run.isPending}
                 onClick={() => run.mutate()}
               >
-                Animate {estimate.shots} shots
+                制作动画 {estimate.shots} 个镜头
               </button>
             </>
           )}

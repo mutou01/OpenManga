@@ -39,14 +39,14 @@ type RunItem = Pick<Run, "id" | "goal" | "status" | "summary" | "createdAt">;
 
 const ACTIVE = new Set(["planning", "awaiting_plan", "running", "waiting_approval"]);
 const STATUS_LABEL: Record<string, string> = {
-  planning: "planning",
-  awaiting_plan: "plan ready",
-  running: "working",
-  waiting_approval: "needs approval",
-  completed: "done",
-  stopped: "stopped",
-  failed: "failed",
-  cancelled: "cancelled",
+  planning: "规划中",
+  awaiting_plan: "计划已就绪",
+  running: "执行中",
+  waiting_approval: "待审批",
+  completed: "已完成",
+  stopped: "已停止",
+  failed: "失败",
+  cancelled: "已取消",
 };
 const EXAMPLES = [
   "Audit this project and list what is missing or broken",
@@ -71,16 +71,16 @@ export function AgentPage() {
   return (
     <div className="mx-auto max-w-5xl p-4 sm:p-6">
       <PageHeader
-        title="Agent"
-        subtitle="Give the project agent a goal. It plans first; nothing runs until you approve the plan, and anything that spends or changes asks again."
+        title="智能体"
+        subtitle="为项目智能体设定目标。智能体会先制定计划，审批后再执行，产生费用或修改内容的操作会再次请求审批。"
       />
       <NewRun projectId={projectId} onStarted={open} />
       <div className="mt-6 grid gap-6 lg:grid-cols-[16rem_1fr]">
-        <aside aria-label="Runs" className="min-w-0">
-          <h2 className="label mb-2">Runs</h2>
+        <aside aria-label="执行记录" className="min-w-0">
+          <h2 className="label mb-2">执行记录</h2>
           <ErrorBox error={runs.error} />
           {runs.isLoading && <Spinner />}
-          {runs.data && !runs.data.runs.length && <p className="muted text-sm">No runs yet.</p>}
+          {runs.data && !runs.data.runs.length && <p className="muted text-sm">暂无执行记录。</p>}
           <ul className="space-y-1">
             {runs.data?.runs.map((r) => (
               <li key={r.id}>
@@ -102,7 +102,7 @@ export function AgentPage() {
           {search.run ? (
             <RunView key={search.run} id={search.run} projectId={projectId} />
           ) : (
-            <EmptyState title="No run open">Start one above, or open a past run.</EmptyState>
+            <EmptyState title="尚未打开执行记录">在上方创建任务，或打开已有执行记录。</EmptyState>
           )}
         </section>
       </div>
@@ -136,11 +136,11 @@ function NewRun({ projectId, onStarted }: { projectId: string; onStarted: (id: s
   };
   return (
     <form className="card space-y-3 p-4" onSubmit={(e) => void start(e)}>
-      <Field label="Goal">
+      <Field label="目标">
         <textarea
           className="input min-h-20"
           maxLength={4000}
-          placeholder="What should the agent do in this project?"
+          placeholder="你希望智能体在此项目中完成什么？"
           value={goal}
           onChange={(e) => setGoal(e.target.value)}
         />
@@ -153,23 +153,23 @@ function NewRun({ projectId, onStarted }: { projectId: string; onStarted: (id: s
         ))}
       </div>
       <div className="flex flex-wrap items-end gap-3">
-        <Field label="Budget (USD, optional)">
+        <Field label="预算（美元，可选）">
           <input
             className="input w-32"
             type="number"
             min={0}
             step={0.5}
-            placeholder="no cap"
+            placeholder="不设上限"
             value={budget}
             onChange={(e) => setBudget(e.target.value)}
           />
         </Field>
         <div className="pb-1">
-          <span className="label">Thinks with</span>
+          <span className="label">思考模型</span>
           <AiChip cap="text" />
         </div>
         <button type="submit" className="btn-primary ml-auto" disabled={busy || goal.trim().length < 3}>
-          {busy ? <Spinner /> : <Bot className="size-4" />} Plan it
+          {busy ? <Spinner /> : <Bot className="size-4" />} 制定计划
         </button>
       </div>
     </form>
@@ -213,8 +213,8 @@ function RunView({ id, projectId }: { id: string; projectId: string }) {
         <div className="flex flex-wrap items-center gap-2">
           <StatusChip status={r.status} label={STATUS_LABEL[r.status]} />
           <span className="muted text-xs">
-            {r.model} · spent ${r.spentUsd.toFixed(2)}
-            {r.budgetUsd !== null && ` of $${Number(r.budgetUsd).toFixed(2)}`} · {fmt.ago(r.createdAt)}
+            {r.model} · 已花费 ${r.spentUsd.toFixed(2)}
+            {r.budgetUsd !== null && ` / 上限 $${Number(r.budgetUsd).toFixed(2)}`} · {fmt.ago(r.createdAt)}
           </span>
           {active && (
             <button
@@ -223,23 +223,23 @@ function RunView({ id, projectId }: { id: string; projectId: string }) {
               disabled={busy}
               onClick={() => void act(() => post(`/agent-runs/${id}/cancel`, {}))}
             >
-              <CircleStop className="size-3.5" /> Stop
+              <CircleStop className="size-3.5" /> 停止
             </button>
           )}
         </div>
         <p className="whitespace-pre-wrap text-sm">{r.goal}</p>
         {r.job?.status === "awaiting_input" && (
           <p className="text-sm text-amber-700 dark:text-amber-300">
-            Waiting for your pasted answer:{" "}
+            等待你粘贴回复{" "}
             <Link className="link" to="/projects/$projectId/generation/$jobId" params={{ projectId, jobId: r.job.id }}>
-              answer this step
+              回复此步骤
             </Link>
             .
           </p>
         )}
         {(r.status === "planning" || r.status === "running") && r.job?.status !== "awaiting_input" && (
           <p className="muted flex items-center gap-2 text-sm">
-            <Spinner /> {r.status === "planning" ? "Writing a plan…" : "Thinking about the next step…"}
+            <Spinner /> {r.status === "planning" ? "正在制定计划…" : "正在思考下一步…"}
           </p>
         )}
         {r.summary && <p className="whitespace-pre-wrap rounded-lg bg-[var(--panel-2)] p-3 text-sm">{r.summary}</p>}
@@ -247,8 +247,8 @@ function RunView({ id, projectId }: { id: string; projectId: string }) {
       </div>
 
       {r.plan && (
-        <section aria-label="Plan" className="card space-y-2 p-4">
-          <h2 className="font-medium">Plan</h2>
+        <section aria-label="计划" className="card space-y-2 p-4">
+          <h2 className="font-medium">计划</h2>
           <p className="text-sm">{r.plan.summary}</p>
           <ol className="list-decimal space-y-1 pl-5 text-sm">
             {r.plan.steps.map((s, i) => (
@@ -259,7 +259,7 @@ function RunView({ id, projectId }: { id: string; projectId: string }) {
             ))}
           </ol>
           <p className="muted text-xs">
-            Estimated cost: {r.plan.estimatedCostUsd === null ? "unknown" : `$${r.plan.estimatedCostUsd.toFixed(2)}`}
+            预计费用 {r.plan.estimatedCostUsd === null ? "未知" : `$${r.plan.estimatedCostUsd.toFixed(2)}`}
             {r.plan.risks && ` · ${r.plan.risks}`}
           </p>
           {r.status === "awaiting_plan" && (
@@ -271,13 +271,13 @@ function RunView({ id, projectId }: { id: string; projectId: string }) {
                   disabled={busy}
                   onClick={() => void act(() => post(`/agent-runs/${id}/plan`, { decision: "approve" }))}
                 >
-                  <Check className="size-4" /> Approve and start
+                  <Check className="size-4" /> 批准并开始
                 </button>
               </div>
-              <Field label="Or send it back">
+              <Field label="或退回修改">
                 <textarea
                   className="input min-h-14 text-sm"
-                  placeholder="What should change in the plan?"
+                  placeholder="计划需要如何调整？"
                   value={feedback}
                   onChange={(e) => setFeedback(e.target.value)}
                 />
@@ -293,7 +293,7 @@ function RunView({ id, projectId }: { id: string; projectId: string }) {
                   })
                 }
               >
-                Revise the plan
+                修改计划
               </button>
             </div>
           )}
@@ -301,11 +301,11 @@ function RunView({ id, projectId }: { id: string; projectId: string }) {
       )}
 
       {r.status === "waiting_approval" && r.approval && (
-        <section aria-label="Approval needed" className="card space-y-2 border-amber-500/50 bg-amber-500/5 p-4 text-sm">
-          <h2 className="font-medium">Approval needed</h2>
+        <section aria-label="需要审批" className="card space-y-2 border-amber-500/50 bg-amber-500/5 p-4 text-sm">
+          <h2 className="font-medium">需要审批</h2>
           <p>{r.approval.summary}</p>
           {typeof r.approval.estimate?.estimatedUsd === "number" && (
-            <p className="muted text-xs">Estimated cost ${r.approval.estimate.estimatedUsd.toFixed(2)}</p>
+            <p className="muted text-xs">预计费用 ${r.approval.estimate.estimatedUsd.toFixed(2)}</p>
           )}
           <div className="flex flex-wrap gap-2">
             <button
@@ -316,7 +316,7 @@ function RunView({ id, projectId }: { id: string; projectId: string }) {
                 void act(() => post(`/agents/approvals/${r.approval!.id}/decide`, { decision: "approve" }))
               }
             >
-              <Check className="size-4" /> Approve
+              <Check className="size-4" /> 批准
             </button>
             <button
               type="button"
@@ -324,24 +324,24 @@ function RunView({ id, projectId }: { id: string; projectId: string }) {
               disabled={busy}
               onClick={() => void act(() => post(`/agents/approvals/${r.approval!.id}/decide`, { decision: "deny" }))}
             >
-              <X className="size-4" /> Deny
+              <X className="size-4" /> 拒绝
             </button>
             <Link className="btn-ghost text-xs" to="/agents" search={{ tab: "pending", request: r.approval.id }}>
-              Open in Agent access
+              前往智能体访问页面
             </Link>
           </div>
         </section>
       )}
 
       {r.steps.length > 0 && (
-        <section aria-label="Steps">
-          <h2 className="label mb-2">Steps</h2>
+        <section aria-label="步骤">
+          <h2 className="label mb-2">步骤</h2>
           <ol className="space-y-2">
             {r.steps.map((s, i) => (
               <li key={i} className="card space-y-1 p-3 text-sm">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="muted tabular-nums">{i + 1}.</span>
-                  {s.tool ? <code className="chip">{s.tool}</code> : <span className="chip">done</span>}
+                  {s.tool ? <code className="chip">{s.tool}</code> : <span className="chip">已完成</span>}
                   <StatusChip
                     status={
                       s.status === "completed" || s.status === "finished"
@@ -352,13 +352,21 @@ function RunView({ id, projectId }: { id: string; projectId: string }) {
                             ? "failed"
                             : "pending"
                     }
-                    label={s.status.replace("_", " ")}
+                    label={
+                      {
+                        completed: "已完成",
+                        pending_approval: "待审批",
+                        error: "错误",
+                        denied: "已拒绝",
+                        finished: "已结束",
+                      }[s.status]
+                    }
                   />
                 </div>
                 {s.thought && <p className="muted">{s.thought}</p>}
                 {s.tool && (
                   <details>
-                    <summary className="cursor-pointer text-xs">Arguments and result</summary>
+                    <summary className="cursor-pointer text-xs">参数与结果</summary>
                     <pre className="mt-1 max-h-72 overflow-auto rounded bg-[var(--panel-2)] p-2 text-xs">
                       {JSON.stringify({ arguments: s.arguments, result: s.result }, null, 2)}
                     </pre>

@@ -47,10 +47,10 @@ function DocumentTitle() {
     enabled: Boolean(projectId),
   });
   const title = data?.project?.title;
-  const film = data?.project?.settings.format === "film";
+  const format = data?.project?.settings.format;
   useEffect(() => {
-    document.title = documentTitle(label, title ? { title, film } : null);
-  }, [label, film, title]);
+    document.title = documentTitle(label, title ? { title, format } : null);
+  }, [label, format, title]);
   return null;
 }
 

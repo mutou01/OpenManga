@@ -49,7 +49,7 @@ export function MaskEditor({
       }
       setReady(true);
     };
-    img.onerror = () => toast.error("Could not load artwork");
+    img.onerror = () => toast.error("无法加载图片");
     img.src = assetUrl(artworkId);
   }, [artworkId]);
 
@@ -109,7 +109,7 @@ export function MaskEditor({
     setBusy(true);
     try {
       const blob = await new Promise<Blob | null>((res) => mask.toBlob(res, "image/png"));
-      if (!blob) throw new Error("Could not encode mask");
+      if (!blob) throw new Error("无法编码蒙版");
       const form = new FormData();
       form.set("file", new File([blob], "mask.png", { type: "image/png" }));
       const m = await api<{ asset: { id: string } }>(`/panels/${panelId}/mask`, { method: "POST", body: form });
@@ -119,7 +119,7 @@ export function MaskEditor({
         instruction,
         sourceAssetId: artworkId,
       });
-      toast.success("Masked edit queued");
+      toast.success("局部重绘已加入队列");
       await qc.invalidateQueries({ queryKey: qk.page(pageId) });
       onClose();
     } catch (e) {
@@ -133,13 +133,13 @@ export function MaskEditor({
     <Modal
       open
       onClose={onClose}
-      title="Masked edit"
+      title="局部重绘"
       wide="xl"
       footer={
         <>
           <AiChip cap="image" className="mr-auto" />
           <button type="button" className="btn-secondary" onClick={onClose}>
-            Cancel
+            取消
           </button>
           <button
             type="button"
@@ -147,7 +147,7 @@ export function MaskEditor({
             disabled={busy || !strokes.some((s) => !s.erase) || instruction.trim().length < 3}
             onClick={() => void submit()}
           >
-            {busy && <Spinner />} Submit edit
+            {busy && <Spinner />} 提交编辑
           </button>
         </>
       }
@@ -159,7 +159,7 @@ export function MaskEditor({
           aria-pressed={!erase}
           onClick={() => setErase(false)}
         >
-          <Paintbrush className="size-4" /> Brush
+          <Paintbrush className="size-4" /> 画笔
         </button>
         <button
           type="button"
@@ -167,17 +167,17 @@ export function MaskEditor({
           aria-pressed={erase}
           onClick={() => setErase(true)}
         >
-          <Eraser className="size-4" /> Eraser
+          <Eraser className="size-4" /> 橡皮擦
         </button>
         <label className="flex items-center gap-2">
-          Size{" "}
+          画笔大小
           <input
             type="range"
             min={5}
             max={300}
             value={size}
             onChange={(e) => setSize(Number(e.target.value))}
-            aria-label="Brush size"
+            aria-label="画笔大小"
           />{" "}
           <span className="w-8 tabular-nums">{size}</span>
         </label>
@@ -187,10 +187,10 @@ export function MaskEditor({
           disabled={!strokes.length}
           onClick={() => setStrokes((s) => s.slice(0, -1))}
         >
-          <Undo2 className="size-4" /> Undo stroke
+          <Undo2 className="size-4" /> 撤销笔画
         </button>
         <button type="button" className="btn-ghost" disabled={!strokes.length} onClick={() => setStrokes([])}>
-          <Trash2 className="size-4" /> Clear
+          <Trash2 className="size-4" /> 清空
         </button>
       </div>
       {!ready && <Spinner />}
@@ -198,7 +198,7 @@ export function MaskEditor({
         ref={view}
         className="mx-auto block max-h-[55vh] max-w-full cursor-crosshair touch-none rounded-lg bg-[var(--panel-2)]"
         style={{ display: ready ? "block" : "none" }}
-        aria-label="Paint the region to edit"
+        aria-label="涂绘要修改的区域"
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);
           drawing.current = { size, erase, points: [point(e)] };
@@ -215,18 +215,17 @@ export function MaskEditor({
         }}
       />
       <label className="label mt-3" htmlFor="edit-instruction">
-        Edit instruction
+        修改要求
       </label>
       <input
         id="edit-instruction"
         className="input"
-        placeholder="e.g. remove the umbrella and show rain instead"
+        placeholder="例如：移除雨伞，补上雨丝"
         value={instruction}
         onChange={(e) => setInstruction(e.target.value)}
       />
       <p className="muted mt-2 text-xs">
-        The full-resolution panel and mask are sent; character references are sent as small derivatives. A new artwork
-        version is created — the current one is kept.
+        系统会发送原分辨率的画格和遮罩，以及缩小后的角色参考图。生成结果会另存为新版本，并保留当前版本。
       </p>
     </Modal>
   );

@@ -5,6 +5,7 @@ import { api, assetUrl, del, patch, post } from "../../api/client.ts";
 import { useAction } from "../../api/hooks.ts";
 import type { NarrationDoc, NarrationSegment, Voice } from "../../api/types.ts";
 import { clsx, fmt, SaveIndicator, StatusChip, useAutosave } from "../../components/ui.tsx";
+import { statusLabel } from "../../lib/locale.ts";
 import { useAiBody } from "../ai/AiPicker.tsx";
 
 type Line = NarrationDoc["lines"][number];
@@ -32,10 +33,10 @@ export function LineEditor({
   const update = useAction((body: Record<string, unknown>) => patch(`/narration-lines/${line.id}`, body), {
     invalidate,
   });
-  const remove = useAction(() => del(`/narration-lines/${line.id}`), { invalidate, success: "Line deleted" });
+  const remove = useAction(() => del(`/narration-lines/${line.id}`), { invalidate, success: "旁白行已删除" });
   const reseg = useAction(() => post(`/narration-lines/${line.id}/resegment`, { maxChars: 400 }), {
     invalidate,
-    success: "Re-segmented",
+    success: "已重新分段",
   });
 
   return (
@@ -46,9 +47,9 @@ export function LineEditor({
           className="input w-auto py-1 text-xs"
           value={line.panelId ?? ""}
           onChange={(e) => update.mutate({ panelId: e.target.value || null })}
-          aria-label="Linked panel"
+          aria-label="关联画格"
         >
-          <option value="">No panel</option>
+          <option value="">无关联画格</option>
           {panels.map((p) => (
             <option key={p.id} value={p.id}>
               {p.label}
@@ -62,23 +63,18 @@ export function LineEditor({
             disabled={!line.panelId}
             onChange={(e) => update.mutate({ showOnPage: e.target.checked })}
           />{" "}
-          Caption on page
+          在页面显示字幕
         </label>
         <SaveIndicator state={state} />
         <div className="ml-auto flex gap-1">
-          <button
-            type="button"
-            className="btn-ghost py-1"
-            onClick={() => reseg.mutate()}
-            title="Re-split into segments"
-          >
-            <Split className="size-3.5" /> Resegment
+          <button type="button" className="btn-ghost py-1" onClick={() => reseg.mutate()} title="重新拆分为片段">
+            <Split className="size-3.5" /> 重新分段
           </button>
           <button
             type="button"
             className="btn-ghost py-1 text-red-500"
-            onClick={() => confirm("Delete this narration line?") && remove.mutate()}
-            aria-label="Delete line"
+            onClick={() => confirm("删除此旁白行？") && remove.mutate()}
+            aria-label="删除旁白行"
           >
             <Trash2 className="size-3.5" />
           </button>
@@ -88,7 +84,7 @@ export function LineEditor({
         className="input min-h-16 font-serif"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        aria-label="Narration text"
+        aria-label="旁白文字"
       />
       <LineVideo line={line} panels={panels} onChange={(video) => update.mutate({ video })} />
       <div className="mt-2 space-y-1.5">
@@ -138,27 +134,27 @@ function LineVideo({
           if (n !== v[key]) onChange({ ...v, [key]: n });
         }}
       />
-      ms
+      毫秒
     </label>
   );
   return (
     <div className="muted mt-2 flex flex-wrap items-center gap-2 text-xs">
-      <span>In the video:</span>
+      <span>视频中：</span>
       <select
         className="input w-auto py-0.5 text-xs"
         value={v.untilPanelId ?? ""}
         onChange={(e) => onChange({ ...v, untilPanelId: e.target.value || null })}
-        aria-label="Spoken until panel"
+        aria-label="旁白延续至画格"
       >
-        <option value="">Over its own shot</option>
+        <option value="">仅当前镜头</option>
         {panels.slice(from + 1).map((p) => (
           <option key={p.id} value={p.id}>
-            Until {p.label}
+            延续至 {p.label}
           </option>
         ))}
       </select>
-      {ms("Start after", "startOffsetMs")}
-      {ms("Hold after", "endOffsetMs")}
+      {ms("开始前停顿", "startOffsetMs")}
+      {ms("结束后停留", "endOffsetMs")}
     </div>
   );
 }
@@ -208,7 +204,7 @@ function SegmentRow({
   const upload = useAction(
     (f: File) =>
       api(`/narration-segments/${seg.id}/audio?name=${encodeURIComponent(f.name)}`, { method: "POST", body: f }),
-    { invalidate, success: "Take uploaded" },
+    { invalidate, success: "录音已上传" },
   );
   const status = segmentStatus(seg);
 
@@ -225,12 +221,12 @@ function SegmentRow({
         rows={Math.min(4, Math.ceil(text.length / 90) || 1)}
         value={text}
         onChange={(e) => setText(e.target.value)}
-        aria-label="Segment text"
+        aria-label="片段文字"
       />
       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
         <StatusChip
           status={status === "stale" ? "queued" : status}
-          label={status === "none" ? "no audio" : status === "stale" ? "outdated" : status}
+          label={status === "none" ? "无音频" : status === "stale" ? "已过期" : statusLabel(status)}
         />
         {seg.job?.status === "failed" && seg.job.failureReason && (
           <span className="text-red-500">{seg.job.failureReason}</span>
@@ -238,16 +234,16 @@ function SegmentRow({
         {seg.audio && (
           <span className="muted">
             {fmt.ms(seg.audio.durationMs)}
-            {seg.audio.provider === "import" && " · imported"}
+            {seg.audio.provider === "import" && " · 已导入"}
           </span>
         )}
         <select
           className="input w-auto py-0.5 text-xs"
           value={seg.voice ?? ""}
           onChange={(e) => update.mutate({ voice: e.target.value || null })}
-          aria-label="Segment voice"
+          aria-label="片段音色"
         >
-          <option value="">Voice: default ({defaults.voice})</option>
+          <option value="">音色：默认（{defaults.voice}）</option>
           {voices.map((v) => (
             <option key={v.id} value={v.id}>
               {v.name} ({v.language})
@@ -255,7 +251,7 @@ function SegmentRow({
           ))}
         </select>
         <label className="flex items-center gap-1">
-          Speed
+          语速
           <input
             type="number"
             className="input w-16 py-0.5 text-xs"
@@ -268,7 +264,7 @@ function SegmentRow({
           />
         </label>
         <label className="flex items-center gap-1">
-          Pause
+          停顿
           <input
             type="number"
             className="input w-20 py-0.5 text-xs"
@@ -280,7 +276,7 @@ function SegmentRow({
               Number(e.target.value) !== seg.pauseAfterMs && update.mutate({ pauseAfterMs: Number(e.target.value) })
             }
           />
-          ms
+          毫秒
         </label>
         <SaveIndicator state={state} />
         <div className="ml-auto flex gap-1">
@@ -289,7 +285,7 @@ function SegmentRow({
               type="button"
               className="btn-ghost py-0.5"
               onClick={() => new Audio(assetUrl(seg.audio!.assetId)).play()}
-              aria-label="Play segment"
+              aria-label="播放片段"
             >
               <Play className="size-3.5" />
             </button>
@@ -299,14 +295,14 @@ function SegmentRow({
             className="btn-ghost py-0.5"
             disabled={synth.isPending || status === "queued" || status === "processing"}
             onClick={() => synth.mutate()}
-            title="Synthesize with Kokoro"
+            title="使用 Kokoro 合成"
           >
             {seg.audio ? <RefreshCw className="size-3.5" /> : <Wand2 className="size-3.5" />}{" "}
-            {seg.audio ? "Regenerate" : "Synthesize"}
+            {seg.audio ? "重新生成" : "合成"}
           </button>
           <label
             className={clsx("btn-ghost cursor-pointer py-0.5", upload.isPending && "pointer-events-none opacity-50")}
-            title="Upload this segment's audio, recorded elsewhere"
+            title="上传外部录制的此片段音频"
           >
             <Upload className="size-3.5" />
             <input
@@ -323,7 +319,7 @@ function SegmentRow({
           <button
             type="button"
             className="btn-ghost py-0.5"
-            title="Split at cursor"
+            title="在光标处拆分"
             onClick={() => {
               const at = ref.current?.selectionStart ?? 0;
               if (at > 0 && at < text.length) split.mutate(at);
@@ -332,12 +328,7 @@ function SegmentRow({
             <Scissors className="size-3.5" />
           </button>
           {!isLast && (
-            <button
-              type="button"
-              className="btn-ghost py-0.5"
-              title="Merge with next segment"
-              onClick={() => merge.mutate()}
-            >
+            <button type="button" className="btn-ghost py-0.5" title="与下一片段合并" onClick={() => merge.mutate()}>
               <Merge className="size-3.5" />
             </button>
           )}

@@ -68,7 +68,7 @@ export function SeriesListPage() {
       await post("/series", { title: title.trim(), channelProfileId: profileId || null });
       setTitle("");
       await qc.invalidateQueries({ queryKey: ["series"] });
-      toast.success("Series created");
+      toast.success("系列已创建");
     } catch (err) {
       toast.error(err);
     } finally {
@@ -77,22 +77,19 @@ export function SeriesListPage() {
   };
   return (
     <div className="mx-auto max-w-4xl p-4 sm:p-6">
-      <PageHeader
-        title="Series"
-        subtitle="Episodes that share one library: cast, places, props, style and story bible, and a channel profile."
-      />
+      <PageHeader title="系列" subtitle="各集共享角色、场景、道具、风格、故事设定集和频道配置。" />
       <form className="card mb-6 flex flex-wrap items-end gap-3 p-4" onSubmit={(e) => void create(e)}>
-        <Field label="New series">
+        <Field label="新建系列">
           <input
             className="input w-72 max-w-full"
-            placeholder="Title"
+            placeholder="标题"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
         </Field>
-        <Field label="Channel profile">
+        <Field label="频道配置">
           <select className="input" value={profileId} onChange={(e) => setProfileId(e.target.value)}>
-            <option value="">None</option>
+            <option value="">无</option>
             {profiles.data?.profiles.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -101,13 +98,13 @@ export function SeriesListPage() {
           </select>
         </Field>
         <button type="submit" className="btn-primary" disabled={busy || !title.trim()}>
-          {busy ? <Spinner /> : <Plus className="size-4" />} Create
+          {busy ? <Spinner /> : <Plus className="size-4" />} 创建
         </button>
       </form>
       <ErrorBox error={q.error} />
       {q.isLoading && <Spinner />}
       {q.data && !q.data.series.length && (
-        <EmptyState title="No series yet">Create one, then add episodes or adopt projects you already have.</EmptyState>
+        <EmptyState title="暂无系列">创建系列后，可添加新剧集或纳入已有项目。</EmptyState>
       )}
       <ul className="grid gap-3 sm:grid-cols-2">
         {q.data?.series.map((s) => (
@@ -119,8 +116,7 @@ export function SeriesListPage() {
             >
               <div className="font-medium">{s.title}</div>
               <div className="muted text-sm">
-                {s.episodes} episode{s.episodes === 1 ? "" : "s"}
-                {s.description && ` · ${s.description}`}
+                {s.episodes} 集{s.description && ` · ${s.description}`}
               </div>
             </Link>
           </li>
@@ -157,29 +153,29 @@ export function SeriesDetailPage() {
     <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
       <PageHeader
         title={s.title}
-        subtitle={s.description || "A series of episodes sharing one library."}
+        subtitle={s.description || "各集共享同一资源库。"}
         actions={
           <>
             <button
               type="button"
               className="btn-secondary"
               disabled={busy || !episodes.length}
-              onClick={() => void run(() => post(`/series/${s.id}/sync`, {}), "Episodes synced with the library")}
+              onClick={() => void run(() => post(`/series/${s.id}/sync`, {}), "所有剧集已与资源库同步")}
             >
-              <RefreshCw className="size-4" /> Sync all
+              <RefreshCw className="size-4" /> 全部同步
             </button>
             <SeriesSettings dashboard={q.data} onSaved={() => void qc.invalidateQueries({ queryKey: key })} />
           </>
         }
       />
 
-      <section aria-label="Totals" className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      <section aria-label="总计" className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
-          ["Episodes", totals.episodes],
-          ["Panels drawn", `${totals.panelsDrawn} / ${totals.panels}`],
-          ["Spent", `$${totals.spendUsd.toFixed(2)}`],
-          ["Exports", totals.exports],
-          ["Open comments", totals.openComments],
+          ["剧集", totals.episodes],
+          ["已绘制画格", `${totals.panelsDrawn} / ${totals.panels}`],
+          ["费用", `$${totals.spendUsd.toFixed(2)}`],
+          ["导出", totals.exports],
+          ["待处理评论", totals.openComments],
         ].map(([label, value]) => (
           <div key={label} className="card p-3">
             <div className="muted text-xs">{label}</div>
@@ -194,23 +190,21 @@ export function SeriesDetailPage() {
         onSaved={() => void qc.invalidateQueries({ queryKey: key })}
       />
 
-      <section aria-label="Library" className="card space-y-2 p-4">
+      <section aria-label="资源库" className="card space-y-2 p-4">
         <div className="flex flex-wrap items-center gap-2">
           <BookCopy className="size-4" />
-          <h2 className="font-medium">Library</h2>
+          <h2 className="font-medium">资源库</h2>
           <span className="muted text-sm">
-            {lib.characters} characters · {lib.locations} places · {lib.props} props · {lib.facts} bible facts
+            {lib.characters} 个角色 · {lib.locations} 个场景 · {lib.props} 个道具 · {lib.facts} 条故事设定
           </span>
         </div>
-        <p className="muted text-sm">
-          Edit the shared cast and world here; episodes follow it when synced, pointing at the same reference images.
-        </p>
+        <p className="muted text-sm">在此编辑共享角色与世界设定。同步后各集会使用这些设定及相同的参考图。</p>
         <div className="flex flex-wrap gap-2 text-sm">
           {(
             [
-              ["Cast", "/projects/$projectId/cast"],
-              ["World and style", "/projects/$projectId/world"],
-              ["Bible", "/projects/$projectId/bible"],
+              ["角色", "/projects/$projectId/cast"],
+              ["世界设定与风格", "/projects/$projectId/world"],
+              ["故事设定集", "/projects/$projectId/bible"],
             ] as const
           ).map(([label, to]) => (
             <Link key={label} className="btn-secondary" to={to} params={{ projectId: lib.projectId }}>
@@ -220,24 +214,22 @@ export function SeriesDetailPage() {
         </div>
       </section>
 
-      <section aria-label="Episodes" className="space-y-2">
-        <h2 className="font-medium">Episodes</h2>
-        {!episodes.length && (
-          <p className="muted text-sm">No episodes yet: add one, adopt a project, or split a story.</p>
-        )}
+      <section aria-label="剧集" className="space-y-2">
+        <h2 className="font-medium">剧集</h2>
+        {!episodes.length && <p className="muted text-sm">暂无剧集。可添加新剧集、纳入项目或拆分故事。</p>}
         {episodes.length > 0 && (
           <div className="overflow-x-auto rounded-lg border border-[var(--border)]">
             <table className="w-full text-sm">
               <thead className="muted text-left text-xs">
                 <tr className="[&>th]:px-3 [&>th]:py-2">
                   <th>#</th>
-                  <th>Episode</th>
-                  <th>Status</th>
-                  <th className="text-right">Drawn</th>
-                  <th className="text-right">Spent</th>
-                  <th className="text-right">Exports</th>
-                  <th className="text-right">Comments</th>
-                  <th>Library</th>
+                  <th>剧集</th>
+                  <th>状态</th>
+                  <th className="text-right">已绘制</th>
+                  <th className="text-right">费用</th>
+                  <th className="text-right">导出</th>
+                  <th className="text-right">评论</th>
+                  <th>资源库</th>
                   <th />
                 </tr>
               </thead>
@@ -249,7 +241,7 @@ export function SeriesDetailPage() {
                       <Link className="link" to="/projects/$projectId" params={{ projectId: e.id }}>
                         {e.title}
                       </Link>
-                      <div className="muted text-xs">{e.chapters} chapters</div>
+                      <div className="muted text-xs">{e.chapters} 章</div>
                     </td>
                     <td>
                       <StatusChip status={e.status} />
@@ -265,24 +257,24 @@ export function SeriesDetailPage() {
                         <button
                           type="button"
                           className="chip bg-amber-500/15 text-amber-700 dark:text-amber-300"
-                          title="Library entries, style or facts this episode has not taken yet. Click to sync it."
+                          title="此集尚未同步的资源库条目、风格或设定，点击即可同步。"
                           disabled={busy}
                           onClick={() =>
-                            void run(() => post(`/series/${s.id}/sync`, { projectId: e.id }), "Episode synced")
+                            void run(() => post(`/series/${s.id}/sync`, { projectId: e.id }), "此集已同步")
                           }
                         >
-                          {e.behind} behind · sync
+                          {e.behind} 项未同步 · 同步
                         </button>
                       ) : (
-                        <span className="chip bg-emerald-500/15 text-emerald-600">in step</span>
+                        <span className="chip bg-emerald-500/15 text-emerald-600">已同步</span>
                       )}
                     </td>
                     <td>
                       <button
                         type="button"
                         className="btn-ghost p-1"
-                        aria-label={`Detach ${e.title}`}
-                        title="Take it out of the series"
+                        aria-label={`将 ${e.title} 移出系列`}
+                        title="从系列中移除"
                         onClick={() => setDetach(e)}
                       >
                         <Link2Off className="size-4" />
@@ -305,17 +297,17 @@ export function SeriesDetailPage() {
 
       <ConfirmDialog
         open={Boolean(detach)}
-        title={`Detach "${detach?.title}"?`}
-        confirmLabel="Detach"
+        title={`将“${detach?.title}”移出系列？`}
+        confirmLabel="移出系列"
         onClose={() => setDetach(null)}
         onConfirm={() =>
           void run(
             () => post(`/series/${s.id}/episodes/${detach!.id}/detach`, {}).then(() => setDetach(null)),
-            "Episode detached",
+            "已移出系列",
           )
         }
       >
-        It leaves the series and keeps its cast and world as its own: they stop following the library.
+        移出后会保留独立的角色和世界设定，并停止与资源库同步。
       </ConfirmDialog>
     </div>
   );
@@ -329,7 +321,7 @@ function SeriesSettings({ dashboard, onSaved }: { dashboard: Dashboard; onSaved:
     <>
       <select
         className="input w-48"
-        aria-label="Channel profile"
+        aria-label="频道配置"
         value={s.channelProfileId ?? ""}
         onChange={(e) =>
           void patch(`/series/${s.id}`, { channelProfileId: e.target.value || null })
@@ -337,7 +329,7 @@ function SeriesSettings({ dashboard, onSaved }: { dashboard: Dashboard; onSaved:
             .catch(toast.error)
         }
       >
-        <option value="">No channel profile</option>
+        <option value="">无频道配置</option>
         {profiles.data?.profiles.map((p) => (
           <option key={p.id} value={p.id}>
             {p.name}
@@ -346,13 +338,13 @@ function SeriesSettings({ dashboard, onSaved }: { dashboard: Dashboard; onSaved:
       </select>
       {!dashboard.episodes.length && (
         <button type="button" className="btn-ghost text-red-600" onClick={() => setConfirmDelete(true)}>
-          Delete
+          删除
         </button>
       )}
       <ConfirmDialog
         open={confirmDelete}
-        title={`Delete "${s.title}"?`}
-        confirmLabel="Delete series"
+        title={`删除“${s.title}”？`}
+        confirmLabel="删除系列"
         danger
         onClose={() => setConfirmDelete(false)}
         onConfirm={() =>
@@ -363,7 +355,7 @@ function SeriesSettings({ dashboard, onSaved }: { dashboard: Dashboard; onSaved:
             .catch(toast.error)
         }
       >
-        The library project goes to the trash.
+        资源库项目将移至回收站。
       </ConfirmDialog>
     </>
   );
@@ -384,7 +376,7 @@ function AddEpisode({ seriesId, onDone }: { seriesId: string; onDone: () => void
       setTitle("");
       setStory("");
       onDone();
-      toast.success("Episode added, linked to the library");
+      toast.success("已添加剧集并关联资源库");
     } catch (err) {
       toast.error(err);
     } finally {
@@ -392,16 +384,16 @@ function AddEpisode({ seriesId, onDone }: { seriesId: string; onDone: () => void
     }
   };
   return (
-    <form aria-label="Add episode" className="card space-y-2 p-4" onSubmit={(e) => void add(e)}>
-      <h3 className="font-medium">Add an episode</h3>
-      <Field label="Title">
+    <form aria-label="添加剧集" className="card space-y-2 p-4" onSubmit={(e) => void add(e)}>
+      <h3 className="font-medium">添加剧集</h3>
+      <Field label="标题">
         <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
       </Field>
-      <Field label="Story (optional)">
+      <Field label="故事（可选）">
         <textarea className="input min-h-20 text-sm" value={story} onChange={(e) => setStory(e.target.value)} />
       </Field>
       <button type="submit" className="btn-primary" disabled={busy || !title.trim()}>
-        {busy ? <Spinner /> : <Plus className="size-4" />} Add episode
+        {busy ? <Spinner /> : <Plus className="size-4" />} 添加分集
       </button>
     </form>
   );
@@ -429,7 +421,7 @@ function AdoptProject({ seriesId, onDone }: { seriesId: string; onDone: () => vo
       // It is in the series now: offering it again would only fail.
       void projects.refetch();
       onDone();
-      toast.success(`Adopted: ${r.synced.linked} linked by name, ${r.synced.created} added from the library`);
+      toast.success(`已纳入项目，按名称关联 ${r.synced.linked} 项，从资源库添加 ${r.synced.created} 项`);
     } catch (err) {
       toast.error(err);
     } finally {
@@ -437,18 +429,16 @@ function AdoptProject({ seriesId, onDone }: { seriesId: string; onDone: () => vo
     }
   };
   return (
-    <form aria-label="Adopt project" className="card space-y-2 p-4" onSubmit={(e) => void adopt(e)}>
-      <h3 className="font-medium">Adopt a project</h3>
-      <p className="muted text-xs">
-        It becomes the next episode. Its characters, places and props named like the library's become linked to them.
-      </p>
+    <form aria-label="纳入项目" className="card space-y-2 p-4" onSubmit={(e) => void adopt(e)}>
+      <h3 className="font-medium">纳入已有项目</h3>
+      <p className="muted text-xs">项目将成为下一集。同名角色、场景和道具会关联到资源库。</p>
       <select
         className="input"
-        aria-label="Project to adopt"
+        aria-label="待纳入的项目"
         value={projectId}
         onChange={(e) => setProjectId(e.target.value)}
       >
-        <option value="">Choose one of your projects…</option>
+        <option value="">选择你的项目…</option>
         {free.map((p) => (
           <option key={p.id} value={p.id}>
             {p.title}
@@ -457,10 +447,10 @@ function AdoptProject({ seriesId, onDone }: { seriesId: string; onDone: () => vo
       </select>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={applyProfile} onChange={(e) => setApplyProfile(e.target.checked)} />
-        Also apply the series' channel profile
+        同时应用系列的频道配置
       </label>
       <button type="submit" className="btn-secondary" disabled={busy || !projectId}>
-        Adopt
+        纳入
       </button>
     </form>
   );
@@ -482,7 +472,7 @@ function SplitStory({ seriesId, onDone }: { seriesId: string; onDone: () => void
         setStory("");
         setPreview(null);
         onDone();
-        toast.success(`${r.episodes.length} episodes created`);
+        toast.success(`已创建 ${r.episodes.length} 集`);
       } else setPreview(r.episodes);
     } catch (err) {
       toast.error(err);
@@ -491,12 +481,12 @@ function SplitStory({ seriesId, onDone }: { seriesId: string; onDone: () => void
     }
   };
   return (
-    <section aria-label="Split a story" className="card space-y-2 p-4">
-      <h3 className="font-medium">Split a long story into episodes</h3>
+    <section aria-label="拆分故事" className="card space-y-2 p-4">
+      <h3 className="font-medium">将长篇故事拆分为剧集</h3>
       <textarea
         className="input min-h-24 text-sm"
-        aria-label="Long story"
-        placeholder="Paste the whole story; it is cut at its chapter headings."
+        aria-label="长篇故事"
+        placeholder="粘贴完整故事，将按章节标题拆分。"
         value={story}
         onChange={(e) => {
           setStory(e.target.value);
@@ -504,7 +494,7 @@ function SplitStory({ seriesId, onDone }: { seriesId: string; onDone: () => void
         }}
       />
       <div className="flex flex-wrap items-end gap-2">
-        <Field label="Chapters per episode">
+        <Field label="每集章节数">
           <input
             className="input w-24"
             type="number"
@@ -518,11 +508,11 @@ function SplitStory({ seriesId, onDone }: { seriesId: string; onDone: () => void
           />
         </Field>
         <button type="button" className="btn-secondary" disabled={busy || !story.trim()} onClick={() => void go(false)}>
-          <Scissors className="size-4" /> Preview
+          <Scissors className="size-4" /> 预览
         </button>
         {preview && (
           <button type="button" className="btn-primary" disabled={busy} onClick={() => void go(true)}>
-            Create {preview.length} episodes
+            创建 {preview.length} 集
           </button>
         )}
       </div>
@@ -532,8 +522,8 @@ function SplitStory({ seriesId, onDone }: { seriesId: string; onDone: () => void
             <li key={p.title}>
               {p.title}{" "}
               <span className="muted text-xs">
-                · {p.chapters ? `${p.chapters} chapters · ` : ""}
-                {fmt.num(p.characters)} characters
+                · {p.chapters ? `${p.chapters} 章 · ` : ""}
+                {fmt.num(p.characters)} 个字符
               </span>
             </li>
           ))}
@@ -564,12 +554,12 @@ function Appearances({ seriesId, libraryId }: { seriesId: string; libraryId: str
       }>(`/series/${seriesId}/appearances?kind=character&id=${id}`),
   });
   return (
-    <section aria-label="Appearances" className="card space-y-2 p-4">
+    <section aria-label="出场记录" className="card space-y-2 p-4">
       <h3 className="flex items-center gap-2 font-medium">
-        <Search className="size-4" /> Where a character appears
+        <Search className="size-4" /> 角色出场位置
       </h3>
-      <select className="input" aria-label="Library character" value={id} onChange={(e) => setId(e.target.value)}>
-        <option value="">Choose a library character…</option>
+      <select className="input" aria-label="资源库角色" value={id} onChange={(e) => setId(e.target.value)}>
+        <option value="">选择资源库角色…</option>
         {cast.data?.characters.map((c) => (
           <option key={c.id} value={c.id}>
             {c.name}
@@ -578,14 +568,14 @@ function Appearances({ seriesId, libraryId }: { seriesId: string; libraryId: str
       </select>
       {q.isFetching && <Spinner />}
       <ErrorBox error={q.error} />
-      {q.data && !q.data.episodes.length && <p className="muted text-sm">Not in any episode yet.</p>}
+      {q.data && !q.data.episodes.length && <p className="muted text-sm">尚未在任何剧集中出场。</p>}
       <ul className="space-y-1.5 text-sm">
         {q.data?.episodes.map((e) => (
           <li key={e.projectId}>
             <span className="font-medium">
               {e.episodeNumber}. {e.title}
             </span>{" "}
-            <span className="muted">· {e.panels} panels</span>
+            <span className="muted">· {e.panels} 个画格</span>
             <ul className="muted ml-4 text-xs">
               {e.chapters.map((ch) => (
                 <li key={ch.id}>
@@ -595,9 +585,9 @@ function Appearances({ seriesId, libraryId }: { seriesId: string; libraryId: str
                     params={{ projectId: e.projectId }}
                     search={{ chapterId: ch.id }}
                   >
-                    Ch. {ch.order} {ch.title}
+                    第 {ch.order} 章 · {ch.title}
                   </Link>{" "}
-                  · {ch.panels} panels
+                  · {ch.panels} 个画格
                 </li>
               ))}
             </ul>
@@ -622,31 +612,30 @@ function ReaderPage({ dashboard, onSaved }: { dashboard: Dashboard; onSaved: () 
         visibility,
         ...(slug.trim() && slug.trim() !== s.publicSlug ? { publicSlug: slug.trim() } : {}),
       }),
-    { success: "Reader page saved", onSuccess: onSaved },
+    { success: "阅读页已保存", onSuccess: onSaved },
   );
   const share = s.publicSlug ? `${window.location.origin}/s/${s.publicSlug}` : null;
   return (
-    <section className="card space-y-3 p-4" aria-label="Reader page">
+    <section className="card space-y-3 p-4" aria-label="阅读页">
       <div>
-        <h2 className="font-medium">Reader page</h2>
+        <h2 className="font-medium">阅读页</h2>
         <p className="muted text-xs">
-          A page where readers follow the series: its cover, description and the chapters you publish, page by page or
-          as a scroll, in every language its lettering was translated into, with an RSS feed.
+          读者可在此查看系列封面、简介和已发布章节，逐页或滚动阅读已翻译的语言版本，并通过 RSS 订阅更新。
         </p>
       </div>
       <div className="flex flex-wrap items-end gap-2">
-        <Field label="Visibility">
+        <Field label="可见性">
           <select
             className="input"
             value={visibility}
             onChange={(e) => setVisibility(e.target.value as typeof visibility)}
           >
-            <option value="off">Off</option>
-            <option value="unlisted">Unlisted: anyone with the link, not in search engines</option>
-            <option value="public">Public</option>
+            <option value="off">关闭</option>
+            <option value="unlisted">不公开列出（持有链接即可访问，搜索引擎不收录）</option>
+            <option value="public">公开</option>
           </select>
         </Field>
-        <Field label="Address (/s/…)" hint="Left empty, an unguessable one is made.">
+        <Field label="地址（/s/…）" hint="留空则自动生成难以猜测的地址。">
           <input
             className="input w-56"
             value={slug}
@@ -656,7 +645,7 @@ function ReaderPage({ dashboard, onSaved }: { dashboard: Dashboard; onSaved: () 
           />
         </Field>
         <button type="button" className="btn-primary" disabled={save.isPending} onClick={() => save.mutate()}>
-          Save
+          保存
         </button>
       </div>
       {s.visibility !== "off" && share && (
@@ -676,11 +665,11 @@ function ReaderPage({ dashboard, onSaved }: { dashboard: Dashboard; onSaved: () 
         </p>
       )}
       <div className="space-y-1">
-        <div className="label">Publishing</div>
+        <div className="label">发布安排</div>
         {dashboard.episodes.map((e) => (
           <details key={e.id}>
             <summary className="cursor-pointer text-sm">
-              Episode {e.episodeNumber}: {e.title}
+              第 {e.episodeNumber} 集 · {e.title}
             </summary>
             <EpisodeSchedule projectId={e.id} />
           </details>
@@ -728,7 +717,7 @@ function EpisodeSchedule({ projectId }: { projectId: string }) {
             key={ch.publishAt ?? ""}
             type="datetime-local"
             className="input w-auto py-0.5 text-xs"
-            aria-label={`Publish ${ch.title} at`}
+            aria-label={`《${ch.title}》的发布时间`}
             defaultValue={local(ch.publishAt)}
             onBlur={(e) => {
               if (e.target.value !== local(ch.publishAt))
@@ -741,12 +730,12 @@ function EpisodeSchedule({ projectId }: { projectId: string }) {
               className="btn-ghost text-xs"
               onClick={() => void set(ch.id, new Date().toISOString())}
             >
-              Publish now
+              立即发布
             </button>
           )}
           {ch.publishAt && (
             <button type="button" className="btn-ghost text-xs" onClick={() => void set(ch.id, null)}>
-              Unpublish
+              取消发布
             </button>
           )}
         </li>

@@ -202,7 +202,7 @@ export async function createProject(c: Context<AppEnv>, raw: z.infer<typeof Crea
     (presetKey?.startsWith("template:")
       ? u.settings.projectTemplates?.find((t) => t.id === presetKey.slice(9))
       : PRODUCTION_PRESETS.find((p) => p.key === presetKey)) ?? {};
-  if (presetKey && !setup.settings) throw badRequest("Unknown preset or template");
+  if (presetKey && !setup.settings) throw badRequest("无法识别所选预设或模板");
   const presetSettings = setup.settings ?? {};
   const projectType = raw.projectType ?? (setup.projectType as typeof raw.projectType) ?? "manhwa";
   const input = {
@@ -612,7 +612,7 @@ doc({
 });
 projectRoutes.delete("/:projectId", async (c) => {
   const p = await projectAccess(c, uuidParam(c, "projectId"), "delete");
-  if (!p.deletedAt) throw badRequest("Move the project to trash before deleting it permanently");
+  if (!p.deletedAt) throw badRequest("请先将项目移至回收站，再永久删除");
   const deps = c.get("deps");
   // A series library's images are referenced by its episodes (and stay with an episode detached from it): each one
   // still referenced by another project is handed to that project instead of going with this one.

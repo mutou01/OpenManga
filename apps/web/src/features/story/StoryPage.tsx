@@ -24,6 +24,21 @@ import { StaleChapters, useStaleness } from "../project/StaleChapters.tsx";
 import { AnalysisReview } from "./AnalysisReview.tsx";
 import { StoryCoverage } from "./StoryCoverage.tsx";
 
+const revisionSources: Record<StoryRevisionRow["source"], string> = {
+  initial: "初始版本",
+  user_edit: "手动编辑",
+  ai_rewrite: "AI 改写",
+  import: "导入",
+};
+
+const inputKinds: Record<StoryRevisionRow["inputKind"], string> = {
+  story: "故事",
+  chapter: "章节",
+  outline: "大纲",
+  screenplay: "剧本",
+  idea: "创意",
+};
+
 export function StoryPage() {
   const aiText = useAiBody("text");
   const projectId = useProjectId();
@@ -39,12 +54,12 @@ export function StoryPage() {
     () =>
       onProjectEvent((e) => {
         if (e.type === "job.updated" && e.kind === "story_rewrite" && e.status === "completed")
-          toast.success("AI rewrite saved as a new revision");
+          toast.success("AI 改写已保存为新修订版");
         if (e.type === "job.updated" && e.kind === "ad_script") {
           if (e.status === "completed") {
-            toast.success("Ad script saved as a new revision");
+            toast.success("广告脚本已保存为新修订版");
             void qc.invalidateQueries({ queryKey: qk.story(projectId) });
-          } else if (e.status === "failed") toast.error("The ad script could not be written");
+          } else if (e.status === "failed") toast.error("广告脚本生成失败");
         }
         if (e.type === "analysis.updated" && e.status === "completed") setAnalysisId(String(e.analysisId));
       }),
@@ -78,7 +93,7 @@ export function StoryPage() {
       const r = await post<{ analysis: StoryAnalysisRow }>(`/story-revisions/${latest.id}/analyze`, aiText());
       setAnalysisId(r.analysis.id);
       await qc.invalidateQueries({ queryKey: qk.story(projectId) });
-      toast.info("Analysis queued");
+      toast.info("分析已加入队列");
     } catch (e) {
       toast.error(e);
     } finally {
@@ -89,26 +104,26 @@ export function StoryPage() {
   return (
     <div className="mx-auto max-w-7xl p-4 sm:p-6">
       <PageHeader
-        title="Story"
-        subtitle="Every analysis references a specific revision. Analyzed revisions are locked; editing forks a new revision."
+        title="故事"
+        subtitle="每次分析关联特定修订版，已分析的修订版会锁定，继续编辑将创建新修订版。"
         actions={
           <>
             <button
               type="button"
               className="btn-secondary"
               onClick={() => setAdOpen(true)}
-              title="Write an ad's script from a brief"
+              title="根据需求简报编写广告脚本"
             >
-              <Megaphone className="size-4" /> Ad from a brief
+              <Megaphone className="size-4" /> 从简报创作广告
             </button>
             {latest && (
               <>
                 <button type="button" className="btn-secondary" onClick={() => setRewriteOpen(true)}>
-                  <Wand2 className="size-4" /> AI rewrite
+                  <Wand2 className="size-4" /> AI 改写
                 </button>
                 <AiChip cap="text" />
                 <button type="button" className="btn-primary" onClick={analyze} disabled={analyzing}>
-                  {analyzing ? <Spinner /> : <Sparkles className="size-4" />} Analyze revision {latest.revisionNumber}
+                  {analyzing ? <Spinner /> : <Sparkles className="size-4" />} 分析第 {latest.revisionNumber} 版
                 </button>
               </>
             )}
@@ -129,7 +144,7 @@ export function StoryPage() {
           <aside className="space-y-4">
             <div className="card p-3">
               <h3 className="mb-2 flex items-center gap-1.5 text-sm font-medium">
-                <History className="size-4" /> Revisions
+                <History className="size-4" /> 修订历史
               </h3>
               <ul className="max-h-72 space-y-1 overflow-y-auto">
                 {data.revisions.map((r) => (
@@ -143,11 +158,11 @@ export function StoryPage() {
                       )}
                     >
                       <div className="flex items-center justify-between gap-1">
-                        <span className="font-medium">Rev {r.revisionNumber}</span>
-                        <span className="muted text-[11px]">{r.source.replace("_", " ")}</span>
+                        <span className="font-medium">修订版 {r.revisionNumber}</span>
+                        <span className="muted text-[11px]">{revisionSources[r.source]}</span>
                       </div>
                       <div className="muted text-[11px]">
-                        {fmt.num(r.length)} chars · {fmt.ago(r.updatedAt)} {r.lockedAt ? "· 🔒 analyzed" : ""}
+                        {fmt.num(r.length)} 字 · {fmt.ago(r.updatedAt)} {r.lockedAt ? "· 🔒 已分析" : ""}
                       </div>
                     </button>
                   </li>
@@ -155,10 +170,8 @@ export function StoryPage() {
               </ul>
             </div>
             <div className="card p-3">
-              <h3 className="mb-2 text-sm font-medium">Analyses</h3>
-              {!data.analyses.length && (
-                <p className="muted text-xs">Run an analysis to extract cast, world and chapters.</p>
-              )}
+              <h3 className="mb-2 text-sm font-medium">分析记录</h3>
+              {!data.analyses.length && <p className="muted text-xs">运行分析以提取角色、世界和章节。</p>}
               <ul className="space-y-1">
                 {data.analyses.map((a) => {
                   const rev = data.revisions.find((r) => r.id === a.storyRevisionId);
@@ -173,7 +186,7 @@ export function StoryPage() {
                         )}
                       >
                         <span>
-                          Rev {rev?.revisionNumber ?? "?"} · {fmt.ago(a.createdAt)}
+                          修订版 {rev?.revisionNumber ?? "?"} · {fmt.ago(a.createdAt)}
                         </span>
                         <StatusChip status={a.status} />
                       </button>
@@ -187,7 +200,7 @@ export function StoryPage() {
       )}
       {selectedAnalysis && (selectedAnalysis.status === "completed" || selectedAnalysis.status === "applied") && (
         <section className="mt-8">
-          <h2 className="mb-3 text-lg font-semibold">Analysis review</h2>
+          <h2 className="mb-3 text-lg font-semibold">分析审核</h2>
           <AnalysisReview analysis={selectedAnalysis} projectId={projectId} />
         </section>
       )}
@@ -197,13 +210,13 @@ export function StoryPage() {
           onShowSpan={(revisionId, start, end) => {
             if (revisionId !== latest?.id) {
               setViewRevisionId(revisionId);
-              toast.info(`The report is for an earlier revision: characters ${start}–${end} of it`);
+              toast.info(`报告基于较早的修订版，涉及第 ${start} 至 ${end} 字`);
               return;
             }
             setViewRevisionId(null);
             // The editor holds the latest revision; select the span in it and bring it into view.
             requestAnimationFrame(() => {
-              const t = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Story content"]');
+              const t = document.querySelector<HTMLTextAreaElement>('textarea[aria-label="故事正文"]');
               if (!t) return;
               t.focus();
               t.setSelectionRange(start, end);
@@ -217,7 +230,7 @@ export function StoryPage() {
       <ChangedChapters projectId={projectId} />
       {data.analyses.some((a) => a.status === "pending") && (
         <div className="card mt-6 flex items-center gap-2 p-3 text-sm">
-          <Spinner /> An analysis is running. Results appear here automatically.
+          <Spinner /> 分析正在进行，结果会自动显示在此处。
         </div>
       )}
       {latest && <RewriteModal open={rewriteOpen} onClose={() => setRewriteOpen(false)} revisionId={latest.id} />}
@@ -244,7 +257,7 @@ function StoryEditor({ revision, projectId }: { revision: StoryRevisionRow; proj
     });
     setBase({ id: r.revision.id, sha: r.revision.contentSha256, locked: Boolean(r.revision.lockedAt) });
     if (r.forked) {
-      toast.info(`Saved as new revision ${r.revision.revisionNumber} (previous revision is locked by an analysis)`);
+      toast.info(`已另存为修订版 ${r.revision.revisionNumber}，上一版已关联分析结果并锁定。`);
     }
     await qc.invalidateQueries({ queryKey: qk.story(projectId) });
   });
@@ -255,12 +268,12 @@ function StoryEditor({ revision, projectId }: { revision: StoryRevisionRow; proj
           className="input max-w-sm font-medium"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Untitled"
-          aria-label="Story title"
+          placeholder="未命名"
+          aria-label="故事标题"
         />
         <span className="muted text-xs">
-          Rev {revision.revisionNumber} · {revision.inputKind}
-          {base.locked ? " · locked (edits fork a new revision)" : ""}
+          修订版 {revision.revisionNumber} · {inputKinds[revision.inputKind]}
+          {base.locked ? " · 已锁定（编辑将创建新修订版）" : ""}
         </span>
         <span className="ml-auto">
           <SaveIndicator state={state} />
@@ -269,8 +282,7 @@ function StoryEditor({ revision, projectId }: { revision: StoryRevisionRow; proj
       {newer && (
         <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-accent-500/40 bg-accent-600/10 p-2 text-sm">
           <span>
-            Revision {revision.revisionNumber} ({revision.source.replace("_", " ")}) is newer than the text you are
-            editing.
+            修订版 {revision.revisionNumber} ({revisionSources[revision.source]}) 晚于当前正在编辑的版本。
           </span>
           <button
             type="button"
@@ -282,7 +294,7 @@ function StoryEditor({ revision, projectId }: { revision: StoryRevisionRow; proj
               setBase({ id: revision.id, sha: revision.contentSha256, locked: Boolean(revision.lockedAt) });
             }}
           >
-            Load revision {revision.revisionNumber}
+            载入修订版 {revision.revisionNumber}
           </button>
         </div>
       )}
@@ -290,10 +302,10 @@ function StoryEditor({ revision, projectId }: { revision: StoryRevisionRow; proj
         className="input min-h-[60vh] font-mono text-sm leading-relaxed"
         value={content}
         onChange={(e) => setContent(e.target.value)}
-        aria-label="Story content"
+        aria-label="故事正文"
         spellCheck
       />
-      <div className="muted mt-1 text-right text-xs">{content.length.toLocaleString()} characters</div>
+      <div className="muted mt-1 text-right text-xs">{content.length.toLocaleString()} 字</div>
     </div>
   );
 }
@@ -311,14 +323,14 @@ function RevisionViewer({ id, projectId, onClose }: { id: string; projectId: str
     <div className="card p-4">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <div className="font-medium">
-          Revision {r.revisionNumber}{" "}
+          修订版 {r.revisionNumber}{" "}
           <span className="muted text-xs">
-            ({r.source.replace("_", " ")}, {fmt.date(r.createdAt)}) · read-only
+            ({revisionSources[r.source]}, {fmt.date(r.createdAt)}) · 只读
           </span>
         </div>
         <div className="ml-auto flex gap-2">
           <button type="button" className="btn-secondary" onClick={onClose}>
-            Back to latest
+            返回最新版本
           </button>
           <button
             type="button"
@@ -333,7 +345,7 @@ function RevisionViewer({ id, projectId, onClose }: { id: string; projectId: str
                   inputKind: r.inputKind,
                 });
                 await qc.invalidateQueries({ queryKey: qk.story(projectId) });
-                toast.success("Restored as a new revision");
+                toast.success("已恢复为新修订版");
                 onClose();
               } catch (e) {
                 toast.error(e);
@@ -342,7 +354,7 @@ function RevisionViewer({ id, projectId, onClose }: { id: string; projectId: str
               }
             }}
           >
-            Restore as new revision
+            恢复为新修订版
           </button>
         </div>
       </div>
@@ -358,14 +370,14 @@ function NewStory({ projectId }: { projectId: string }) {
   const [content, setContent] = useState("");
   const [busy, setBusy] = useState(false);
   return (
-    <EmptyState title="No story yet" action={null}>
+    <EmptyState title="暂无故事" action={null}>
       <div className="mt-2 w-full max-w-2xl text-left">
         <textarea
           className="input min-h-60 font-mono text-sm"
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="Paste a story, chapter, outline, screenplay or idea…"
-          aria-label="Story content"
+          placeholder="粘贴故事、章节、大纲、剧本或创意……"
+          aria-label="故事正文"
         />
         <button
           type="button"
@@ -383,7 +395,7 @@ function NewStory({ projectId }: { projectId: string }) {
             }
           }}
         >
-          {busy && <Spinner />} Save story
+          {busy && <Spinner />} 保存故事
         </button>
       </div>
     </EmptyState>
@@ -398,12 +410,12 @@ function RewriteModal({ open, onClose, revisionId }: { open: boolean; onClose: (
     <Modal
       open={open}
       onClose={onClose}
-      title="AI rewrite"
+      title="AI 改写"
       footer={
         <>
           <AiChip cap="text" className="mr-auto" />
           <button type="button" className="btn-secondary" onClick={onClose}>
-            Cancel
+            取消
           </button>
           <button
             type="button"
@@ -413,7 +425,7 @@ function RewriteModal({ open, onClose, revisionId }: { open: boolean; onClose: (
               setBusy(true);
               try {
                 await post(`/story-revisions/${revisionId}/rewrite`, { ...aiRewrite(), instruction });
-                toast.info("Rewrite queued. It will appear as a new revision.");
+                toast.info("改写已加入队列，完成后会显示为新修订版。");
                 setInstruction("");
                 onClose();
               } catch (e) {
@@ -423,20 +435,18 @@ function RewriteModal({ open, onClose, revisionId }: { open: boolean; onClose: (
               }
             }}
           >
-            {busy && <Spinner />} Queue rewrite
+            {busy && <Spinner />} 开始改写
           </button>
         </>
       }
     >
-      <p className="muted mb-2 text-sm">
-        The text model rewrites the current revision into a new revision. The original is never overwritten.
-      </p>
+      <p className="muted mb-2 text-sm">文本模型会根据当前版本改写，并保存为新修订版。</p>
       <textarea
         className="input min-h-28"
         value={instruction}
         onChange={(e) => setInstruction(e.target.value)}
-        placeholder="e.g. Tighten pacing, add more dialogue between Woo Jin and Do-yun, end on a cliffhanger."
-        aria-label="Rewrite instruction"
+        placeholder="例如，压缩节奏，增加两位主角的对白，并以悬念结尾。"
+        aria-label="改写要求"
       />
     </Modal>
   );
@@ -514,12 +524,12 @@ function AdBriefModal({ open, onClose, projectId }: { open: boolean; onClose: ()
     <Modal
       open={open}
       onClose={onClose}
-      title="Ad from a brief"
+      title="从简报创作广告"
       footer={
         <>
           <AiChip cap="text" className="mr-auto" />
           <button type="button" className="btn-secondary" onClick={onClose}>
-            Cancel
+            取消
           </button>
           <button
             type="button"
@@ -529,7 +539,7 @@ function AdBriefModal({ open, onClose, projectId }: { open: boolean; onClose: ()
               setBusy(true);
               try {
                 await post(`/projects/${projectId}/ad-script`, { ...aiText(), brief });
-                toast.info("Writing the ad script. It will appear as a new revision.");
+                toast.info("正在编写广告脚本，完成后会显示为新修订版。");
                 onClose();
               } catch (e) {
                 toast.error(e);
@@ -538,38 +548,37 @@ function AdBriefModal({ open, onClose, projectId }: { open: boolean; onClose: ()
               }
             }}
           >
-            {busy && <Spinner />} Write the script
+            {busy && <Spinner />} 编写脚本
           </button>
         </>
       }
     >
       <div className="space-y-2">
         <p className="muted text-sm">
-          The script comes back as scenes, each with what is seen, the voiceover and any text on screen, timed to the
-          length. It is saved as a new revision of the story. Then analyse and plan it, draw the shots and animate them.
+          脚本按场景组织，每个场景包含画面、旁白及屏幕文字，并匹配指定时长。脚本会保存为故事的新修订版，之后可分析、规划、绘制镜头并制作动画。
         </p>
-        {field("product", "Product or service", "e.g. Glowtide, a desk lamp that wakes you with sunrise light", true)}
-        {field("audience", "Audience", "e.g. people who work late and wake up tired")}
-        {field("message", "The one thing to remember", "e.g. wake up with light, not an alarm")}
+        {field("product", "产品或服务", "例如，Glowtide 模拟日出唤醒的台灯", true)}
+        {field("audience", "目标受众", "例如，经常熬夜且起床疲倦的人")}
+        {field("message", "核心记忆点", "例如，用晨光温柔唤醒")}
         <div className="grid grid-cols-2 gap-2">
-          {field("offer", "Offer", "e.g. 30% off this week")}
-          {field("callToAction", "Call to action", "e.g. Order at glowtide.com")}
+          {field("offer", "优惠", "例如，本周七折")}
+          {field("callToAction", "行动号召", "例如，前往 glowtide.com 下单")}
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <Field label="Length (seconds)">
+          <Field label="时长（秒）">
             <input
               className="input"
               type="number"
               min={10}
               max={600}
-              aria-label="Length (seconds)"
+              aria-label="时长（秒）"
               value={brief.lengthSeconds}
               onChange={set("lengthSeconds")}
             />
           </Field>
-          {field("tone", "Tone", "e.g. warm, calm, premium")}
+          {field("tone", "语气", "例如，温暖、平静、有质感")}
         </div>
-        {field("notes", "Notes", "Brand rules, claims to avoid, words to use", true)}
+        {field("notes", "备注", "品牌规范、避免的说法、建议使用的词语", true)}
       </div>
     </Modal>
   );

@@ -11,7 +11,7 @@ import { doc } from "../lib/openapi.ts";
 export const importRoutes = new Hono<AppEnv>();
 
 // Configured by IMPORT_MAX_UPLOAD_MB; nginx's client_max_body_size on this route has to match.
-const tooLarge = (mb: number) => new ApiError(413, "too_large", `Import files are limited to ${mb} MB`);
+const tooLarge = (mb: number) => new ApiError(413, "too_large", `导入文件大小上限为 ${mb} MB`);
 /**
  * A multipart body is materialised whole before anything can be written to disk, so that path keeps a small
  * ceiling. Larger packages are sent as a raw body and streamed straight through — the worker streams extraction,
@@ -22,7 +22,7 @@ const multipartTooLarge = () =>
   new ApiError(
     413,
     "too_large",
-    `Multipart uploads are limited to ${Math.round(MAX_MULTIPART_BYTES / (1024 * 1024))} MB. Send the file as a raw body instead (any non-multipart content type, filename in ?name=), which is streamed to disk.`,
+    `表单上传大小上限为 ${Math.round(MAX_MULTIPART_BYTES / (1024 * 1024))} MB。较大的文件请作为原始请求体上传，使用非表单内容类型，并通过 ?name= 指定文件名。`,
   );
 const safeName = (raw: string | undefined, fallback: string) =>
   (raw ?? "").replace(/[^\w.\- ]/g, "_").slice(0, 200) || fallback;
@@ -42,7 +42,7 @@ const assertImportSlot = async (db: DbOrTx, userId: string) => {
         inArray(exportJobs.status, ["queued", "processing"]),
       ),
     );
-  if ((pending?.n ?? 0) >= 2) throw new ApiError(409, "conflict", "You already have an import in progress.");
+  if ((pending?.n ?? 0) >= 2) throw new ApiError(409, "conflict", "你已有导入任务正在处理。");
 };
 
 doc({
@@ -82,7 +82,7 @@ importRoutes.post("/projects/import", async (c) => {
       try {
         form = await c.req.formData();
       } catch {
-        throw badRequest("Expected multipart/form-data");
+        throw badRequest("请使用 multipart/form-data 上传文件");
       }
       const file = form.get("file");
       if (!(file instanceof File)) throw badRequest('Missing file field "file"');
@@ -94,7 +94,7 @@ importRoutes.post("/projects/import", async (c) => {
       await Bun.write(uploadPath, file);
     } else {
       const body = c.req.raw.body;
-      if (!body) throw badRequest("Send the file as the request body, or as multipart/form-data");
+      if (!body) throw badRequest("请直接发送文件，或使用 multipart/form-data 上传");
       originalName = safeName(c.req.query("name") ?? c.req.header("x-file-name"), "import.zip");
       const sink = Bun.file(uploadPath).writer();
       const reader = body.getReader();
@@ -120,12 +120,12 @@ importRoutes.post("/projects/import", async (c) => {
       } finally {
         await sink.end();
       }
-      if (!bytes) throw badRequest("The upload was empty");
+      if (!bytes) throw badRequest("上传的文件为空");
     }
 
     const isZip = head[0] === 0x50 && head[1] === 0x4b && head[2] === 0x03 && head[3] === 0x04;
     const isJson = !isZip && /^\s*\{/.test(new TextDecoder().decode(head.slice(0, 256)));
-    if (!isZip && !isJson) throw badRequest("Upload a OpenManga project .zip package or project .json export");
+    if (!isZip && !isJson) throw badRequest("请上传 OpenManga 项目的 ZIP 套件或 JSON 导出文件");
 
     // Title from the start of a JSON export only; the worker reads and checks the whole document. Parsing it all
     // here cost the API up to ~30x the upload in memory, so one upload could exhaust it for everyone.
@@ -135,7 +135,7 @@ importRoutes.post("/projects/import", async (c) => {
         const t = (JSON.parse(await Bun.file(uploadPath).text()) as { project?: { title?: unknown } }).project?.title;
         if (typeof t === "string" && t.trim()) title = t.trim().slice(0, 200);
       } catch {
-        throw badRequest("The .json file is not valid JSON");
+        throw badRequest("文件内容不是有效的 JSON");
       }
     } else if (isJson) {
       // The project's own title, when it comes before any nested object of the project; otherwise the worker sets it.

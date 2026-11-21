@@ -83,7 +83,7 @@ function useConnectOutcome() {
     const u = new URL(window.location.href);
     const ok = u.searchParams.get("youtube_connected");
     const err = u.searchParams.get("youtube_error");
-    if (ok) toast.success(`Connected ${ok}`);
+    if (ok) toast.success(`已连接 ${ok}`);
     if (err) toast.error(new Error(err));
     if (ok || err) {
       u.searchParams.delete("youtube_connected");
@@ -103,34 +103,34 @@ export function YoutubeChannels({ returnTo }: { returnTo: string }) {
   });
   const remove = useAction((id: string) => del(`/youtube/channels/${id}`), {
     invalidate: [channelsKey, ["project"]],
-    success: "Channel disconnected",
+    success: "频道已断开连接",
     onSuccess: () => setRemoving(null),
   });
   const d = q.data;
   return (
     <section className="card space-y-3 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-medium">YouTube channels</h2>
+        <h2 className="font-medium">YouTube 频道</h2>
         {d?.enabled && (
           <button type="button" className="btn-secondary" onClick={() => connect.mutate()} disabled={connect.isPending}>
-            {connect.isPending ? <Spinner /> : <Plus className="size-4" />} Connect a channel
+            {connect.isPending ? <Spinner /> : <Plus className="size-4" />} 连接频道
           </button>
         )}
       </div>
       {q.error && <ErrorBox error={q.error} onRetry={() => q.refetch()} />}
       {d && !d.enabled && (
         <p className="muted text-sm">
-          YouTube stats are not set up on this server. An administrator registers a Google Cloud OAuth client and sets
-          GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET (see the deployment guide).
+          此服务器尚未配置 YouTube 数据。请管理员注册 Google Cloud OAuth 客户端并设置 GOOGLE_OAUTH_CLIENT_ID 和
+          GOOGLE_OAUTH_CLIENT_SECRET，详见部署指南。
         </p>
       )}
       {d?.enabled && (
         <p className="muted text-xs">
-          Read-only access to views, analytics and reach. A Google account that manages several brand channels connects
-          each one separately.{d.mock && " Mock mode: channels connect through a fake Google consent screen."}
+          连接频道仅授权读取观看次数、分析数据和覆盖情况。一个 Google 账号管理多个品牌频道时，请分别连接。
+          {d.mock && " 模拟模式下，频道通过模拟 Google 授权页面连接。"}
         </p>
       )}
-      {d?.channels.length === 0 && d.enabled && <p className="muted text-sm">No channel connected yet.</p>}
+      {d?.channels.length === 0 && d.enabled && <p className="muted text-sm">尚未连接频道。</p>}
       <ul className="divide-y divide-[var(--border)] text-sm">
         {d?.channels.map((c) => (
           <li key={c.id} className="flex items-center gap-2 py-2">
@@ -138,16 +138,16 @@ export function YoutubeChannels({ returnTo }: { returnTo: string }) {
               <div className="truncate font-medium">{c.title}</div>
               {c.status === "revoked" ? (
                 <div className="text-xs text-red-700 dark:text-red-300">
-                  Access was withdrawn in the Google account: connect it again, or disconnect.
+                  Google 账号已撤销授权，请重新连接或断开连接。
                 </div>
               ) : c.reportingError ? (
                 <div className="text-xs text-amber-800 [overflow-wrap:anywhere] dark:text-amber-300">
-                  Reach reports unavailable: {c.reportingError}
+                  曝光报告不可用 · {c.reportingError}
                 </div>
               ) : (
                 <div className="muted text-xs">
                   {c.reportingReady
-                    ? `Reach reports ${c.reportsCheckedAt ? `checked ${fmt.ago(c.reportsCheckedAt)}` : "set up"}`
+                    ? `曝光报告${c.reportsCheckedAt ? `已检查 · ${fmt.ago(c.reportsCheckedAt)}` : "已配置"}`
                     : ""}
                 </div>
               )}
@@ -156,24 +156,23 @@ export function YoutubeChannels({ returnTo }: { returnTo: string }) {
               type="button"
               className="btn-ghost"
               onClick={() => setRemoving(c)}
-              aria-label={`Disconnect ${c.title}`}
+              aria-label={`断开 ${c.title} 的连接`}
             >
-              <Unplug className="size-4" /> Disconnect
+              <Unplug className="size-4" /> 断开连接
             </button>
           </li>
         ))}
       </ul>
       <ConfirmDialog
         open={Boolean(removing)}
-        title={`Disconnect ${removing?.title ?? ""}?`}
-        confirmLabel="Disconnect"
+        title={`断开 ${removing?.title ?? ""} 的连接？`}
+        confirmLabel="断开连接"
         danger
         busy={remove.isPending}
         onConfirm={() => removing && remove.mutate(removing.id)}
         onClose={() => setRemoving(null)}
       >
-        Access is revoked at Google, and the reach reports and authorized snapshots stored for this channel are deleted.
-        Linked videos stay, with public counters only.
+        将撤销 Google 授权并删除此频道保存的曝光报告和授权数据快照。已关联的视频将保留，仅显示公开统计数据。
       </ConfirmDialog>
     </section>
   );
@@ -189,7 +188,7 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
   );
 }
 
-const sumHint = (s: Sum) => `${s.videos} video${s.videos === 1 ? "" : "s"} · ${fmt.num(s.likes)} likes`;
+const sumHint = (s: Sum) => `${s.videos} 个视频 · ${fmt.num(s.likes)} 次点赞`;
 
 /** Where a video came from: an export file of the project, or a Short of its repurposing plan. */
 function SourcePicker({
@@ -214,7 +213,7 @@ function SourcePicker({
     )?.repurpose?.items ?? [];
   const current = value.exportId ? `e:${value.exportId}` : value.shortId ? `s:${value.shortId}` : "";
   return (
-    <Field label="Came from" hint="The export file or the Short of the repurposing plan it was made from.">
+    <Field label="来源" hint="此视频对应的导出文件或内容再利用计划中的短视频。">
       <select
         className="input"
         value={current}
@@ -226,9 +225,9 @@ function SourcePicker({
           });
         }}
       >
-        <option value="">Not recorded</option>
+        <option value="">未记录</option>
         {shorts.length > 0 && (
-          <optgroup label="Repurposing plan">
+          <optgroup label="内容再利用计划">
             {shorts.map((s) => (
               <option key={s.id} value={`s:${s.id}`}>
                 {s.label || s.title || s.kind}
@@ -237,7 +236,7 @@ function SourcePicker({
           </optgroup>
         )}
         {files.length > 0 && (
-          <optgroup label="Export files">
+          <optgroup label="导出文件">
             {files.map((f) => (
               <option key={f.id} value={`e:${f.id}`}>
                 {f.fileName}
@@ -295,7 +294,7 @@ function AddVideo({ open, onClose, linked }: { open: boolean; onClose: () => voi
       }),
     {
       invalidate: [summaryKey(projectId)],
-      success: "Video linked",
+      success: "视频已关联",
       onSuccess: () => {
         setVideo("");
         setLabel("");
@@ -304,31 +303,31 @@ function AddVideo({ open, onClose, linked }: { open: boolean; onClose: () => voi
     },
   );
   return (
-    <Modal open={open} onClose={onClose} title="Link a YouTube video">
+    <Modal open={open} onClose={onClose} title="关联 YouTube 视频">
       <div className="space-y-3">
         <Tabs
           value={tab}
           onChange={setTab}
           tabs={[
-            { value: "paste", label: "Paste a link" },
-            { value: "uploads", label: "From my channel" },
+            { value: "paste", label: "粘贴链接" },
+            { value: "uploads", label: "从我的频道选择" },
           ]}
         />
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Kind" hint="Detect: a /shorts/ link or a video up to 3 minutes is a Short.">
+          <Field label="类型" hint="自动识别时，/shorts/ 链接或不超过 3 分钟的视频视为短视频。">
             <select className="input" value={kind} onChange={(e) => setKind(e.target.value as typeof kind)}>
-              <option value="">Detect</option>
-              <option value="film">Film</option>
-              <option value="short">Short</option>
+              <option value="">自动识别</option>
+              <option value="film">影片</option>
+              <option value="short">短视频</option>
             </select>
           </Field>
-          <Field label="Label (optional)">
+          <Field label="标签（可选）">
             <input
               className="input"
               value={label}
               maxLength={120}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder="e.g. German dub"
+              placeholder="例如，德语配音版"
             />
           </Field>
         </div>
@@ -342,8 +341,8 @@ function AddVideo({ open, onClose, linked }: { open: boolean; onClose: () => voi
             }}
           >
             <Field
-              label="Video link or id"
-              hint="watch?v=, youtu.be, /shorts/, /live/, /embed/ links or the 11-character id."
+              label="视频链接或 ID"
+              hint="支持 watch?v=、youtu.be、/shorts/、/live/、/embed/ 链接或 11 位视频 ID。"
             >
               <input
                 className="input"
@@ -355,17 +354,17 @@ function AddVideo({ open, onClose, linked }: { open: boolean; onClose: () => voi
               />
             </Field>
             <button type="submit" className="btn-primary" disabled={add.isPending || !video.trim()}>
-              {add.isPending ? <Spinner /> : <Link2 className="size-4" />} Link video
+              {add.isPending ? <Spinner /> : <Link2 className="size-4" />} 关联视频
             </button>
           </form>
         ) : active.length === 0 ? (
-          <p className="muted text-sm">Connect a channel first (Account → YouTube channels, or below on this page).</p>
+          <p className="muted text-sm">请先连接频道，可前往“账号 → YouTube 频道”或在本页下方操作。</p>
         ) : (
           <div className="space-y-2">
             {active.length > 1 && (
               <select
                 className="input"
-                aria-label="Channel"
+                aria-label="频道"
                 value={chosen}
                 onChange={(e) => {
                   setChannelId(e.target.value);
@@ -386,11 +385,11 @@ function AddVideo({ open, onClose, linked }: { open: boolean; onClose: () => voi
                   <div className="min-w-0 flex-1">
                     <div className="truncate">{u.title}</div>
                     <div className="muted text-xs">
-                      {u.publishedAt ? new Date(u.publishedAt).toLocaleDateString() : ""}
+                      {u.publishedAt ? new Date(u.publishedAt).toLocaleDateString("zh-CN") : ""}
                     </div>
                   </div>
                   {linked.has(u.videoId) ? (
-                    <span className="muted text-xs">Linked</span>
+                    <span className="muted text-xs">已关联</span>
                   ) : (
                     <button
                       type="button"
@@ -398,7 +397,7 @@ function AddVideo({ open, onClose, linked }: { open: boolean; onClose: () => voi
                       disabled={add.isPending}
                       onClick={() => add.mutate(u.videoId)}
                     >
-                      Link
+                      关联
                     </button>
                   )}
                 </li>
@@ -411,7 +410,7 @@ function AddVideo({ open, onClose, linked }: { open: boolean; onClose: () => voi
             </ul>
             {uploads.data?.next && (
               <button type="button" className="btn-ghost" onClick={() => setPages([...pages, uploads.data!.next!])}>
-                Load more
+                加载更多
               </button>
             )}
           </div>
@@ -428,7 +427,7 @@ function EditLink({ link, onClose }: { link: LinkItem; onClose: () => void }) {
   const [source, setSource] = useState({ exportId: link.exportId, shortId: link.shortId });
   const save = useAction(() => patch(`/projects/${projectId}/youtube/links/${link.id}`, { kind, label, ...source }), {
     invalidate: [summaryKey(projectId)],
-    success: "Saved",
+    success: "已保存",
     onSuccess: onClose,
   });
   return (
@@ -440,18 +439,18 @@ function EditLink({ link, onClose }: { link: LinkItem; onClose: () => void }) {
           save.mutate();
         }}
       >
-        <Field label="Kind">
+        <Field label="类型">
           <select className="input" value={kind} onChange={(e) => setKind(e.target.value as LinkItem["kind"])}>
-            <option value="film">Film</option>
-            <option value="short">Short</option>
+            <option value="film">影片</option>
+            <option value="short">短视频</option>
           </select>
         </Field>
-        <Field label="Label">
+        <Field label="标签">
           <input className="input" value={label} maxLength={120} onChange={(e) => setLabel(e.target.value)} />
         </Field>
         <SourcePicker value={source} onChange={setSource} />
         <button type="submit" className="btn-primary" disabled={save.isPending}>
-          {save.isPending && <Spinner />} Save
+          {save.isPending && <Spinner />} 保存
         </button>
       </form>
     </Modal>
@@ -459,46 +458,46 @@ function EditLink({ link, onClose }: { link: LinkItem; onClose: () => void }) {
 }
 
 const METRICS: [string, string][] = [
-  ["views", "Views"],
-  ["estimatedMinutesWatched", "Watch time (minutes)"],
-  ["averageViewDuration", "Average view duration (s)"],
-  ["averageViewPercentage", "Average percentage viewed"],
-  ["subscribersGained", "Subscribers gained"],
-  ["subscribersLost", "Subscribers lost"],
-  ["likes", "Likes"],
-  ["comments", "Comments"],
-  ["shares", "Shares"],
+  ["views", "播放量"],
+  ["estimatedMinutesWatched", "观看时长（分钟）"],
+  ["averageViewDuration", "平均观看时长（秒）"],
+  ["averageViewPercentage", "平均观看比例"],
+  ["subscribersGained", "新增订阅人数"],
+  ["subscribersLost", "流失订阅人数"],
+  ["likes", "点赞数"],
+  ["comments", "评论"],
+  ["shares", "分享数"],
 ];
 const SPLIT_LABELS: Record<string, string> = {
-  trafficSource: "Traffic sources",
-  country: "Countries",
-  device: "Devices",
-  contentType: "Shorts or long form",
+  trafficSource: "流量来源",
+  country: "国家或地区",
+  device: "设备",
+  contentType: "短视频或长视频",
 };
 /** Reporting API traffic source codes, and the Analytics API's names made readable. */
 const TRAFFIC: Record<string, string> = {
-  "0": "Direct or unknown",
-  "1": "YouTube advertising",
-  "3": "Browse features",
-  "4": "Channel pages",
-  "5": "YouTube search",
-  "7": "Suggested videos",
-  "8": "Other YouTube features",
-  "9": "External",
-  "11": "Cards and annotations",
-  "14": "Playlists",
-  "17": "Notifications",
-  "18": "Playlist pages",
-  "20": "End screens",
-  "23": "Stories",
-  "24": "Shorts feed",
-  "26": "Hashtag pages",
-  "27": "Sound pages",
-  "28": "Live redirect",
-  "30": "Remixed video",
-  "31": "Vertical live feed",
-  "32": "Related video",
-  TV: "TV",
+  "0": "直接访问或未知",
+  "1": "YouTube 广告",
+  "3": "浏览功能",
+  "4": "频道页面",
+  "5": "YouTube 搜索",
+  "7": "推荐视频",
+  "8": "其他 YouTube 功能",
+  "9": "外部来源",
+  "11": "卡片与注释",
+  "14": "播放列表",
+  "17": "通知",
+  "18": "播放列表页面",
+  "20": "片尾画面",
+  "23": "动态",
+  "24": "Shorts 信息流",
+  "26": "话题标签页面",
+  "27": "音频页面",
+  "28": "直播重定向",
+  "30": "混剪视频",
+  "31": "竖屏直播信息流",
+  "32": "相关视频",
+  TV: "电视",
 };
 const readable = (k: string) =>
   TRAFFIC[k] ??
@@ -507,7 +506,7 @@ const readable = (k: string) =>
     .toLowerCase()
     .replace(/^\w/, (c) => c.toUpperCase());
 const dayLabel = (d: string) =>
-  new Date(`${d}T00:00:00Z`).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+  new Date(`${d}T00:00:00Z`).toLocaleDateString("zh-CN", { month: "short", day: "numeric", timeZone: "UTC" });
 
 /** One video's history: opened on demand, so the Analytics API is only asked when someone looks. */
 function VideoHistory({ link }: { link: LinkItem }) {
@@ -527,17 +526,12 @@ function VideoHistory({ link }: { link: LinkItem }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="muted text-xs">
           {analytics
-            ? "Daily, from YouTube Analytics (two to three days behind)."
-            : "Daily views from the stored public counters (kept 30 days for channels that are not connected)."}
-          {h.analyticsError && ` Analytics unavailable: ${h.analyticsError}`}
+            ? "每日数据来自 YouTube Analytics，延迟约 2 至 3 天。"
+            : "根据保存的公开统计数据计算每日播放量，未连接频道的数据保留 30 天。"}
+          {h.analyticsError && ` 分析数据不可用 · ${h.analyticsError}`}
         </div>
         {analytics && (
-          <select
-            className="input w-auto"
-            aria-label="Metric"
-            value={metric}
-            onChange={(e) => setMetric(e.target.value)}
-          >
+          <select className="input w-auto" aria-label="指标" value={metric} onChange={(e) => setMetric(e.target.value)}>
             {METRICS.map(([k, l]) => (
               <option key={k} value={k}>
                 {l}
@@ -548,32 +542,32 @@ function VideoHistory({ link }: { link: LinkItem }) {
       </div>
       {h.daily.length ? (
         <BarChart
-          label={`${METRICS.find((x) => x[0] === m)?.[1]} per day`}
+          label={`每日${METRICS.find((x) => x[0] === m)?.[1]}`}
           points={h.daily.map((d) => ({ label: dayLabel(String(d.day)), value: Number(d[m] ?? 0) }))}
         />
       ) : (
-        <p className="muted text-sm">No daily history yet.</p>
+        <p className="muted text-sm">暂无每日历史数据。</p>
       )}
       {h.tail && h.tail.views > 0 && (
         <p className="text-sm">
-          <TrendingUp className="mr-1 inline size-4" />
-          {fmt.num(h.tail.views)} more views since {dayLabel(h.tail.after)}, from the live counter.
+          <TrendingUp className="mr-1 inline size-4" />自 {dayLabel(h.tail.after)} 起新增 {fmt.num(h.tail.views)}{" "}
+          次播放，来自实时统计数据。
         </p>
       )}
       {h.reach.daily.length > 0 && (
         <div className="grid gap-4 lg:grid-cols-2">
           <div>
-            <h4 className="mb-1 text-sm font-medium">Thumbnail impressions per day</h4>
+            <h4 className="mb-1 text-sm font-medium">每日缩略图曝光量</h4>
             <BarChart
-              label="Thumbnail impressions per day"
+              label="每日缩略图曝光量"
               points={h.reach.daily.map((d) => ({ label: dayLabel(d.day), value: d.impressions }))}
             />
           </div>
           <div>
-            <h4 className="mb-1 text-sm font-medium">Click-through rate per day</h4>
+            <h4 className="mb-1 text-sm font-medium">每日点击率</h4>
             <LineChart
-              label="Thumbnail click-through rate per day"
-              series={[{ name: "CTR", values: h.reach.daily.map((d) => (d.ctr === null ? null : d.ctr * 100)) }]}
+              label="每日缩略图点击率"
+              series={[{ name: "点击率", values: h.reach.daily.map((d) => (d.ctr === null ? null : d.ctr * 100)) }]}
               xLabel={(i) => dayLabel(h.reach.daily[i]!.day)}
               fmt={(n) => `${n.toFixed(1)}%`}
             />
@@ -584,7 +578,7 @@ function VideoHistory({ link }: { link: LinkItem }) {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Object.entries(h.splits ?? {}).map(([k, rows]) => (
             <div key={k}>
-              <h4 className="mb-1 text-sm font-medium">{SPLIT_LABELS[k] ?? k} (views)</h4>
+              <h4 className="mb-1 text-sm font-medium">{SPLIT_LABELS[k] ?? k}（播放量）</h4>
               <ShareBars
                 rows={rows.map((r) => ({
                   key: k === "country" ? String(Object.values(r)[0]) : readable(String(Object.values(r)[0])),
@@ -595,7 +589,7 @@ function VideoHistory({ link }: { link: LinkItem }) {
           ))}
           {h.reach.bySource.length > 0 && (
             <div>
-              <h4 className="mb-1 text-sm font-medium">Impressions by traffic source</h4>
+              <h4 className="mb-1 text-sm font-medium">按流量来源统计曝光量</h4>
               <ShareBars
                 rows={h.reach.bySource.map((r) => ({ key: readable(r.trafficSource), value: r.impressions }))}
               />
@@ -621,7 +615,7 @@ export function YoutubePage() {
   const [open, setOpen] = useState<string | null>(null);
   const unlink = useAction((id: string) => del(`/projects/${projectId}/youtube/links/${id}`), {
     invalidate: [summaryKey(projectId)],
-    success: "Video unlinked",
+    success: "视频已取消关联",
     onSuccess: () => setUnlinking(null),
   });
   const s = q.data;
@@ -630,13 +624,13 @@ export function YoutubePage() {
   return (
     <div className="mx-auto max-w-6xl space-y-4 p-4 sm:p-6">
       <PageHeader
-        title="YouTube stats"
-        subtitle="How this project's published film and Shorts do, across every channel they are on."
+        title="YouTube 数据"
+        subtitle="查看此项目已发布影片和短视频在各频道的表现。"
         actions={
           canWrite &&
           s?.enabled && (
             <button type="button" className="btn-primary" onClick={() => setAdding(true)}>
-              <Plus className="size-4" /> Link a video
+              <Plus className="size-4" /> 关联视频
             </button>
           )
         }
@@ -644,34 +638,30 @@ export function YoutubePage() {
       {q.error && <ErrorBox error={q.error} onRetry={() => q.refetch()} />}
       {q.isLoading && <Spinner />}
       {s && !s.links.length && (
-        <EmptyState icon={<BarChart3 className="size-8" />} title="No videos linked yet">
+        <EmptyState icon={<BarChart3 className="size-8" />} title="尚未关联视频">
           {s.enabled
-            ? "Link the film and Shorts you published, from a connected channel's uploads or by pasting a link."
-            : "YouTube stats are not set up on this server."}
+            ? "从已连接频道的上传列表中选择已发布影片和短视频，或粘贴链接进行关联。"
+            : "此服务器尚未配置 YouTube 数据。"}
         </EmptyState>
       )}
       {s && s.links.length > 0 && (
         <>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Stat label="Views, all videos" value={fmt.num(s.totals.all.views)} hint={sumHint(s.totals.all)} />
-            <Stat label="Film" value={fmt.num(s.totals.film.views)} hint={sumHint(s.totals.film)} />
+            <Stat label="所有视频播放量" value={fmt.num(s.totals.all.views)} hint={sumHint(s.totals.all)} />
+            <Stat label="影片" value={fmt.num(s.totals.film.views)} hint={sumHint(s.totals.film)} />
             <Stat label="Shorts" value={fmt.num(s.totals.short.views)} hint={sumHint(s.totals.short)} />
-            <Stat
-              label="Comments"
-              value={fmt.num(s.totals.all.comments)}
-              hint={`${s.totals.byChannel.length} channel(s)`}
-            />
+            <Stat label="评论" value={fmt.num(s.totals.all.comments)} hint={`${s.totals.byChannel.length} 个频道`} />
           </div>
           {s.totals.byChannel.length > 1 && (
             <section className="card overflow-x-auto p-4">
-              <h2 className="mb-2 font-medium">By channel</h2>
+              <h2 className="mb-2 font-medium">按频道统计</h2>
               <table className="w-full text-sm">
                 <thead className="muted text-xs">
                   <tr>
-                    <th className="p-2 text-left font-normal">Channel</th>
-                    <th className="p-2 text-right font-normal">Videos</th>
-                    <th className="p-2 text-right font-normal">Views</th>
-                    <th className="p-2 text-right font-normal">Likes</th>
+                    <th className="p-2 text-left font-normal">频道</th>
+                    <th className="p-2 text-right font-normal">视频数</th>
+                    <th className="p-2 text-right font-normal">播放量</th>
+                    <th className="p-2 text-right font-normal">点赞数</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -689,14 +679,14 @@ export function YoutubePage() {
           )}
           {curves.length > 0 && (
             <section className="card p-4">
-              <h2 className="font-medium">First 48 hours</h2>
+              <h2 className="font-medium">发布后 48 小时</h2>
               <p className="muted mb-2 text-xs">
-                Views by hour since publishing, from hourly snapshots of the public counter; gaps were not measured.
+                根据公开统计数据的每小时快照展示发布后的播放量，空缺表示未采集到数据。
               </p>
               <LineChart
-                label="Views in the first 48 hours of each release"
+                label="各视频发布后 48 小时播放量"
                 series={curves.map((l) => ({ name: l.label || l.title || l.videoId, values: l.curve48! }))}
-                xLabel={(i) => `${i} h`}
+                xLabel={(i) => `${i} 小时`}
               />
             </section>
           )}
@@ -722,29 +712,29 @@ export function YoutubePage() {
                           {l.title || l.videoId}
                         </a>
                       </span>
-                      <span className="chip">{l.kind === "short" ? "Short" : "Film"}</span>
+                      <span className="chip">{l.kind === "short" ? "短视频" : "影片"}</span>
                       {l.label && <span className="chip">{l.label}</span>}
                     </div>
                     <div className="muted mt-0.5 text-xs [overflow-wrap:anywhere]">
-                      {l.channelTitle ?? "Unknown channel"}
-                      {l.connection ? " · connected" : " · public counters"}
-                      {l.publishedAt && ` · published ${fmt.date(l.publishedAt)}`}
-                      {(l.shortLabel || l.exportFile) && ` · from ${l.shortLabel ?? l.exportFile}`}
+                      {l.channelTitle ?? "未知频道"}
+                      {l.connection ? " · 已连接" : " · 公开统计数据"}
+                      {l.publishedAt && ` · 发布于 ${fmt.date(l.publishedAt)}`}
+                      {(l.shortLabel || l.exportFile) && ` · 来源 ${l.shortLabel ?? l.exportFile}`}
                     </div>
                   </div>
                   <div className="flex gap-4 text-right text-sm tabular-nums">
                     <div>
                       <div className="font-semibold">{l.counts ? fmt.num(l.counts.views) : "—"}</div>
-                      <div className="muted text-xs">views</div>
+                      <div className="muted text-xs">播放量</div>
                     </div>
                     <div>
                       <div>{fmt.num(l.counts?.likes)}</div>
-                      <div className="muted text-xs">likes</div>
+                      <div className="muted text-xs">点赞数</div>
                     </div>
                     {l.impressions !== null && (
                       <div>
                         <div>{fmt.num(l.impressions)}</div>
-                        <div className="muted text-xs">impressions</div>
+                        <div className="muted text-xs">曝光量</div>
                       </div>
                     )}
                   </div>
@@ -756,7 +746,7 @@ export function YoutubePage() {
                     aria-expanded={open === l.id}
                     onClick={() => setOpen(open === l.id ? null : l.id)}
                   >
-                    <BarChart3 className="size-4" /> {open === l.id ? "Hide chart" : "Chart"}
+                    <BarChart3 className="size-4" /> {open === l.id ? "收起图表" : "图表"}
                   </button>
                   <a className="btn-ghost" href={l.url} target="_blank" rel="noreferrer">
                     <ExternalLink className="size-4" /> YouTube
@@ -764,10 +754,10 @@ export function YoutubePage() {
                   {canWrite && (
                     <>
                       <button type="button" className="btn-ghost" onClick={() => setEditing(l)}>
-                        <Pencil className="size-4" /> Edit
+                        <Pencil className="size-4" /> 编辑
                       </button>
                       <button type="button" className="btn-ghost" onClick={() => setUnlinking(l)}>
-                        <Trash2 className="size-4" /> Unlink
+                        <Trash2 className="size-4" /> 取消关联
                       </button>
                     </>
                   )}
@@ -781,8 +771,8 @@ export function YoutubePage() {
             ))}
           </section>
           <p className="muted text-xs">
-            Counters are live (re-read at most every five minutes). Stored data follows YouTube's developer policies:
-            public counters of channels that are not connected are kept 30 days.
+            统计数据实时读取，两次读取至少间隔 5 分钟。数据保存遵循 YouTube 开发者政策，未连接频道的公开统计数据保留 30
+            天。
           </p>
         </>
       )}
@@ -791,14 +781,14 @@ export function YoutubePage() {
       {editing && <EditLink link={editing} onClose={() => setEditing(null)} />}
       <ConfirmDialog
         open={Boolean(unlinking)}
-        title="Unlink this video?"
-        confirmLabel="Unlink"
+        title="取消关联此视频？"
+        confirmLabel="取消关联"
         danger
         busy={unlink.isPending}
         onConfirm={() => unlinking && unlink.mutate(unlinking.id)}
         onClose={() => setUnlinking(null)}
       >
-        Its stats stop showing here. Nothing changes on YouTube.
+        取消关联后，此处将停止展示该视频的数据。YouTube 上的视频和数据保持原状。
       </ConfirmDialog>
     </div>
   );

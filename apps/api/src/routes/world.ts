@@ -235,7 +235,7 @@ function versionedEntity<K extends "location" | "prop">(kind: K) {
     const { db } = c.get("deps");
     const [v] = await db.select().from(vTable).where(eq(vTable.id, id));
     if (!v) throw notFound("Version");
-    if (!canTransition(v.status, status)) throw conflict(`Cannot change a ${v.status} version to ${status}`);
+    if (!canTransition(v.status, status)) throw conflict(`版本状态无法从 ${v.status} 更改为 ${status}`);
     const [row] = await db.update(vTable).set({ status }).where(eq(vTable.id, id)).returning();
     if (status === "locked")
       await db

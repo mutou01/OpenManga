@@ -248,7 +248,7 @@ audioRoutes.post("/chapters/:id/narration/lines", async (c) => {
       .from(panels)
       .innerJoin(pages, eq(pages.id, panels.pageId))
       .where(eq(panels.id, input.panelId));
-    if (!pn || pn.chapterId !== chapterId) throw badRequest("Panel is not in this chapter");
+    if (!pn || pn.chapterId !== chapterId) throw badRequest("此画格不属于该章节");
     pageId = pn.panel.pageId;
     if (input.showOnPage) {
       box = await narrationBox(c, project.settings, input.text, pageId, pn.panel.frame);
@@ -332,7 +332,7 @@ audioRoutes.patch("/narration-lines/:id", async (c) => {
       .from(panels)
       .innerJoin(pages, eq(pages.id, panels.pageId))
       .where(and(eq(panels.id, input.video.untilPanelId), eq(pages.chapterId, line.chapterId)));
-    if (!pn) throw badRequest("untilPanelId must be a panel in the line's chapter");
+    if (!pn) throw badRequest("终止画格必须属于这条旁白所在的章节（untilPanelId）");
   }
   let box = input.box;
   if (input.showOnPage && !line.box && box === undefined && pageId) {
@@ -533,7 +533,7 @@ audioRoutes.post("/chapters/:id/narration/retime/:jobId/apply", async (c) => {
       ),
     );
   if (!job) throw notFound("Retime job");
-  if (job.status !== "completed") throw conflict("The rewrite has not finished yet");
+  if (job.status !== "completed") throw conflict("改写尚未完成");
   const proposals = ((job.result?.lines ?? []) as { lineId: string; text: string; after: string }[]).filter((l) =>
     lineIds.includes(l.lineId),
   );
@@ -602,7 +602,7 @@ audioRoutes.post("/narration-segments/:id/split", async (c) => {
   const { at } = await body(c, Split);
   const a = segment.text.slice(0, at).trim();
   const b = segment.text.slice(at).trim();
-  if (!a || !b) throw badRequest("Split position must leave text on both sides");
+  if (!a || !b) throw badRequest("拆分点两侧都必须保留文本");
   const { db } = c.get("deps");
   const rows = await db.transaction(async (tx) => {
     await tx
@@ -662,7 +662,7 @@ audioRoutes.post("/narration-segments/:id/merge-next", async (c) => {
     )
     .orderBy(asc(narrationSegments.order))
     .limit(1);
-  if (!next) throw badRequest("No following segment to merge");
+  if (!next) throw badRequest("没有可合并的下一段");
   const text = `${segment.text} ${next.text}`;
   const [row] = await db.transaction(async (tx) => {
     await tx.delete(narrationSegments).where(eq(narrationSegments.id, next.id));
@@ -766,7 +766,7 @@ audioRoutes.post("/narration-segments/:id/synthesize", async (c) => {
     .from(audioJobs)
     .where(and(eq(audioJobs.segmentId, segment.id), inArray(audioJobs.status, ["queued", "processing"])))
     .limit(1);
-  if (inFlight) throw conflict("This segment is already being synthesized");
+  if (inFlight) throw conflict("正在合成此段音频");
   const voiceRun = await ttsRun(c, input.ai, input.voice);
   const voice = voiceRun.voice ?? input.voice ?? segment.voice ?? project.settings.narrationVoice;
   const speed = input.speed ?? segment.speed ?? project.settings.narrationSpeed;
@@ -846,7 +846,7 @@ audioRoutes.post("/chapters/:id/narration/synthesize", async (c) => {
   // Local synthesis is the operator's own CPU, not the caller's provider account, so it needs a ceiling that the
   // BYOK paths do not: refuse while a backlog is already running, and queue at most a chapter's worth per request.
   if (pending.length >= MAX_PENDING_AUDIO_JOBS)
-    throw conflict(`This project already has ${pending.length} narration jobs in progress. Wait for them to finish.`);
+    throw conflict(`此项目已有 ${pending.length} 项旁白任务正在运行，请等待完成。`);
   let queued = 0;
   let skippedOverCap = 0;
   await deps.db.transaction(async (tx) => {
@@ -994,7 +994,7 @@ audioRoutes.post("/audio-jobs/:id/cancel", async (c) => {
   if (!job) throw notFound("Audio job");
   await projectAccess(c, job.projectId, "generate");
   const result = await deps.jobs.cancelAudio(id);
-  if (result === "not_cancellable") throw conflict(`Audio job is ${job.status} and can't be cancelled`);
+  if (result === "not_cancellable") throw conflict(`音频任务当前状态为 ${job.status}，无法取消`);
   return c.json({ result });
 });
 
@@ -1057,8 +1057,7 @@ async function deleteNarrationAudio(
       ),
     )
     .limit(1);
-  if (running.length)
-    throw conflict("Narration is being synthesized here. Cancel the synthesis (or let it finish) first.");
+  if (running.length) throw conflict("正在合成旁白，请先取消合成或等待完成。");
   const assetIds = new Set<string>();
   for (const s of segs) if (s.active) assetIds.add(s.active);
   if (scope.chapterId) {

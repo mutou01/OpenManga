@@ -107,7 +107,7 @@ export async function projectReadiness(
   const chapters = [...rows];
   const issues: ReadinessIssue[] = [];
   for (const ch of chapters) {
-    const label = `Ch. ${ch.order} — ${ch.title}`;
+    const label = `第 ${ch.order} 章 · ${ch.title}`;
     const add = (code: ReadinessIssue["code"], area: ReadinessIssue["area"], count: number, message: string) =>
       issues.push({
         code,
@@ -123,37 +123,32 @@ export async function projectReadiness(
         "missing_artwork",
         "art",
         ch.panelsWithoutArt,
-        `${ch.panelsWithoutArt} of ${ch.panels} panels have no artwork (pages would render blank frames)`,
+        `${ch.panels} 个画格中有 ${ch.panelsWithoutArt} 个缺少画面，导出时会留空。`,
       );
     if (ch.supersededPins)
-      add(
-        "superseded_versions",
-        "art",
-        ch.supersededPins,
-        `${ch.supersededPins} panels use a superseded character version`,
-      );
+      add("superseded_versions", "art", ch.supersededPins, `有 ${ch.supersededPins} 个画格使用了已被替换的角色版本。`);
     if (ch.draftVersionPins)
-      add(
-        "draft_versions",
-        "art",
-        ch.draftVersionPins,
-        `${ch.draftVersionPins} panels depend on character/location versions still in draft`,
-      );
+      add("draft_versions", "art", ch.draftVersionPins, `有 ${ch.draftVersionPins} 个画格使用了草稿状态的角色或场景。`);
     if (ch.panels && !ch.narrationLines)
-      add("no_narration", "narration", ch.panels, `no ${language} narration (${ch.pages} pages, ${ch.panels} panels)`);
+      add(
+        "no_narration",
+        "narration",
+        ch.panels,
+        `没有语言为 ${language} 的旁白（${ch.pages} 页，${ch.panels} 个画格）。`,
+      );
     else if (ch.panels && ch.narratedPanels / ch.panels < 0.9)
       add(
         "narration_gaps",
         "narration",
         ch.panels - ch.narratedPanels,
-        `narration covers ${ch.narratedPanels} of ${ch.panels} panels (${Math.round((ch.narratedPanels / ch.panels) * 100)}%)`,
+        `旁白已覆盖 ${ch.panels} 个画格中的 ${ch.narratedPanels} 个（${Math.round((ch.narratedPanels / ch.panels) * 100)}%）。`,
       );
     if (ch.segmentsWithoutAudio)
       add(
         "missing_audio",
         "narration",
         ch.segmentsWithoutAudio,
-        `${ch.segmentsWithoutAudio} of ${ch.segments} narration segments have no synthesized audio`,
+        `${ch.segments} 段旁白中有 ${ch.segmentsWithoutAudio} 段尚未合成音频。`,
       );
   }
   return {

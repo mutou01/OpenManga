@@ -89,8 +89,8 @@ const ClipOptions = z.object({
 /** The model a choice names, after checking the key can run it. */
 async function videoRun(c: Context<AppEnv>, choice: VideoChoice) {
   const m = videoModel(choice.model);
-  if (!m) throw badRequest(`Unknown video model ${choice.model}`);
-  if (m.provider !== "local" && !choice.credentialId) throw badRequest(`${m.label} needs one of your provider keys`);
+  if (!m) throw badRequest(`无法识别视频模型 ${choice.model}`);
+  if (m.provider !== "local" && !choice.credentialId) throw badRequest(`${m.label} 需要该提供商的一个密钥`);
   try {
     const p = await c.get("deps").resolver.video(choice, user(c).id);
     return { model: m, provider: m.provider === "local" ? "local" : p.provider };
@@ -181,9 +181,8 @@ function planClip(
   ai: VideoChoice,
   o: z.infer<typeof ClipOptions>,
 ): Planned {
-  if (!pn.activeArtworkAssetId && !m.textToVideo)
-    throw badRequest(`${m.label} animates the shot's image: draw the shot first`);
-  if (pn.activeArtworkAssetId && !m.imageToVideo) throw badRequest(`${m.label} makes clips from words only`);
+  if (!pn.activeArtworkAssetId && !m.textToVideo) throw badRequest(`${m.label} 根据镜头图生成片段，请先绘制镜头`);
+  if (pn.activeArtworkAssetId && !m.imageToVideo) throw badRequest(`${m.label} 仅支持根据文字生成视频片段`);
   const plan = clipPlan(m, o.seconds, o.partSeconds);
   const resolution = clipResolution(m, o.resolution);
   const audio = o.audio && m.audio;
@@ -211,7 +210,7 @@ async function enqueueClips(
   if (o.endAssetId) {
     const end = await deps.assets.get(o.endAssetId);
     if (!end || end.deletedAt || end.projectId !== project.id || !end.mimeType.startsWith("image/"))
-      throw badRequest("The last frame must be an image of this project");
+      throw badRequest("尾帧必须使用此项目中的图片");
   }
   const { style: look } = await deps.planner.styleContext(project.id);
   const style = look.definition?.photoreal ? "realistic" : /cartoon/i.test(look.presetName ?? "") ? "cartoon" : "anime";
@@ -430,7 +429,7 @@ aiVideoRoutes.post("/panels/:id/clips/use", async (c) => {
   const deps = c.get("deps");
   const [pn] = await deps.db.select().from(panels).where(eq(panels.id, id));
   if (!pn) throw notFound("Panel");
-  if (pn.approvalStatus === "locked") throw conflict("Panel is locked");
+  if (pn.approvalStatus === "locked") throw conflict("画格已锁定");
   if (assetId) {
     const a = await deps.assets.get(assetId);
     if (!a || a.deletedAt || a.type !== "panel_clip" || (a.metadata as { panelId?: string }).panelId !== id)
@@ -515,7 +514,7 @@ aiVideoRoutes.post("/chapters/:id/clips", async (c) => {
     model: m.id,
   };
   if (input.dryRun || !planned.length) return c.json({ estimate, skipped, jobs: [] });
-  if (planned.length > 200) throw badRequest("At most 200 clips at once: animate the chapter in parts");
+  if (planned.length > 200) throw badRequest("每次最多生成 200 个片段，请分批处理此章");
   await assertBudget(c, project.id, estimate.usd);
   const jobs = await enqueueClips(c, project, planned, { ...input, activate: true });
   return c.json({ estimate, skipped, jobs }, 202);

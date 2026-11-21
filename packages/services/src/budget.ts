@@ -85,4 +85,4 @@ export async function instanceBudget(db: Database, envDefault: number | undefine
 
 /** The refusal shown when the server's ceiling stops work, shared by the API's 402 and the worker's pause. */
 export const instanceBudgetReason = (b: InstanceBudget) =>
-  `this server's monthly AI budget of $${b.limitUsd!.toFixed(2)} is reached ($${b.spentUsd.toFixed(2)} spent since ${b.monthStart.slice(0, 10)})`;
+  `服务器每月 AI 预算已达到 $${b.limitUsd!.toFixed(2)}（自 ${b.monthStart.slice(0, 10)} 起已用 $${b.spentUsd.toFixed(2)}）`;

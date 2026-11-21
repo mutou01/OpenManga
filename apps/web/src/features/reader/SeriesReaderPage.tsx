@@ -27,7 +27,7 @@ type ChapterView = {
 
 const languageName = (code: string) => {
   try {
-    return new Intl.DisplayNames([navigator.language], { type: "language" }).of(code) ?? code;
+    return new Intl.DisplayNames(["zh-CN"], { type: "language" }).of(code) ?? code;
   } catch {
     return code;
   }
@@ -65,7 +65,7 @@ export function SeriesReaderPage() {
   if (s.error || !s.data)
     return (
       <div className="mx-auto max-w-md p-6">
-        <ErrorBox error={s.error ?? new Error("This series is not available.")} />
+        <ErrorBox error={s.error ?? new Error("此系列不可用。")} />
       </div>
     );
   const d = s.data;
@@ -78,7 +78,7 @@ export function SeriesReaderPage() {
         {d.languages.length > 1 && (
           <select
             className="input w-auto text-sm"
-            aria-label="Language"
+            aria-label="语言"
             value={language}
             onChange={(e) => go(search.chapter, e.target.value)}
           >
@@ -89,7 +89,7 @@ export function SeriesReaderPage() {
             ))}
           </select>
         )}
-        <a className="btn-ghost" href={d.series.links.feed} title="RSS feed of new chapters" aria-label="RSS feed">
+        <a className="btn-ghost" href={d.series.links.feed} title="订阅新章节 RSS" aria-label="RSS 订阅">
           <Rss className="size-4" />
         </a>
       </header>
@@ -114,7 +114,7 @@ export function SeriesReaderPage() {
           {d.episodes.map((e) => (
             <section key={`${e.number}-${e.title}`} aria-label={e.title}>
               <h3 className="font-medium">
-                {e.number ? `Episode ${e.number}: ` : ""}
+                {e.number ? `第 ${e.number} 集 · ` : ""}
                 {e.title}
               </h3>
               <ul className="mt-1 divide-y divide-[var(--border)]">
@@ -125,14 +125,14 @@ export function SeriesReaderPage() {
                     </span>
                     {ch.available ? (
                       <button type="button" className="btn-secondary text-xs" onClick={() => go(ch.id)}>
-                        Read
+                        阅读
                       </button>
                     ) : (
-                      <span className="muted text-xs">Coming {new Date(ch.publishAt).toLocaleDateString()}</span>
+                      <span className="muted text-xs">{new Date(ch.publishAt).toLocaleDateString("zh-CN")} 发布</span>
                     )}
                   </li>
                 ))}
-                {!e.chapters.length && <li className="muted py-2 text-sm">Nothing published yet.</li>}
+                {!e.chapters.length && <li className="muted py-2 text-sm">暂无已发布内容。</li>}
               </ul>
             </section>
           ))}
@@ -189,19 +189,19 @@ function ChapterReader({
     return () => window.removeEventListener("keydown", onKey);
   });
   if (q.isLoading) return <Spinner className="m-6" />;
-  if (q.error || !q.data) return <ErrorBox error={q.error ?? new Error("This chapter is not published.")} />;
+  if (q.error || !q.data) return <ErrorBox error={q.error ?? new Error("本章尚未发布。")} />;
   const v = q.data;
   const page = pageList[pageIdx];
   const nav = (
-    <nav className="flex items-center justify-center gap-2 p-3" aria-label="Chapters">
+    <nav className="flex items-center justify-center gap-2 p-3" aria-label="章节导航">
       {v.previous && (
         <button type="button" className="btn-secondary" onClick={() => onChapter(v.previous!)}>
-          Previous chapter
+          上一章
         </button>
       )}
       {v.next && (
         <button type="button" className="btn-primary" onClick={() => onChapter(v.next!)}>
-          Next chapter
+          下一章
         </button>
       )}
     </nav>
@@ -210,28 +210,28 @@ function ChapterReader({
     <>
       <div className="flex items-center gap-2 border-b border-[var(--border)] px-4 py-1 text-sm">
         <h2 className="mr-auto truncate">
-          {v.episode.number ? `Ep. ${v.episode.number} · ` : ""}
+          {v.episode.number ? `第 ${v.episode.number} 集 · ` : ""}
           {v.chapter.title}
         </h2>
         <button
           type="button"
           className="btn-ghost"
           onClick={() => setMode(scroll ? "pages" : "scroll")}
-          aria-label={scroll ? "Read page by page" : "Read as a scroll"}
-          title={scroll ? "Read page by page" : "Read as a scroll"}
+          aria-label={scroll ? "逐页阅读" : "滚动阅读"}
+          title={scroll ? "逐页阅读" : "滚动阅读"}
         >
           {scroll ? <Columns2 className="size-4" /> : <Rows3 className="size-4" />}
         </button>
       </div>
       {!pageList.length ? (
-        <p className="muted p-6 text-center">This chapter has no pages yet.</p>
+        <p className="muted p-6 text-center">本章暂无页面。</p>
       ) : scroll ? (
         <main className="mx-auto flex max-w-3xl flex-col">
           {pageList.map((pg) => (
             <img
               key={pg.id}
               src={src(pg.id)}
-              alt={pg.alt || `Page ${pg.order}`}
+              alt={pg.alt || `第 ${pg.order} 页`}
               loading="lazy"
               width={pg.width}
               height={pg.height}
@@ -246,13 +246,13 @@ function ChapterReader({
             <img
               key={page.id}
               src={src(page.id)}
-              alt={page.alt || `Page ${page.order}`}
+              alt={page.alt || `第 ${page.order} 页`}
               className="max-h-full max-w-full object-contain"
             />
             <button
               type="button"
               className="absolute inset-y-0 left-0 flex w-1/2 cursor-w-resize items-center"
-              aria-label={rtl ? "Next page" : "Previous page"}
+              aria-label={rtl ? "下一页" : "上一页"}
               onClick={() => step(rtl ? 1 : -1)}
             >
               <ChevronLeft className="ml-1 size-6 opacity-30" />
@@ -260,7 +260,7 @@ function ChapterReader({
             <button
               type="button"
               className="absolute inset-y-0 right-0 flex w-1/2 cursor-e-resize items-center justify-end"
-              aria-label={rtl ? "Previous page" : "Next page"}
+              aria-label={rtl ? "上一页" : "下一页"}
               onClick={() => step(rtl ? -1 : 1)}
             >
               <ChevronRight className="mr-1 size-6 opacity-30" />
@@ -274,7 +274,7 @@ function ChapterReader({
       {!scroll && pageList.length > 0 && nav}
       <p className="muted pb-4 text-center text-xs">
         <Link to="/s/$slug" params={{ slug }}>
-          All chapters
+          所有章节
         </Link>
       </p>
     </>

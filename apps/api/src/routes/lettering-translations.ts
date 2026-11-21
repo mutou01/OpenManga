@@ -101,11 +101,11 @@ letteringTranslationRoutes.put("/chapters/:id/lettering", async (c) => {
   const id = uuidParam(c, "id");
   const p = await entityAccess(c, "chapter", id, "write");
   const input = await body(c, EditInput);
-  if (input.language === p.language) throw badRequest("That is the project's own language: edit the lettering itself");
+  if (input.language === p.language) throw badRequest("所选语言是项目原文语言，请直接编辑嵌字");
   const { db } = c.get("deps");
   const lines = new Map((await chapterLettering(db, id, p.language)).map((l) => [l.sourceId, l]));
   if (input.lines.some((l) => lines.get(l.sourceId)?.sourceType !== l.sourceType))
-    throw badRequest("A line is not this chapter's bubble or caption");
+    throw badRequest("所选文字不属于本章的对话气泡或叙述框");
   const clear = input.lines.filter((l) => !l.text).map((l) => l.sourceId);
   if (clear.length)
     await db
@@ -133,10 +133,9 @@ letteringTranslationRoutes.post("/chapters/:id/lettering/translate", async (c) =
   const id = uuidParam(c, "id");
   const p = await entityAccess(c, "chapter", id, "generate");
   const input = await body(c, TranslateInput);
-  if (input.language === p.language) throw badRequest("That is the project's own language");
+  if (input.language === p.language) throw badRequest("所选语言与项目原文语言相同");
   const deps = c.get("deps");
-  if (!(await chapterLettering(deps.db, id, p.language)).length)
-    throw badRequest("This chapter has no bubbles or captions to translate");
+  if (!(await chapterLettering(deps.db, id, p.language)).length) throw badRequest("此章没有可翻译的对白或叙述框");
   await assertBudget(c, p.id);
   const run = await textRun(c, input.ai);
   assertBatchable(c, input.batch, run.provider);

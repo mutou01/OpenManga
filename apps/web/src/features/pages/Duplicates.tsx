@@ -23,10 +23,10 @@ type Scan = {
 };
 
 const KIND: Record<string, string> = {
-  identical: "Near-identical panels",
-  pose: "Same staging (pose) in panels far apart",
-  background: "Same background in different scenes",
-  thumbnail: "Near-identical cover or thumbnail art",
+  identical: "近乎相同的分镜",
+  pose: "相距较远的分镜具有相同姿势或场面调度",
+  background: "不同场景使用相同背景",
+  thumbnail: "近乎相同的封面或缩略图",
 };
 
 /** Near-duplicate finder: scan the project without AI and look through the groups it found. */
@@ -49,24 +49,23 @@ export function DuplicatesButton({ projectId }: { projectId: string }) {
   return (
     <>
       <button type="button" className="btn-secondary" onClick={() => setOpen(true)}>
-        <Copy className="size-4" /> Near-duplicates
+        <Copy className="size-4" /> 近似重复
       </button>
       <Modal
         open={open}
         wide
         onClose={() => setOpen(false)}
-        title="Near-duplicates"
+        title="近似重复"
         footer={
           <button type="button" className="btn-primary" disabled={scan.isPending} onClick={() => scan.mutate()}>
-            {s ? "Scan again" : "Scan the project"}
+            {s ? "重新扫描" : "扫描项目"}
           </button>
         }
       >
         <div className="space-y-3 text-sm">
           <p className="muted text-xs">
-            Compares every drawn panel and the cover and thumbnail art by small image features, without AI: repeats you
-            may want to redraw or vary. Neighbouring panels and backgrounds inside one scene are expected to match and
-            are left out.
+            通过图片特征比较所有已绘制分镜、封面和缩略图，找出可能需要重绘或调整的重复画面，无需调用
+            AI。相邻分镜及同一场景中的背景允许一致，不参与此项检查。
           </p>
           {q.isLoading && <Spinner />}
           {s && !s.result && (
@@ -77,10 +76,10 @@ export function DuplicatesButton({ projectId }: { projectId: string }) {
           {s?.result && (
             <>
               <p className="text-xs">
-                {s.result.panels} panel{s.result.panels === 1 ? "" : "s"} scanned · {s.result.groups.length} group
-                {s.result.groups.length === 1 ? "" : "s"} found
+                {s.result.panels} 个分镜{s.result.panels === 1 ? "" : ""} 已扫描 · {s.result.groups.length} 组
+                {s.result.groups.length === 1 ? "" : ""} 已发现
               </p>
-              {!s.result.groups.length && <p className="muted">Nothing repeats.</p>}
+              {!s.result.groups.length && <p className="muted">未发现重复。</p>}
               <ul className="space-y-3">
                 {s.result.groups.map((g, i) => (
                   <li key={`${g.kind}-${i}`} className="rounded-lg border border-[var(--border)] p-2">
@@ -100,10 +99,10 @@ export function DuplicatesButton({ projectId }: { projectId: string }) {
                                 className="underline"
                                 title={m.chapterTitle}
                               >
-                                ch. {m.chapter} p{m.page}·{m.panel}
+                                章 {m.chapter} 页{m.page}·{m.panel}
                               </Link>
                             ) : (
-                              "cover / thumbnail"
+                              "封面或缩略图"
                             )}
                           </figcaption>
                         </figure>

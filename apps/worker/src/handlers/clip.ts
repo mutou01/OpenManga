@@ -60,7 +60,7 @@ async function frame(data: Uint8Array): Promise<VideoInputImage> {
 async function image(deps: WorkerDeps, assetId: string | null): Promise<VideoInputImage | null> {
   if (!assetId) return null;
   const a = await deps.assets.get(assetId);
-  if (!a) throw new InputError("The shot's image was deleted");
+  if (!a) throw new InputError("镜头图片已删除");
   return frame(await deps.assets.read(a));
 }
 
@@ -211,7 +211,7 @@ async function makeOne(
 export async function panelClip(deps: WorkerDeps, job: ProjectJob) {
   const input = job.input as unknown as ClipInput;
   const [panel] = await deps.db.select().from(panels).where(eq(panels.id, input.panelId));
-  if (!panel) throw new InputError("Panel no longer exists");
+  if (!panel) throw new InputError("画格已不存在");
   const provider = await deps.resolver.video(
     (job.parameters.ai as { credentialId: string | null; model?: string | null } | undefined) ?? null,
     job.userId,
@@ -226,7 +226,7 @@ export async function panelClip(deps: WorkerDeps, job: ProjectJob) {
     // Parts made before a restart: back on disk, to take the next frame from and to join.
     for (const [k, id] of done.entries()) {
       const a = await deps.assets.get(id);
-      if (!a) throw new InputError("A finished part of this shot was deleted");
+      if (!a) throw new InputError("该镜头中已完成的片段已删除");
       const f = join(dir, `part-${k}.mp4`);
       await Bun.write(f, new Response(deps.assets.storage.stream(a.storageKey)));
       files.push(f);

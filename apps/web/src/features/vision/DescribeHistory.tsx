@@ -4,6 +4,7 @@ import { History, Loader2, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { assetUrl, del, get } from "../../api/client.ts";
 import { clsx, EmptyState, ErrorBox, fmt, Spinner, toast } from "../../components/ui.tsx";
+import { imageAspectLabel } from "./aspect-labels.ts";
 
 type Row = {
   id: string;
@@ -43,7 +44,7 @@ export function DescribeHistory({ projectId, onReuse }: { projectId: string; onR
     <section className="space-y-3">
       <header className="flex items-center gap-2">
         <History className="size-4" />
-        <h2 className="font-medium">Earlier descriptions</h2>
+        <h2 className="font-medium">历史描述</h2>
         <div className="ml-auto flex overflow-hidden rounded-lg border border-[var(--border)] text-xs">
           {(["all", "project"] as const).map((s) => (
             <button
@@ -52,16 +53,15 @@ export function DescribeHistory({ projectId, onReuse }: { projectId: string; onR
               onClick={() => setScope(s)}
               className={clsx("px-2 py-1", scope === s ? "bg-accent-600 text-white" : "hover:bg-[var(--panel-2)]")}
             >
-              {s === "all" ? "All projects" : "This project"}
+              {s === "all" ? "所有项目" : "当前项目"}
             </button>
           ))}
         </div>
       </header>
 
       {!rows.length ? (
-        <EmptyState title="Nothing described yet">
-          Descriptions are kept here with the image they came from, so you can apply one again — including in another
-          project — without paying to read it twice.
+        <EmptyState title="暂无图片描述">
+          描述及其原图保存在这里，可再次使用，也可跨项目应用，节省重复识别的费用。
         </EmptyState>
       ) : (
         <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
@@ -82,10 +82,10 @@ export function DescribeHistory({ projectId, onReuse }: { projectId: string; onR
                     </span>
                   )}
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm">{r.description?.overview || r.note || "Description"}</span>
+                    <span className="block truncate text-sm">{r.description?.overview || r.note || "描述"}</span>
                     <span className="muted block text-xs">
-                      {r.aspects.join(", ") || "overview"}
-                      {r.custom ? " · custom question" : ""}
+                      {r.aspects.map(imageAspectLabel).join("、") || "概述"}
+                      {r.custom ? " · 自定义问题" : ""}
                     </span>
                     <span className="muted block text-xs">
                       {r.projectId !== projectId && <strong className="text-[var(--fg)]">{r.projectTitle} · </strong>}
@@ -95,12 +95,12 @@ export function DescribeHistory({ projectId, onReuse }: { projectId: string; onR
                 </button>
                 <button
                   type="button"
-                  aria-label="Delete this description"
-                  title="Delete this description and the image it was read from"
+                  aria-label="删除此描述"
+                  title="删除此描述及其原图"
                   className="btn-ghost absolute top-1 right-1 p-1 text-red-500 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                   disabled={removing === r.id}
                   onClick={async () => {
-                    if (!window.confirm("Delete this description and the image it was read from?")) return;
+                    if (!window.confirm("删除此描述及其原图？")) return;
                     setRemoving(r.id);
                     try {
                       await del(`/image-descriptions/${r.id}`);

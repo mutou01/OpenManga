@@ -28,19 +28,17 @@ export function StorageAlert() {
       <span className="min-w-0 flex-1">
         {p.files > 0 ? (
           <>
-            Storage policy:{" "}
+            存储策略{" "}
             <strong>
-              {p.files} file(s), {fmt.bytes(p.bytes)}
+              {p.files} 个文件， {fmt.bytes(p.bytes)}
             </strong>{" "}
-            are due for deletion and wait for your approval.
+            已满足清理条件，等待你审批。
           </>
         ) : null}
-        {p.overLimitBytes > 0 && (
-          <> Storage is {fmt.bytes(p.overLimitBytes)} over the limit even without every expendable file.</>
-        )}
+        {p.overLimitBytes > 0 && <> 清理全部可清理文件后，存储仍超出上限 {fmt.bytes(p.overLimitBytes)}。</>}
       </span>
       <Link to="/admin" search={{ tab: "storage" }} className="btn-secondary px-2 py-0.5 text-xs">
-        Review
+        查看
       </Link>
     </div>
   );

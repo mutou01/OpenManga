@@ -29,6 +29,7 @@ import {
   toast,
   useAutosave,
 } from "../../components/ui.tsx";
+import { projectTypeLabel } from "../../lib/locale.ts";
 import { useAiOptions } from "../ai/AiPicker.tsx";
 import { EdgePicker } from "../pages/EdgePicker.tsx";
 import { LayoutLibrary } from "../pages/LayoutLibrary.tsx";
@@ -59,7 +60,19 @@ export function SettingsPage() {
     select: (r) => r.chapters,
   });
   const tts = useQuery({ queryKey: ["tts-status"], queryFn: () => get<TtsStatus>("/tts/status"), staleTime: 60_000 });
-  const [form, setForm] = useState<Form | null>(null);
+  const p = data?.project;
+  const loaded: Form | null = p
+    ? {
+        title: p.title,
+        description: p.description,
+        projectType: p.projectType,
+        language: p.language,
+        readingDirection: p.readingDirection,
+        colorMode: p.colorMode,
+        settings: p.settings,
+      }
+    : null;
+  const [form, setForm] = useState<Form | null>(loaded);
   const [confirm, setConfirm] = useState<null | "archive" | "trash">(null);
   const { state, markSaved } = useAutosave(
     form,
@@ -75,17 +88,7 @@ export function SettingsPage() {
     { enabled: Boolean(form) && data?.role !== "viewer" },
   );
   useEffect(() => {
-    if (data && !form) {
-      const p = data.project;
-      const loaded = {
-        title: p.title,
-        description: p.description,
-        projectType: p.projectType,
-        language: p.language,
-        readingDirection: p.readingDirection,
-        colorMode: p.colorMode,
-        settings: p.settings,
-      };
+    if (loaded && !form) {
       // What the server has is saved already: opening the page is not an edit.
       markSaved(loaded);
       setForm(loaded);
@@ -113,22 +116,22 @@ export function SettingsPage() {
   return (
     <div className="mx-auto max-w-4xl p-4 sm:p-6">
       <PageHeader
-        title="Project settings"
-        subtitle={viewer ? "View only: you can't change this project's settings." : "Changes save automatically."}
+        title="项目设置"
+        subtitle={viewer ? "仅可查看，无法修改此项目的设置。" : "修改后自动保存。"}
         actions={<SaveIndicator state={state} />}
       />
       {/* A viewer sees the settings but can't change them (nothing they type would be saved). */}
       <fieldset disabled={viewer} className="min-w-0 space-y-4">
         <section className="card grid gap-3 p-4 sm:grid-cols-2">
-          <h2 className="font-medium sm:col-span-2">General</h2>
-          <Field label="Title">
+          <h2 className="font-medium sm:col-span-2">常规</h2>
+          <Field label="标题">
             <input className="input" value={form.title} onChange={(e) => set("title", e.target.value)} />
           </Field>
-          <Field label="Language">
+          <Field label="作品语言">
             <input className="input" value={form.language} onChange={(e) => set("language", e.target.value)} />
           </Field>
           <div className="sm:col-span-2">
-            <Field label="Description">
+            <Field label="简介">
               <textarea
                 className="input min-h-16"
                 value={form.description}
@@ -136,102 +139,97 @@ export function SettingsPage() {
               />
             </Field>
           </div>
-          <Field label="Project type">
+          <Field label="项目类型">
             <select className="input" value={form.projectType} onChange={(e) => set("projectType", e.target.value)}>
               {["manhwa", "manga", "webtoon", "comic", "illustrated_story"].map((t) => (
                 <option key={t} value={t}>
-                  {t.replace("_", " ")}
+                  {projectTypeLabel(t)}
                 </option>
               ))}
             </select>
           </Field>
-          <Field label="Reading direction">
+          <Field label="阅读方向">
             <select
               className="input"
               value={form.readingDirection}
               onChange={(e) => set("readingDirection", e.target.value)}
             >
-              <option value="ltr">Left to right</option>
-              <option value="rtl">Right to left</option>
-              <option value="vertical">Vertical</option>
+              <option value="ltr">从左到右</option>
+              <option value="rtl">从右到左</option>
+              <option value="vertical">竖向阅读</option>
             </select>
           </Field>
-          <Field label="Color mode" hint="Becomes a prompt directive">
+          <Field label="色彩模式" hint="此设置会加入生成提示词">
             <select className="input" value={form.colorMode} onChange={(e) => set("colorMode", e.target.value)}>
-              <option value="full_color">Full color</option>
-              <option value="grayscale">Grayscale</option>
-              <option value="bw_manga">Black & white manga</option>
+              <option value="full_color">彩色</option>
+              <option value="grayscale">灰度</option>
+              <option value="bw_manga">黑白漫画</option>
             </select>
           </Field>
-          <Field label="Author (used on covers)">
+          <Field label="作者（用于封面）">
             <input className="input" value={s.author} onChange={(e) => setS("author", e.target.value)} />
           </Field>
-          <p className="muted text-xs sm:col-span-2">Art preset and style references are managed in World → Style.</p>
+          <p className="muted text-xs sm:col-span-2">美术预设和风格参考在“世界设定 → 风格”中管理。</p>
         </section>
 
         <section className="card grid gap-3 p-4 sm:grid-cols-3">
-          <h2 className="font-medium sm:col-span-3">
-            {s.format === "film" ? "Shots & generation" : "Pages & generation"}
-          </h2>
+          <h2 className="font-medium sm:col-span-3">{s.format === "film" ? "镜头与生成" : "页面与生成"}</h2>
           {s.format === "film" ? (
             <>
               <p className="muted text-sm sm:col-span-2">
-                Narrated video project: every page is one full-frame shot (no margins), planned as a shot list and
-                exported as a Ken Burns video. A vertical project plans and draws every shot tall for Shorts and phones,
-                and renders vertical without cropping. Neither can change once pages exist.
+                旁白视频项目中，每页是一个无边距的全画幅镜头，按镜头列表规划，并以 Ken Burns
+                平移缩放效果导出。竖屏项目会按竖向画幅规划和绘制镜头，适用于 Shorts
+                和手机，导出时无需裁切。已有页面后，项目形式和镜头画幅均无法更改。
               </p>
-              <Field label="Shot frame">
+              <Field label="镜头画幅">
                 <select
                   className="input"
                   value={s.filmFrame ?? "16:9"}
                   onChange={(e) => setS("filmFrame", e.target.value as "16:9" | "9:16")}
                 >
-                  <option value="16:9">16:9 widescreen (1920×1080)</option>
-                  <option value="9:16">9:16 vertical (1080×1920)</option>
+                  <option value="16:9">16:9 横屏（1920×1080）</option>
+                  <option value="9:16">9:16 竖屏（1080×1920）</option>
                 </select>
               </Field>
             </>
           ) : (
             <>
-              <Field label="Default page width (px)">{num("pageWidth", 256, 8000)}</Field>
-              <Field label="Default page height (px)">{num("pageHeight", 256, 20000)}</Field>
+              <Field label="默认页面宽度（像素）">{num("pageWidth", 256, 8000)}</Field>
+              <Field label="默认页面高度（像素）">{num("pageHeight", 256, 20000)}</Field>
             </>
           )}
-          <Field
-            label="AI budget cap (USD)"
-            hint="Generation stops and asks once this project's spend reaches it. Empty = no cap."
-          >
+          <Field label="AI 预算上限（美元）" hint="本项目的支出达到上限后会暂停生成并请求确认。留空表示不设上限。">
             <input
               className="input"
               type="number"
               min={0}
               step={1}
-              placeholder="No cap"
+              placeholder="不设上限"
               disabled={!owner}
-              title={owner ? undefined : "Only the project's owner can change the budget"}
+              title={owner ? undefined : "只有项目所有者可以修改预算"}
               value={s.budgetUsd ?? ""}
               onChange={(e) => setS("budgetUsd", e.target.value === "" ? null : Math.max(0, Number(e.target.value)))}
             />
           </Field>
-          <Field label="Panel generation quality" hint="LOW is the intended default">
+          <Field label="分镜生成质量" hint="默认使用低质量">
             <select
               className="input"
               value={s.imageQuality}
               onChange={(e) => setS("imageQuality", e.target.value as ProjectSettings["imageQuality"])}
             >
-              <option value="low">Low (recommended)</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
+              <option value="low">低（推荐）</option>
+              <option value="medium">中</option>
+              <option value="high">高</option>
             </select>
           </Field>
           {s.format !== "film" && (
             <>
-              <Field label="Page margin (0–0.2)">{num("pageMargin", 0, 0.2, 0.005)}</Field>
-              <Field label="Panel gutter (0–0.1)">{num("pageGutter", 0, 0.1, 0.005)}</Field>
+              <Field label="页面边距（0–0.2）">{num("pageMargin", 0, 0.2, 0.005)}</Field>
+              <Field label="分镜间距（0–0.1）">{num("pageGutter", 0, 0.1, 0.005)}</Field>
               <div />
             </>
           )}
-          <Field label="Reference derivative max width" hint={`Server default ${refDefault?.maxWidth ?? 192}`}>
+          <Field label="参考图缩略副本最大宽度" hint={`服务器默认值 ${refDefault?.maxWidth ?? 192}`}>
             <input
               className="input"
               type="number"
@@ -242,7 +240,7 @@ export function SettingsPage() {
               onChange={(e) => setS("referenceMaxWidth", e.target.value ? Number(e.target.value) : undefined)}
             />
           </Field>
-          <Field label="Reference derivative max height" hint={`Server default ${refDefault?.maxHeight ?? 288}`}>
+          <Field label="参考图缩略副本最大高度" hint={`服务器默认值 ${refDefault?.maxHeight ?? 288}`}>
             <input
               className="input"
               type="number"
@@ -254,14 +252,14 @@ export function SettingsPage() {
             />
           </Field>
           <p className="muted text-xs sm:col-span-3">
-            Only small reference derivatives are sent with image requests; canonical references stay full resolution.
-            Change the size to run cost/consistency experiments (see Cost → reference size experiments).
+            图像请求仅发送参考图的缩略副本，原始参考图保留完整分辨率。可调整尺寸，比较费用与一致性，详见“费用 →
+            参考图尺寸实验”。
           </p>
         </section>
 
         <section className="card grid gap-3 p-4 sm:grid-cols-3">
-          <h2 className="font-medium sm:col-span-3">Narration & webtoon</h2>
-          <Field label="Narration voice">
+          <h2 className="font-medium sm:col-span-3">旁白与条漫</h2>
+          <Field label="旁白音色">
             <select className="input" value={s.narrationVoice} onChange={(e) => setS("narrationVoice", e.target.value)}>
               {(tts.data?.voices.length
                 ? tts.data.voices
@@ -273,7 +271,7 @@ export function SettingsPage() {
               ))}
             </select>
           </Field>
-          <Field label={`Narration speed (${s.narrationSpeed.toFixed(2)}×)`}>
+          <Field label={`旁白语速（${s.narrationSpeed.toFixed(2)}×）`}>
             <input
               type="range"
               min={0.5}
@@ -284,30 +282,27 @@ export function SettingsPage() {
               className="w-full"
             />
           </Field>
-          <Field
-            label="Narration words per panel"
-            hint={`≈${Math.round(((s.narrationWordsPerPanel ?? 21) / 210) * 60)} s of speech per panel`}
-          >
+          <Field label="每格旁白词数" hint={`≈${Math.round(((s.narrationWordsPerPanel ?? 21) / 210) * 60)} 秒旁白／格`}>
             {num("narrationWordsPerPanel", 5, 80)}
           </Field>
-          <Field label="Pause after narration (ms)" hint="Silence after each narration segment">
+          <Field label="旁白后停顿（毫秒）" hint="每段旁白后的静音时长">
             {num("narrationPauseMs", 0, 5000)}
           </Field>
-          <Field label="Pause at scene/chapter end (ms)" hint="Longer break after the last line of a scene">
+          <Field label="场景／章节末停顿（毫秒）" hint="场景最后一句之后的较长停顿">
             {num("sceneBreakPauseMs", 0, 10000)}
           </Field>
-          <Field label="Narration style" hint="Used for every chapter so the voice stays consistent">
+          <Field label="旁白风格" hint="应用于所有章节，以保持旁白风格一致">
             <input
               className="input"
               maxLength={500}
-              placeholder="e.g. dry, warm, second person, present tense"
+              placeholder="例如冷峻、温暖、第二人称、现在时"
               value={s.narrationStyle ?? ""}
               onChange={(e) => setS("narrationStyle", e.target.value)}
             />
           </Field>
-          <Field label="Webtoon width (px)">{num("webtoonWidth", 320, 2000)}</Field>
-          <Field label="Webtoon panel gap (px)">{num("webtoonGap", 0, 1000)}</Field>
-          <Field label="Webtoon max chunk height (px)">{num("webtoonChunkHeight", 1000, 40000)}</Field>
+          <Field label="条漫宽度（像素）">{num("webtoonWidth", 320, 2000)}</Field>
+          <Field label="条漫分镜间距（像素）">{num("webtoonGap", 0, 1000)}</Field>
+          <Field label="条漫分段最大高度（像素）">{num("webtoonChunkHeight", 1000, 40000)}</Field>
         </section>
 
         <PronunciationSection
@@ -329,19 +324,14 @@ export function SettingsPage() {
         )}
 
         <section className="card space-y-3 p-4">
-          <h2 className="font-medium">Page and panel edges</h2>
+          <h2 className="font-medium">页面与分镜边缘</h2>
           <p className="muted text-xs">
-            A decorative edge for every page and for panel borders: wavy, torn, rough, brush or burnt. Pages and PDFs
-            draw it on the paper; videos cut the page out along it over the blurred backdrop. A panel can choose its own
-            border on its Panel tab.
+            为页面和分镜设置波浪、撕纸、粗切、笔触或烧灼边缘。页面和 PDF
+            会将边缘绘制在纸面上，视频会沿此边缘裁出页面并叠放在模糊背景上。每个分镜可在“分镜”选项卡中单独选择边框。
           </p>
+          <EdgePicker label="页面边缘" value={s.edges?.page} onChange={(page) => setS("edges", { ...s.edges, page })} />
           <EdgePicker
-            label="Page edge"
-            value={s.edges?.page}
-            onChange={(page) => setS("edges", { ...s.edges, page })}
-          />
-          <EdgePicker
-            label="Panel borders"
+            label="分镜边框"
             value={s.edges?.panels}
             onChange={(panels) => setS("edges", { ...s.edges, panels })}
           />
@@ -361,34 +351,31 @@ export function SettingsPage() {
         <PublishingSection value={s} onChange={(v) => setForm({ ...form, settings: { ...form.settings, ...v } })} />
 
         <section className="card space-y-3 p-4">
-          <h2 className="font-medium">Production</h2>
+          <h2 className="font-medium">制作</h2>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field
-              label="References to generate in bulk"
-              hint="Main only skips minor characters, and places and props used in fewer than two panels."
-            >
+            <Field label="批量生成的参考图" hint="仅主要内容会跳过次要角色，以及出场不足两格的场景和道具。">
               <select
                 className="input"
                 value={s.referencePolicy ?? "all"}
                 onChange={(e) => setS("referencePolicy", e.target.value as ProjectSettings["referencePolicy"])}
               >
-                <option value="all">All</option>
-                <option value="main">Main cast and recurring places only</option>
+                <option value="all">全部</option>
+                <option value="main">仅主要角色和重复出场的场景</option>
               </select>
             </Field>
             <Field
-              label="Production runs spend"
-              hint="Provider batches are half price and take up to 24 hours. Only OpenAI and Google keys batch; others (DeepSeek, Meta, OpenRouter) always run now."
+              label="制作任务的费用策略"
+              hint="提供商批处理费用减半，最长需要 24 小时。仅 OpenAI 和 Google 密钥支持批处理，DeepSeek、Meta、OpenRouter 等始终立即执行。"
             >
               <select
                 className="input"
                 value={s.batchPolicy ?? "interactive"}
                 onChange={(e) => setS("batchPolicy", e.target.value as ProjectSettings["batchPolicy"])}
               >
-                <option value="interactive">Everything now</option>
-                <option value="images">Text now, images in batches</option>
-                <option value="hybrid">Text in batches, images now</option>
-                <option value="cheapest">Everything in batches (cheapest)</option>
+                <option value="interactive">全部立即执行</option>
+                <option value="images">文本立即执行，图像批处理</option>
+                <option value="hybrid">文本批处理，图像立即执行</option>
+                <option value="cheapest">全部批处理（最省费用）</option>
               </select>
             </Field>
           </div>
@@ -406,12 +393,12 @@ export function SettingsPage() {
             <FallbackSection value={s.contentPolicyFallback} onChange={(v) => setS("contentPolicyFallback", v)} />
 
             <section className="card flex flex-wrap items-center gap-2 border-red-500/30 p-4">
-              <h2 className="mr-auto font-medium">Danger zone</h2>
+              <h2 className="mr-auto font-medium">危险操作</h2>
               <button type="button" className="btn-secondary" onClick={() => setConfirm("archive")}>
-                {data.project.status === "archived" ? "Unarchive" : "Archive"} project
+                {data.project.status === "archived" ? "取消归档项目" : "归档项目"}
               </button>
               <button type="button" className="btn-danger" onClick={() => setConfirm("trash")}>
-                Move to trash
+                移至回收站
               </button>
             </section>
           </>
@@ -420,8 +407,8 @@ export function SettingsPage() {
       <ConfirmDialog
         open={confirm !== null}
         danger={confirm === "trash"}
-        title={confirm === "trash" ? "Move project to trash?" : "Change archive state?"}
-        confirmLabel="Confirm"
+        title={confirm === "trash" ? "将项目移至回收站？" : "更改归档状态？"}
+        confirmLabel="确认"
         onClose={() => setConfirm(null)}
         onConfirm={async () => {
           try {
@@ -437,8 +424,8 @@ export function SettingsPage() {
         }}
       >
         {confirm === "trash"
-          ? "The project moves to trash and can be restored from the dashboard."
-          : "Archived projects are hidden from the recent list but stay fully intact."}
+          ? "项目将移至回收站，可在项目列表中恢复。"
+          : "归档项目会从最近项目列表中隐藏，所有内容均完整保留。"}
       </ConfirmDialog>
     </div>
   );
@@ -446,12 +433,12 @@ export function SettingsPage() {
 
 const FONTS = ["Comic Neue", "DejaVu Sans"];
 const TYPE_LABEL: Record<BubbleType, string> = {
-  normal: "Speech",
-  thought: "Thought",
-  shout: "Shout",
-  whisper: "Whisper",
-  narration: "Narration / caption",
-  system: "System box",
+  normal: "对话",
+  thought: "心理活动",
+  shout: "喊话",
+  whisper: "低语",
+  narration: "旁白／说明",
+  system: "系统框",
 };
 
 export function LetteringSection({
@@ -487,14 +474,14 @@ export function LetteringSection({
   return (
     <section className="card space-y-3 p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="mr-auto font-medium">Lettering defaults</h2>
+        <h2 className="mr-auto font-medium">文字默认样式</h2>
         <button type="button" className="btn-ghost text-xs" onClick={() => onChange({})}>
-          Reset to built-in
+          恢复内置样式
         </button>
       </div>
       <p className="muted text-xs">
-        Used for new bubbles, captions and SFX (including AI-planned chapters). Font sizes are in page pixels (pages are
-        usually 1024–1600 px wide). To update existing text, use Editor → Lettering → Default styles.
+        用于新建的气泡、说明框和拟声词，也适用于 AI 规划的章节。字号以页面像素为单位，页面通常宽 1024–1600
+        像素。要更新已有文字，请使用“编辑器 → 文字 → 默认样式”。
       </p>
       <label className="flex items-start gap-2 rounded-lg border border-[var(--border)] p-3 text-sm">
         <input
@@ -504,11 +491,10 @@ export function LetteringSection({
           onChange={(e) => onChange({ ...cur, autoPlace: e.target.checked })}
         />
         <span>
-          Add speech bubbles, captions and SFX automatically when planning chapters
+          规划章节时自动添加对话气泡、说明框和拟声词
           <span className="muted block text-xs">
-            Off: pages get clean artwork only, and panel prompts don't reserve empty space for text. The plan's dialogue
-            and SFX are kept: Editor → Lettering → Letter from plan places them later. Narration lines are still created
-            for audio.
+            关闭后，页面仅生成画面，分镜提示词不再为文字预留空间。规划中的对话和拟声词仍会保留，之后可使用“编辑器 → 文字
+            → 从规划排字”添加。用于音频的旁白文本仍会生成。
           </span>
         </span>
       </label>
@@ -519,27 +505,34 @@ export function LetteringSection({
             checked={l.autoFit}
             onChange={(e) => onChange({ ...cur, autoFit: e.target.checked })}
           />
-          Auto-fit boxes to their text
+          文本框自动适应文字
         </label>
         <span className="flex items-center gap-2">
-          Max box width (% of page)
-          {n(Math.round(l.maxWidth * 100), (v) => onChange({ ...cur, maxWidth: v / 100 }), 10, 100, 1, "Max box width")}
+          文本框最大宽度（占页面百分比）
+          {n(
+            Math.round(l.maxWidth * 100),
+            (v) => onChange({ ...cur, maxWidth: v / 100 }),
+            10,
+            100,
+            1,
+            "文本框最大宽度",
+          )}
         </span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead className="muted text-left">
             <tr>
-              <th className="py-1 pr-2 font-normal">Type</th>
-              <th className="pr-2 font-normal">Font</th>
-              <th className="pr-2 font-normal">Size</th>
-              <th className="pr-2 font-normal">Line h.</th>
-              <th className="pr-2 font-normal">Padding</th>
-              <th className="pr-2 font-normal">Align</th>
-              <th className="pr-2 font-normal">Fill</th>
-              <th className="pr-2 font-normal">Text</th>
-              <th className="pr-2 font-normal">Border</th>
-              <th className="font-normal">Border w.</th>
+              <th className="py-1 pr-2 font-normal">类型</th>
+              <th className="pr-2 font-normal">字体</th>
+              <th className="pr-2 font-normal">字号</th>
+              <th className="pr-2 font-normal">行高</th>
+              <th className="pr-2 font-normal">内边距</th>
+              <th className="pr-2 font-normal">对齐</th>
+              <th className="pr-2 font-normal">填充</th>
+              <th className="pr-2 font-normal">文字</th>
+              <th className="pr-2 font-normal">边框</th>
+              <th className="font-normal">边框宽度</th>
             </tr>
           </thead>
           <tbody>
@@ -549,32 +542,32 @@ export function LetteringSection({
               return (
                 <tr key={t} className="border-t border-[var(--border)]">
                   <td className="py-1 pr-2 whitespace-nowrap">{lbl}</td>
-                  <td className="pr-2">{font(st.font, (font) => setType(t, { font }), `${lbl} font`)}</td>
+                  <td className="pr-2">{font(st.font, (font) => setType(t, { font }), `${lbl}字体`)}</td>
                   <td className="pr-2">
-                    {n(st.fontSize, (fontSize) => setType(t, { fontSize }), 8, 200, 1, `${lbl} font size`)}
+                    {n(st.fontSize, (fontSize) => setType(t, { fontSize }), 8, 200, 1, `${lbl}字号`)}
                   </td>
                   <td className="pr-2">
-                    {n(st.lineHeight, (lineHeight) => setType(t, { lineHeight }), 0.8, 3, 0.05, `${lbl} line height`)}
+                    {n(st.lineHeight, (lineHeight) => setType(t, { lineHeight }), 0.8, 3, 0.05, `${lbl}行高`)}
                   </td>
                   <td className="pr-2">
-                    {n(st.padding, (padding) => setType(t, { padding }), 0, 200, 1, `${lbl} padding`)}
+                    {n(st.padding, (padding) => setType(t, { padding }), 0, 200, 1, `${lbl}内边距`)}
                   </td>
                   <td className="pr-2">
                     <select
                       className="input text-xs"
-                      aria-label={`${lbl} alignment`}
+                      aria-label={`${lbl}对齐`}
                       value={st.align}
                       onChange={(e) => setType(t, { align: e.target.value as LetteringStyle["align"] })}
                     >
-                      <option value="left">left</option>
-                      <option value="center">center</option>
-                      <option value="right">right</option>
+                      <option value="left">左对齐</option>
+                      <option value="center">居中</option>
+                      <option value="right">右对齐</option>
                     </select>
                   </td>
                   <td className="pr-2">
                     <input
                       type="color"
-                      aria-label={`${lbl} fill`}
+                      aria-label={`${lbl}填充色`}
                       value={st.background}
                       onChange={(e) => setType(t, { background: e.target.value })}
                     />
@@ -582,7 +575,7 @@ export function LetteringSection({
                   <td className="pr-2">
                     <input
                       type="color"
-                      aria-label={`${lbl} text color`}
+                      aria-label={`${lbl}文字颜色`}
                       value={st.textColor}
                       onChange={(e) => setType(t, { textColor: e.target.value })}
                     />
@@ -590,14 +583,12 @@ export function LetteringSection({
                   <td className="pr-2">
                     <input
                       type="color"
-                      aria-label={`${lbl} border color`}
+                      aria-label={`${lbl}边框颜色`}
                       value={st.borderColor}
                       onChange={(e) => setType(t, { borderColor: e.target.value })}
                     />
                   </td>
-                  <td>
-                    {n(st.borderWidth, (borderWidth) => setType(t, { borderWidth }), 0, 20, 1, `${lbl} border width`)}
-                  </td>
+                  <td>{n(st.borderWidth, (borderWidth) => setType(t, { borderWidth }), 0, 20, 1, `${lbl}边框宽度`)}</td>
                 </tr>
               );
             })}
@@ -605,19 +596,19 @@ export function LetteringSection({
         </table>
       </div>
       <div className="flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-3 text-xs">
-        <span className="font-medium">Sound effects</span>
-        {font(l.sfx.font, (f) => setSfx({ font: f }), "SFX font")}
+        <span className="font-medium">拟声词</span>
+        {font(l.sfx.font, (f) => setSfx({ font: f }), "拟声词字体")}
         <span className="flex items-center gap-1">
-          Size {n(l.sfx.fontSize, (fontSize) => setSfx({ fontSize }), 8, 400, 1, "SFX size")}
+          字号 {n(l.sfx.fontSize, (fontSize) => setSfx({ fontSize }), 8, 400, 1, "拟声词字号")}
         </span>
         <label className="flex items-center gap-1">
-          Fill <input type="color" value={l.sfx.fill} onChange={(e) => setSfx({ fill: e.target.value })} />
+          填充 <input type="color" value={l.sfx.fill} onChange={(e) => setSfx({ fill: e.target.value })} />
         </label>
         <label className="flex items-center gap-1">
-          Stroke <input type="color" value={l.sfx.stroke} onChange={(e) => setSfx({ stroke: e.target.value })} />
+          描边 <input type="color" value={l.sfx.stroke} onChange={(e) => setSfx({ stroke: e.target.value })} />
         </label>
         <span className="flex items-center gap-1">
-          Stroke w. {n(l.sfx.strokeWidth, (strokeWidth) => setSfx({ strokeWidth }), 0, 30, 1, "SFX stroke width")}
+          描边宽度 {n(l.sfx.strokeWidth, (strokeWidth) => setSfx({ strokeWidth }), 0, 30, 1, "拟声词描边宽度")}
         </span>
       </div>
     </section>
@@ -646,12 +637,9 @@ function FallbackSection({
   const selected = cur.credentialId ?? "";
   return (
     <section className="card space-y-3 p-4">
-      <h2 className="font-medium">Content filter fallback</h2>
+      <h2 className="font-medium">内容过滤备用方案</h2>
       <p className="muted text-xs">
-        When an image provider's content filter blocks a panel, retry it once on another of your keys and mark the panel
-        "needs review". Only content-filter blocks trigger this; other failures never switch providers. The retried
-        panel may look slightly different, which is why it is flagged. Pick a key below — this server has no shared
-        keys.
+        图像提供商因内容过滤拦截分镜时，使用你的另一个密钥重试一次，并将分镜标记为“待审核”。仅内容过滤拦截会触发切换，其他失败不会切换提供商。重试后画面可能略有变化，因此需要审核。请在下方选择密钥，此服务器没有共享密钥。
       </p>
       <label className="flex items-center gap-2 text-sm">
         <input
@@ -659,16 +647,16 @@ function FallbackSection({
           checked={cur.enabled}
           onChange={(e) => onChange({ ...cur, enabled: e.target.checked })}
         />
-        Retry blocked panels once on the fallback provider
+        使用备用提供商重试被拦截的分镜一次
       </label>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Fallback provider">
+        <Field label="备用提供商">
           <select
             className="input"
             value={selected}
             onChange={(e) => onChange({ ...cur, credentialId: e.target.value || null, provider: null, model: "" })}
           >
-            <option value="">Select one of your keys…</option>
+            <option value="">选择你的一个密钥…</option>
             {creds.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.label} {c.keyHint}
@@ -676,10 +664,10 @@ function FallbackSection({
             ))}
           </select>
         </Field>
-        <Field label="Model">
+        <Field label="模型">
           <input
             className="input"
-            placeholder="provider default"
+            placeholder="提供商默认模型"
             value={cur.model}
             onChange={(e) => onChange({ ...cur, model: e.target.value })}
           />
@@ -690,34 +678,34 @@ function FallbackSection({
 }
 
 const CHECK_LABEL: Record<VisualCheck, string> = {
-  headcount: "Cast and headcount",
-  identity: "Identity",
-  outfit: "Outfit",
-  props: "Props",
-  location: "Location",
-  expression: "Expression",
-  pose: "Pose (strict guide)",
-  framing: "Framing",
-  anatomy: "Anatomy",
-  text: "Stray text",
-  style: "Style drift",
-  palette: "Palette drift",
-  covered_faces: "Faces under lettering",
+  headcount: "角色与人数",
+  identity: "人物身份",
+  outfit: "服装",
+  props: "道具",
+  location: "场景",
+  expression: "表情",
+  pose: "姿势（严格参考）",
+  framing: "构图",
+  anatomy: "人体结构",
+  text: "多余文字",
+  style: "画风偏移",
+  palette: "色彩偏移",
+  covered_faces: "文字遮挡面部",
 };
 const CHECK_HINT: Record<VisualCheck, string> = {
-  headcount: "The expected characters are there, and nobody else",
-  identity: "Faces, hair and build match each character's sheet",
-  outfit: "Each character wears the outfit the panel calls for",
-  props: "The panel's props are visible and look as described",
-  location: "The setting matches the panel's location",
-  expression: "Faces show the expression the panel asks for",
-  pose: "Figures take the pose of a strict layout guide (panels without one are skipped)",
-  framing: "The shot type and camera angle are the ones planned",
-  anatomy: "No extra, missing or broken limbs, hands or fingers",
-  text: "No letters or words drawn into the art",
-  style: "The drawing keeps the project's art style",
-  palette: "The colours follow the project's colour mode",
-  covered_faces: "A bubble or caption hides a face (flag only: move the lettering to fix it)",
+  headcount: "应出场的角色均已出现，且没有多余人物",
+  identity: "面部、发型与体型符合角色设定",
+  outfit: "每个角色穿着分镜要求的服装",
+  props: "分镜中的道具清晰可见，外观符合描述",
+  location: "背景符合分镜指定的场景",
+  expression: "面部呈现分镜要求的表情",
+  pose: "人物姿势遵循严格布局参考，没有此参考的分镜会跳过检查",
+  framing: "景别与视角符合规划",
+  anatomy: "肢体、手和手指没有多余、缺失或结构错误",
+  text: "画面中没有绘入字母或文字",
+  style: "画面保持项目指定的画风",
+  palette: "色彩符合项目指定的色彩模式",
+  covered_faces: "气泡或说明框遮住面部，仅标记，可移动文字修复",
 };
 
 function ConsistencySection({
@@ -742,12 +730,10 @@ function ConsistencySection({
   );
   return (
     <section className="card space-y-3 p-4">
-      <h2 className="font-medium">Visual checks (vision QA)</h2>
+      <h2 className="font-medium">画面检查（视觉质检）</h2>
       <p className="muted text-xs">
-        After each panel is generated, a vision model looks at the artwork: who is in it and how many, and each aspect
-        you turn on below. Failures are flagged on the page and in the editor, or redrawn automatically. All aspects are
-        judged in one extra text-model call with a small image. Some text models cannot read images, so pick a key with
-        a vision model (for example OpenAI gpt-5-mini, Anthropic Claude, Google Gemini or Meta Muse).
+        每格生成后，由视觉模型检查画面中的角色、人数及下方启用的各项内容。不通过的分镜会在页面和编辑器中标记，或自动重绘。所有检查合并为一次额外的文本模型调用，并附带缩略图。请选择支持图像输入的模型密钥，例如
+        OpenAI gpt-5-mini、Anthropic Claude、Google Gemini 或 Meta Muse。
       </p>
       <label className="flex items-center gap-2 text-sm">
         <input
@@ -755,16 +741,16 @@ function ConsistencySection({
           checked={cur.enabled}
           onChange={(e) => onChange({ ...cur, enabled: e.target.checked })}
         />
-        Check every generated panel automatically
+        自动检查每个生成的分镜
       </label>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Vision provider">
+        <Field label="视觉模型提供商">
           <select
             className="input"
             value={cur.credentialId ?? ""}
             onChange={(e) => onChange({ ...cur, credentialId: e.target.value || null })}
           >
-            <option value="">Select one of your keys…</option>
+            <option value="">选择你的一个密钥…</option>
             {creds.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.label} {c.keyHint}
@@ -772,10 +758,10 @@ function ConsistencySection({
             ))}
           </select>
         </Field>
-        <Field label="Model">
+        <Field label="模型">
           <input
             className="input"
-            placeholder="e.g. gpt-5-mini"
+            placeholder="例如 gpt-5-mini"
             value={cur.model}
             onChange={(e) => onChange({ ...cur, model: e.target.value })}
           />
@@ -787,20 +773,20 @@ function ConsistencySection({
             <span>{CHECK_LABEL[k]}</span>
             <select
               className="input w-44 py-1 text-xs"
-              aria-label={`${CHECK_LABEL[k]} check`}
+              aria-label={`${CHECK_LABEL[k]}检查`}
               value={modes[k]}
               onChange={(e) => onChange({ ...cur, checks: { ...cur.checks, [k]: e.target.value as VisualCheckMode } })}
             >
-              <option value="off">Off</option>
-              <option value="flag">Flag only</option>
+              <option value="off">关闭</option>
+              <option value="flag">仅标记</option>
               {/* Moving the lettering fixes a covered face; drawing the panel again does not. */}
-              {k !== "covered_faces" && <option value="regenerate_once">Regenerate once</option>}
-              {k !== "covered_faces" && <option value="regenerate_budget">Regenerate up to budget</option>}
+              {k !== "covered_faces" && <option value="regenerate_once">重新生成一次</option>}
+              {k !== "covered_faces" && <option value="regenerate_budget">在预算内反复生成</option>}
             </select>
           </label>
         ))}
       </div>
-      <Field label="Budget for automatic redraws (USD, whole project)">
+      <Field label="自动重绘预算（美元，整个项目）">
         <input
           className="input w-32"
           type="number"
@@ -811,16 +797,13 @@ function ConsistencySection({
         />
       </Field>
       <p className="muted text-xs">
-        Regenerate up to budget redraws a failing panel until it passes, at most {MAX_AUTO_REGENERATIONS} times in a
-        row, while the project's automatic redraws have cost less than this budget. The project budget still applies.
+        “在预算内反复生成”会在自动重绘费用低于此预算时重绘未通过的分镜，直到通过，最多连续重绘 {MAX_AUTO_REGENERATIONS}{" "}
+        次。项目总预算限制仍然生效。
       </p>
       {!creds.length ? (
-        <p className="text-xs text-amber-600">
-          Add an API key with a vision model in Account → AI providers to use this.
-        </p>
+        <p className="text-xs text-amber-600">请先在“账户 → AI 提供商”中添加支持视觉模型的 API 密钥。</p>
       ) : (
-        cur.enabled &&
-        !cur.credentialId && <p className="text-xs text-amber-600">Pick a key above, or checks are skipped.</p>
+        cur.enabled && !cur.credentialId && <p className="text-xs text-amber-600">请在上方选择密钥，否则会跳过检查。</p>
       )}
     </section>
   );
@@ -843,7 +826,7 @@ type RuntimeReport = {
 };
 
 /**
- * Target runtime: a length to aim for. Chapter plans then default to a page count, and narration to words per
+ * 目标时长: a length to aim for. Chapter plans then default to a page count, and narration to words per
  * panel, that land each chapter on its share; the table compares that budget with what exists so far.
  */
 function RuntimeSection({
@@ -876,11 +859,9 @@ function RuntimeSection({
   );
   return (
     <section className="card space-y-3 p-4">
-      <h2 className="font-medium">Target runtime</h2>
+      <h2 className="font-medium">目标时长</h2>
       <p className="muted text-xs">
-        Aim the video at a length. Chapter plans then default to a page count, and narration to a number of words per
-        panel, that give each chapter its share of it (by the length of its source text), and each shot stays between
-        the shortest and longest length below.
+        设置视频的目标时长后，章节规划会按原文长度分配页面数和每格旁白词数。每个镜头的时长会保持在下方设置的最短和最长时长之间。
       </p>
       <label className="flex items-center gap-2 text-sm">
         <input
@@ -892,16 +873,16 @@ function RuntimeSection({
             )
           }
         />
-        Aim for a runtime
+        启用目标时长
       </label>
       {value && (
         <div className="grid gap-3 sm:grid-cols-4">
-          <Field label="Minutes">{n("minutes", 1, 600)}</Field>
-          <Field label="Words per minute" hint="≈150 for calm narration">
+          <Field label="分钟">{n("minutes", 1, 600)}</Field>
+          <Field label="每分钟词数" hint="平缓旁白约为每分钟 150 词">
             {n("wordsPerMinute", 80, 260)}
           </Field>
-          <Field label="Shortest shot (s)">{n("minShotSeconds", 1, 30, 0.5)}</Field>
-          <Field label="Longest shot (s)">{n("maxShotSeconds", 2, 60, 0.5)}</Field>
+          <Field label="最短镜头（秒）">{n("minShotSeconds", 1, 30, 0.5)}</Field>
+          <Field label="最长镜头（秒）">{n("maxShotSeconds", 2, 60, 0.5)}</Field>
         </div>
       )}
       {report.data && report.data.chapters.length > 0 && (
@@ -909,10 +890,10 @@ function RuntimeSection({
           <table className="w-full text-left text-xs">
             <thead className="muted">
               <tr>
-                <th className="py-1 pr-2">Chapter</th>
-                {saved && <th className="py-1 pr-2">Budget</th>}
-                <th className="py-1 pr-2">Planned</th>
-                <th className="py-1 pr-2">Narration</th>
+                <th className="py-1 pr-2">章节</th>
+                {saved && <th className="py-1 pr-2">预算</th>}
+                <th className="py-1 pr-2">已规划</th>
+                <th className="py-1 pr-2">旁白</th>
               </tr>
             </thead>
             <tbody>
@@ -923,19 +904,19 @@ function RuntimeSection({
                   </td>
                   {saved && (
                     <td className="py-1 pr-2">
-                      {c.budget ? `${c.budget.words} words · ${c.budget.shots} shots · ${c.budget.pages} pages` : "—"}
+                      {c.budget ? `${c.budget.words} 词 · ${c.budget.shots} 个镜头 · ${c.budget.pages} 页` : "—"}
                       {c.budget?.capped && (
-                        <span className="block text-amber-600" title="A chapter plan holds at most 60 pages">
-                          More than one plan holds: split this chapter or lengthen the shots
+                        <span className="block text-amber-600" title="一个章节规划最多容纳 60 页">
+                          超出单次规划容量，请拆分本章或延长镜头时长
                         </span>
                       )}
                     </td>
                   )}
                   <td className="py-1 pr-2">
-                    {c.planned.pages} pages · {c.planned.panels} panels
+                    {c.planned.pages} 页 · {c.planned.panels} 格
                   </td>
                   <td className="py-1 pr-2">
-                    {c.narrationWords} words · ≈{c.estimatedMinutes} min
+                    {c.narrationWords} 词 · 约 {c.estimatedMinutes} 分钟
                   </td>
                 </tr>
               ))}
@@ -943,14 +924,13 @@ function RuntimeSection({
           </table>
           {report.data.neededChapters && report.data.chapters.length < report.data.neededChapters && (
             <p className="mt-2 rounded-md bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-300">
-              This length needs about {report.data.neededChapters} chapters so that each fits one chapter plan; the
-              project has {report.data.chapters.length}. Analyse the story again (the analysis now aims for that many),
-              split long chapters, or choose longer shots.
+              此时长约需 {report.data.neededChapters} 章，才能让每章符合单次规划容量；本项目目前有{" "}
+              {report.data.chapters.length} 章。请重新分析故事以按目标章节数规划、拆分较长章节，或延长镜头时长。
             </p>
           )}
           <p className="muted mt-2 text-xs">
-            Narration so far adds up to about <strong>{report.data.estimatedMinutes} min</strong>
-            {saved ? ` of the ${saved.minutes} min target` : ""}.
+            当前旁白累计约 <strong>{report.data.estimatedMinutes} 分钟</strong>
+            {saved ? `，目标为 ${saved.minutes} 分钟` : ""}.
           </p>
         </div>
       )}
@@ -965,7 +945,7 @@ function SaveTemplate({ projectId, defaultName }: { projectId: string; defaultNa
   const [busy, setBusy] = useState(false);
   return (
     <div className="flex flex-wrap items-end gap-2 border-t border-[var(--border)] pt-3">
-      <Field label="Save as template" hint="Type, format, style and settings; new projects can start from it.">
+      <Field label="另存为模板" hint="保存类型、形式、风格和设置，供新项目使用。">
         <input className="input" placeholder={defaultName} value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
       <button
@@ -977,7 +957,7 @@ function SaveTemplate({ projectId, defaultName }: { projectId: string; defaultNa
           try {
             await post(`/projects/${projectId}/template`, { name: name.trim() || defaultName });
             await qc.invalidateQueries({ queryKey: ["production-presets"] });
-            toast.success("Template saved — it is offered when you create a project");
+            toast.success("模板已保存，新建项目时可以选用。");
             setName("");
           } catch (e) {
             toast.error(e);
@@ -986,7 +966,7 @@ function SaveTemplate({ projectId, defaultName }: { projectId: string; defaultNa
           }
         }}
       >
-        Save template
+        保存模板
       </button>
     </div>
   );
@@ -997,19 +977,16 @@ function SaveProfile({ projectId, defaultName }: { projectId: string; defaultNam
   const [name, setName] = useState("");
   const save = useAction(() => post(`/projects/${projectId}/channel-profile`, { name: name.trim() || defaultName }), {
     invalidate: [["channel-profiles"]],
-    success: "Profile saved: edit it under Profiles, or start a new project from it",
+    success: "频道配置已保存，可在频道配置中编辑，或用它创建新项目。",
     onSuccess: () => setName(""),
   });
   return (
     <div className="flex flex-wrap items-end gap-2">
-      <Field
-        label="Save as channel profile"
-        hint="Voice, quality, runtime, video branding and logo, thumbnail and YouTube rules, export shape."
-      >
+      <Field label="另存为频道配置" hint="保存音色、质量、时长、视频品牌与标志、缩略图与 YouTube 规则及导出画幅。">
         <input className="input" placeholder={defaultName} value={name} onChange={(e) => setName(e.target.value)} />
       </Field>
       <button type="button" className="btn-secondary" disabled={save.isPending} onClick={() => save.mutate()}>
-        Save profile
+        保存频道配置
       </button>
     </div>
   );

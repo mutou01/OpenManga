@@ -17,7 +17,10 @@ import {
   StatusChip,
   toast,
 } from "../../components/ui.tsx";
+import { colorModeLabel, projectTypeLabel, readingDirectionLabel } from "../../lib/locale.ts";
+import { stylePresetText } from "../../lib/style-labels.ts";
 import { AiChip, useAiBody } from "../ai/AiPicker.tsx";
+import { kindLabel } from "../generation/shared.tsx";
 import { ProfileCard } from "../profiles/ApplyProfile.tsx";
 import { HealthCard } from "./HealthPage.tsx";
 import { MembersDialog } from "./MembersDialog.tsx";
@@ -49,67 +52,67 @@ export function OverviewPage() {
   const steps: { done: boolean; label: string; to: string; hint: string }[] = [
     {
       done: (c.storyRevisions ?? 0) > 0,
-      label: "Add your story",
+      label: "添加故事",
       to: "/projects/$projectId/story",
-      hint: "Paste story, chapter, outline, screenplay or idea",
+      hint: "粘贴故事、章节、大纲、剧本或创意",
     },
     {
       done: (c.characters ?? 0) > 0,
-      label: "Analyze & apply cast/world",
+      label: "分析并应用角色与世界设定",
       to: "/projects/$projectId/story",
-      hint: "The text model extracts characters, locations and chapters",
+      hint: "文本模型提取角色、场景和章节",
     },
     {
       done: approvedCast > 0 && approvedCast === (cast.data?.characters.length ?? -1),
-      label: "Design and approve character references",
+      label: "制作并审核角色参考图",
       to: "/projects/$projectId/cast",
-      hint: `${approvedCast}/${cast.data?.characters.length ?? 0} characters approved`,
+      hint: `${approvedCast}/${cast.data?.characters.length ?? 0} 个角色已通过审核`,
     },
     {
       done: (c.pages ?? 0) > 0,
-      label: "Plan chapters into scenes, pages and panels",
+      label: "将章节规划为场景、页面和画格",
       to: "/projects/$projectId/chapters",
-      hint: `${c.chapters ?? 0} chapters · ${c.pages ?? 0} pages`,
+      hint: `${c.chapters ?? 0} 章 · ${c.pages ?? 0} 页`,
     },
     {
       done: (c.panelsWithArt ?? 0) > 0,
-      label: "Review panels and generate artwork",
+      label: "审核画格并生成画面",
       to: "/projects/$projectId/pages",
-      hint: `${c.panelsWithArt ?? 0}/${c.panels ?? 0} panels have artwork`,
+      hint: `${c.panelsWithArt ?? 0}/${c.panels ?? 0} 格已有画面`,
     },
     {
       done: (c.narrationSegments ?? 0) > 0,
-      label: "Letter pages and write narration",
+      label: "为页面排字并编写旁白",
       to: "/projects/$projectId/narration",
-      hint: `${c.narrationSegments ?? 0} narration segments`,
+      hint: `${c.narrationSegments ?? 0} 段旁白`,
     },
     {
       done: false,
-      label: "Export",
+      label: "导出",
       to: "/projects/$projectId/exports",
-      hint: "PNG, PDF, webtoon strip, narration, project package",
+      hint: "PNG、PDF、条漫、旁白或项目包",
     },
   ];
   return (
     <div className="mx-auto max-w-7xl p-4 sm:p-6">
       <PageHeader
         title={p.title}
-        subtitle={p.description || "No description"}
+        subtitle={p.description || "暂无简介"}
         actions={
           <>
             <button type="button" className="btn-secondary" onClick={() => setMembersOpen(true)}>
-              <Users className="size-4" /> Members
+              <Users className="size-4" /> 成员
             </button>
             {(data.role === "owner" || data.role === "admin") && (
               <button type="button" className="btn-secondary" onClick={() => setShareOpen(true)}>
-                <Share2 className="size-4" /> Share
+                <Share2 className="size-4" /> 分享
               </button>
             )}
             <button type="button" className="btn-secondary" onClick={() => setThumbOpen(true)}>
-              <MonitorPlay className="size-4" /> Generate thumbnail
+              <MonitorPlay className="size-4" /> 生成缩略图
             </button>
             <button type="button" className="btn-secondary" onClick={() => setCoverOpen(true)}>
-              <ImagePlus className="size-4" /> Generate cover
+              <ImagePlus className="size-4" /> 生成封面
             </button>
           </>
         }
@@ -118,14 +121,14 @@ export function OverviewPage() {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              ["Chapters", c.chapters],
-              ["Pages", c.pages],
-              ["Panels", `${c.panelsWithArt}/${c.panels}`],
-              ["Characters", c.characters],
-              ["Locations", c.locations],
-              ["Generations", c.generations],
-              ["Active jobs", c.activeJobs],
-              ["API spend", fmt.usd(c.spendUsd)],
+              ["章节", c.chapters],
+              ["页面", c.pages],
+              ["画格", `${c.panelsWithArt ?? 0}/${c.panels ?? 0}`],
+              ["角色", c.characters],
+              ["场景", c.locations],
+              ["生成次数", c.generations],
+              ["进行中的任务", c.activeJobs],
+              ["API 费用", fmt.usd(c.spendUsd)],
             ].map(([k, v]) => (
               <div key={String(k)} className="card p-3">
                 <div className="muted text-xs">{k}</div>
@@ -141,7 +144,7 @@ export function OverviewPage() {
             unpricedCalls={c.unpricedCalls ?? 0}
           />
           <div className="card p-4">
-            <h2 className="mb-3 font-medium">Production pipeline</h2>
+            <h2 className="mb-3 font-medium">制作流程</h2>
             <ol className="space-y-2">
               {steps.map((s) => (
                 <li key={s.label}>
@@ -166,17 +169,17 @@ export function OverviewPage() {
           </div>
           <div className="card p-4">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-medium">Recent generations</h2>
+              <h2 className="font-medium">最近的生成任务</h2>
               <Link
                 to="/projects/$projectId/generation"
                 params={{ projectId }}
                 className="text-sm text-accent-500 hover:underline"
               >
-                View all
+                查看全部
               </Link>
             </div>
             {jobs.isLoading && <Spinner />}
-            {jobs.data && !jobs.data.jobs.length && <p className="muted text-sm">No generations yet.</p>}
+            {jobs.data && !jobs.data.jobs.length && <p className="muted text-sm">暂无生成任务。</p>}
             <ul className="divide-y divide-[var(--border)]">
               {jobs.data?.jobs.map((j) => (
                 <li key={j.id}>
@@ -186,7 +189,7 @@ export function OverviewPage() {
                     className="flex items-center gap-3 py-2 text-sm hover:underline"
                   >
                     <AssetImage assetId={j.outputAssetId} alt="" className="size-10 rounded" />
-                    <span className="flex-1 capitalize">{j.kind.replace(/_/g, " ")}</span>
+                    <span className="flex-1 capitalize">{kindLabel(j.kind)}</span>
                     <span className="muted text-xs">
                       {fmt.usd(j.costUsd)} · {fmt.ago(j.createdAt)}
                     </span>
@@ -202,29 +205,27 @@ export function OverviewPage() {
           <ProductionRunCard projectId={projectId} format={p.settings.format} />
           {p.settings.thumbnail && <ThumbnailCard projectId={projectId} saved={p.settings.thumbnail} />}
           <div className="card overflow-hidden">
-            <AssetImage assetId={p.coverAssetId} variant={null} alt="Cover artwork" className="aspect-[2/3] w-full" />
-            <div className="muted p-2 text-xs">
-              Cover artwork is generated without text; titles are composited on export.
-            </div>
+            <AssetImage assetId={p.coverAssetId} variant={null} alt="封面插图" className="aspect-[2/3] w-full" />
+            <div className="muted p-2 text-xs">生成的封面留空文字区域，标题在导出时合成。</div>
           </div>
           <ProfileCard projectId={projectId} from={p.settings.channelProfile} />
           <div className="card p-4">
-            <h3 className="mb-2 text-sm font-medium">Project</h3>
+            <h3 className="mb-2 text-sm font-medium">项目详情</h3>
             <KeyValue
               items={[
                 [
-                  "Type",
+                  "类型",
                   <span key="t" className="capitalize">
-                    {p.projectType.replace("_", " ")}
+                    {projectTypeLabel(p.projectType)}
                   </span>,
                 ],
-                ["Reading", p.readingDirection.toUpperCase()],
-                ["Color", p.colorMode.replace("_", " ")],
-                ["Style", style?.preset?.name ?? "Custom"],
-                ["Language", p.language],
-                ["Page size", `${p.settings.pageWidth}×${p.settings.pageHeight}`],
-                ["Image quality", p.settings.imageQuality],
-                ["Created", fmt.date(p.createdAt)],
+                ["阅读方向", readingDirectionLabel(p.readingDirection)],
+                ["色彩", colorModeLabel(p.colorMode)],
+                ["画风", style?.preset ? stylePresetText(style.preset).name : "自定义"],
+                ["作品语言", p.language],
+                ["页面尺寸", `${p.settings.pageWidth}×${p.settings.pageHeight}`],
+                ["图像质量", p.settings.imageQuality],
+                ["创建时间", fmt.date(p.createdAt)],
               ]}
             />
           </div>
@@ -280,20 +281,20 @@ function ThumbnailCard({ projectId, saved }: { projectId: string; saved: Thumbna
   const dirty = t.title !== saved.title || t.subtitle !== saved.subtitle || t.side !== saved.side;
   return (
     <div className="card overflow-hidden">
-      <img src={url(false)} alt="Video thumbnail" className="aspect-video w-full bg-[var(--panel-2)] object-cover" />
+      <img src={url(false)} alt="视频缩略图" className="aspect-video w-full bg-[var(--panel-2)] object-cover" />
       <div className="space-y-2 p-2">
         <input
           className="input"
-          aria-label="Headline"
-          placeholder="Headline"
+          aria-label="主标题"
+          placeholder="主标题"
           value={t.title}
           maxLength={120}
           onChange={(e) => setT({ ...t, title: e.target.value })}
         />
         <input
           className="input"
-          aria-label="Subtitle"
-          placeholder="Subtitle (optional)"
+          aria-label="副标题"
+          placeholder="副标题（可选）"
           value={t.subtitle}
           maxLength={120}
           onChange={(e) => setT({ ...t, subtitle: e.target.value })}
@@ -301,12 +302,12 @@ function ThumbnailCard({ projectId, saved }: { projectId: string; saved: Thumbna
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <select
             className="input w-auto"
-            aria-label="Headline side"
+            aria-label="标题位置"
             value={t.side}
             onChange={(e) => setT({ ...t, side: e.target.value as Thumbnail["side"] })}
           >
-            <option value="left">Headline left</option>
-            <option value="right">Headline right</option>
+            <option value="left">标题居左</option>
+            <option value="right">标题居右</option>
           </select>
           {dirty && (
             <button
@@ -321,7 +322,7 @@ function ThumbnailCard({ projectId, saved }: { projectId: string; saved: Thumbna
                 }
               }}
             >
-              Save
+              保存
             </button>
           )}
           <a className="btn-secondary ml-auto" href={url(true)}>
@@ -362,12 +363,12 @@ function CoverModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={thumbnail ? "Generate video thumbnail" : "Generate cover"}
+      title={thumbnail ? "生成视频缩略图" : "生成封面"}
       footer={
         <>
           <AiChip cap="image" className="mr-auto" />
           <button type="button" className="btn-secondary" onClick={onClose}>
-            Cancel
+            取消
           </button>
           <button
             type="button"
@@ -383,7 +384,7 @@ function CoverModal({
                   ...(thumbnail ? { side } : {}),
                 });
                 await qc.invalidateQueries({ queryKey: qk.generations(projectId) });
-                toast.info(thumbnail ? "Thumbnail generation queued" : "Cover generation queued");
+                toast.info(thumbnail ? "缩略图已加入生成队列" : "封面已加入生成队列");
                 onClose();
               } catch (e) {
                 setError(e);
@@ -392,46 +393,40 @@ function CoverModal({
               }
             }}
           >
-            {busy && <Spinner />} Generate
+            {busy && <Spinner />} 生成
           </button>
         </>
       }
     >
       <div className="space-y-3">
         {thumbnail && (
-          <Field label="Headline side (the art keeps that side clear)">
+          <Field label="标题位置（插图会留出这一侧）">
             <select className="input" value={side} onChange={(e) => setSide(e.target.value as "left" | "right")}>
-              <option value="left">Left</option>
-              <option value="right">Right</option>
+              <option value="left">左侧</option>
+              <option value="right">右侧</option>
             </select>
           </Field>
         )}
-        <Field
-          label={
-            thumbnail
-              ? "Headline (composited by the app, editable later for free)"
-              : "Title (composited by the app, not drawn by the model)"
-          }
-        >
+        <Field label={thumbnail ? "主标题（由应用合成，之后可免费修改）" : "标题（由应用合成）"}>
           <input className="input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
         </Field>
-        <Field label="Subtitle">
+        <Field label="副标题">
           <input
             className="input"
             value={form.subtitle}
             onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
           />
         </Field>
-        <Field label="Composition request">
+        <Field label="构图要求">
           <textarea
             className="input min-h-16"
             value={form.composition}
             onChange={(e) => setForm({ ...form, composition: e.target.value })}
-            placeholder="Protagonist in the foreground, rival silhouetted behind, rainy city at night"
+            placeholder="例如：主角在前景，对手以剪影出现在后方，背景是雨夜中的城市"
           />
         </Field>
         <fieldset>
-          <legend className="label">Characters (approved references are attached as small derivatives)</legend>
+          <legend className="label">角色（已审核的参考图会以缩略图附上）</legend>
           <div className="flex flex-wrap gap-2">
             {cast.map((ch) => (
               <label key={ch.id} className="chip cursor-pointer bg-[var(--panel-2)] px-2 py-1 text-xs">
@@ -491,38 +486,36 @@ function ReadinessCard({
   return (
     <div className="card p-4">
       <div className="mb-2 flex flex-wrap items-center gap-2">
-        <h2 className="mr-auto font-medium">Export readiness</h2>
+        <h2 className="mr-auto font-medium">导出就绪检查</h2>
         {budgetUsd !== null && (
           <span className={spentUsd >= budgetUsd ? "chip bg-red-500/15 text-red-600" : "chip"}>
-            Budget {fmt.usd(spentUsd)} / {fmt.usd(budgetUsd)}
+            预算使用 {fmt.usd(spentUsd)} / {fmt.usd(budgetUsd)}
           </span>
         )}
         <Link to="/projects/$projectId/exports" params={{ projectId }} className="btn-ghost text-xs">
-          Exports
+          导出
         </Link>
       </div>
       {unpricedCalls > 0 && (
         <p className="muted mb-2 text-sm">
-          {unpricedCalls} call{unpricedCalls === 1 ? "" : "s"} could not be priced (no rate snapshot for that model), so
-          spend is understated and the budget cap may not trip.
+          有 {unpricedCalls} 次调用缺少模型费率，实际花费可能超过显示金额，且预算上限可能无法触发。
         </p>
       )}
       {q.data?.credentials &&
         !q.data.credentials.mockMode &&
         !(q.data.credentials.text && q.data.credentials.image) && (
           <p className="mb-2 rounded-md bg-amber-500/10 p-2 text-sm text-amber-700 dark:text-amber-300">
-            No usable API key for {!q.data.credentials.image ? "image" : "text"} generation. This server has no shared
-            keys —{" "}
+            {!q.data.credentials.image ? "图像" : "文本"}生成缺少可用的 API 密钥。请先
             <Link to="/account" className="underline">
-              add your own
-            </Link>{" "}
-            before generating.
+              添加你自己的密钥
+            </Link>
+            再生成。
           </p>
         )}
       {q.isLoading ? (
         <Spinner />
       ) : !blocking.length ? (
-        <p className="text-sm text-emerald-600">Nothing missing — every chapter has artwork, narration and audio.</p>
+        <p className="text-sm text-emerald-600">所有章节均已有画面、旁白和音频。</p>
       ) : (
         <ul className="max-h-48 list-disc space-y-0.5 overflow-auto pl-5 text-sm text-amber-700 dark:text-amber-300">
           {blocking.map((i) => (
@@ -540,17 +533,17 @@ function ReadinessCard({
 /** What the project's files take on disk: every stored original and derived copy, including the trash. */
 function DiskUsage({ disk }: { disk: NonNullable<ProjectOverview["disk"]> }) {
   const parts: [string, number][] = [
-    ["Artwork", disk.byCategory.artwork],
-    ["References", disk.byCategory.references],
-    ["Narration audio", disk.byCategory.narration],
-    ["Exports", disk.byCategory.exports],
-    ["Video render cache", disk.byCategory.renderCache],
-    ["Previews and thumbnails", disk.byCategory.derived],
+    ["画面", disk.byCategory.artwork],
+    ["参考图", disk.byCategory.references],
+    ["旁白音频", disk.byCategory.narration],
+    ["导出文件", disk.byCategory.exports],
+    ["视频渲染缓存", disk.byCategory.renderCache],
+    ["预览图与缩略图", disk.byCategory.derived],
   ];
   return (
     <div className="card flex flex-wrap items-baseline gap-x-4 gap-y-1 p-3">
       <div>
-        <span className="muted text-xs">On disk </span>
+        <span className="muted text-xs">磁盘占用 </span>
         <span className="text-lg font-semibold">{fmt.bytes(disk.totalBytes)}</span>
       </div>
       <div className="muted flex flex-wrap gap-x-3 gap-y-1 text-xs">
@@ -561,7 +554,7 @@ function DiskUsage({ disk }: { disk: NonNullable<ProjectOverview["disk"]> }) {
               {label} {fmt.bytes(b)}
             </span>
           ))}
-        {disk.trashBytes > 0 && <span>· of which in trash {fmt.bytes(disk.trashBytes)}</span>}
+        {disk.trashBytes > 0 && <span>· 回收站占用 {fmt.bytes(disk.trashBytes)}</span>}
       </div>
     </div>
   );

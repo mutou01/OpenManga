@@ -67,7 +67,7 @@ doc({
 videoRoutes.get("/video-preview", async (c) => {
   const q = query(c, PreviewQuery);
   const scopes = [q.chapterId, q.pageId, q.panelId, q.panelIds?.length].filter(Boolean).length;
-  if (scopes !== 1) throw badRequest("Provide exactly one of chapterId, pageId, panelId, panelIds");
+  if (scopes !== 1) throw badRequest("请选择一个视频范围（chapterId、pageId、panelId 或 panelIds）");
   // A pick is checked against the first panel's project; the planner ignores panels of any other project.
   const project = q.panelId
     ? await entityAccess(c, "panel", q.panelId, "read")
@@ -216,7 +216,7 @@ videoRoutes.post("/chapters/:id/timing/apply", async (c) => {
   } else {
     const panel = await panelIn(input.hold.panelId);
     if (!panel) throw notFound("Panel");
-    if (panel.approvalStatus === "locked") throw conflict("Panel is locked");
+    if (panel.approvalStatus === "locked") throw conflict("画格已锁定");
     const video = { ...ShotVideo.parse(panel.video ?? {}), holdMs: input.hold.holdMs };
     await db.update(panels).set({ video }).where(eq(panels.id, panel.id));
   }

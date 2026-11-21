@@ -152,7 +152,7 @@ export async function narrationTranscript(
   for (const r of rows) {
     if (r.chapter !== current) {
       current = r.chapter;
-      out.push(`## Chapter ${r.chapter}: ${r.title}`, "");
+      out.push(`## 第 ${r.chapter} 章 · ${r.title}`, "");
     }
     out.push(r.text.trim(), "");
   }

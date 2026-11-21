@@ -8,7 +8,7 @@ import { structured } from "./text.ts";
 /** What the extraction is told about the project the chat is about: enough to fit the result to it. */
 async function projectContext(deps: WorkerDeps, projectId: string) {
   const [p] = await deps.db.select().from(projects).where(eq(projects.id, projectId));
-  if (!p) throw new InputError("The project no longer exists");
+  if (!p) throw new InputError("项目已不存在");
   const chs = await deps.db
     .select({ order: chapters.order, title: chapters.title, summary: chapters.summary })
     .from(chapters)
@@ -39,8 +39,8 @@ async function projectContext(deps: WorkerDeps, projectId: string) {
 export async function expertExtract(deps: WorkerDeps, job: GenerationJob) {
   const action = String(job.input.action) as ExpertAction;
   const spec = EXPERT_ACTIONS[action];
-  if (!spec) throw new InputError(`Unknown expert action: ${action}`);
-  if (spec.needsProject && !job.projectId) throw new InputError("This action needs a chat about a project");
+  if (!spec) throw new InputError(`不支持的专家操作：${action}`);
+  if (spec.needsProject && !job.projectId) throw new InputError("此操作需要在已关联项目的对话中进行");
   const messages = spec.template.build({
     reply: String(job.input.reply ?? ""),
     question: String(job.input.question ?? ""),

@@ -44,6 +44,9 @@ test("a fixed-layout EPUB sizes each page to its image, marks the cover and read
   expect(opf).not.toContain('0001.jpg" media-type="image/jpeg" properties');
   expect(opf).toMatch(/dcterms:modified">\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ</);
   expect(byName["OEBPS/p0002.xhtml"]).toContain('content="width=1000, height=1500"');
+  expect(byName["OEBPS/p0002.xhtml"]).toContain('alt="第 2 页"');
+  expect(byName["OEBPS/p0002.xhtml"]).toContain('xml:lang="en"');
+  expect(opf).toContain("固定版式漫画");
   expect(byName["META-INF/container.xml"]).toContain("OEBPS/content.opf");
 });
 

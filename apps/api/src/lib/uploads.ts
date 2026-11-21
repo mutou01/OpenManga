@@ -7,7 +7,7 @@ import { ApiError, badRequest } from "./http.ts";
 export async function readImageUpload(c: Context<AppEnv>, field = "file") {
   const max = c.get("deps").config.UPLOAD_MAX_BYTES;
   const len = Number(c.req.header("content-length") ?? 0);
-  if (len > max + 64_000) throw new ApiError(413, "too_large", `Upload exceeds ${Math.round(max / 1024 / 1024)} MB`);
+  if (len > max + 64_000) throw new ApiError(413, "too_large", `上传文件超过 ${Math.round(max / 1024 / 1024)} MB`);
   let form: FormData;
   try {
     form = await c.req.formData();
@@ -16,17 +16,16 @@ export async function readImageUpload(c: Context<AppEnv>, field = "file") {
   }
   const file = form.get(field);
   if (!(file instanceof File)) throw badRequest(`Missing file field "${field}"`);
-  if (file.size > max) throw new ApiError(413, "too_large", `Upload exceeds ${Math.round(max / 1024 / 1024)} MB`);
+  if (file.size > max) throw new ApiError(413, "too_large", `上传文件超过 ${Math.round(max / 1024 / 1024)} MB`);
   const raw = new Uint8Array(await file.arrayBuffer());
   try {
     const clean = await sanitizeUpload(raw);
     return { ...clean, form, originalName: file.name.slice(0, 200) };
   } catch (e) {
-    if (e instanceof InvalidImageError)
-      throw new ApiError(415, "unsupported_media", "Only PNG, JPEG and WebP images are allowed");
+    if (e instanceof InvalidImageError) throw new ApiError(415, "unsupported_media", "只支持 PNG、JPEG 和 WebP 图片");
     // The magic bytes said PNG/JPEG/WebP but the decoder could not read it — a truncated or corrupt file. That
     // is the caller's upload, not a server fault, so it must not surface as a 500.
-    throw new ApiError(415, "unsupported_media", "That image could not be read — it looks truncated or corrupt");
+    throw new ApiError(415, "unsupported_media", "无法读取图片，文件可能不完整或已损坏");
   }
 }
 
@@ -45,7 +44,7 @@ export function sniffAudio(b: Uint8Array): string | null {
 export async function readAudioUpload(c: Context<AppEnv>, field = "file") {
   const max = c.get("deps").config.UPLOAD_MAX_BYTES;
   if (Number(c.req.header("content-length") ?? 0) > max + 64_000)
-    throw new ApiError(413, "too_large", `Upload exceeds ${Math.round(max / 1024 / 1024)} MB`);
+    throw new ApiError(413, "too_large", `上传文件超过 ${Math.round(max / 1024 / 1024)} MB`);
   let form: FormData;
   try {
     form = await c.req.formData();
@@ -54,9 +53,9 @@ export async function readAudioUpload(c: Context<AppEnv>, field = "file") {
   }
   const file = form.get(field);
   if (!(file instanceof File)) throw badRequest(`Missing file field "${field}"`);
-  if (file.size > max) throw new ApiError(413, "too_large", `Upload exceeds ${Math.round(max / 1024 / 1024)} MB`);
+  if (file.size > max) throw new ApiError(413, "too_large", `上传文件超过 ${Math.round(max / 1024 / 1024)} MB`);
   const data = new Uint8Array(await file.arrayBuffer());
   const mime = sniffAudio(data);
-  if (!mime) throw new ApiError(415, "unsupported_media", "Only MP3, WAV, OGG, FLAC and M4A audio is allowed");
+  if (!mime) throw new ApiError(415, "unsupported_media", "只支持 MP3、WAV、OGG、FLAC 和 M4A 音频");
   return { data, mime, originalName: file.name.slice(0, 200) };
 }

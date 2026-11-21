@@ -20,6 +20,8 @@ import {
   toast,
   useAutosave,
 } from "../../components/ui.tsx";
+import { statusLabel } from "../../lib/locale.ts";
+import { stylePresetText } from "../../lib/style-labels.ts";
 import { ReferencePanel } from "../cast/ReferencePanel.tsx";
 import { BulkGenerateButton } from "../pages/BulkGenerate.tsx";
 import { useProject, useProjectId } from "../project/ProjectLayout.tsx";
@@ -31,15 +33,15 @@ export function WorldPage() {
   const [tab, setTab] = useState<Tab>("locations");
   return (
     <div className="p-6">
-      <PageHeader title="World" subtitle="Recurring locations, props, art style and world notes." />
+      <PageHeader title="世界" subtitle="管理重复出现的地点、道具、美术风格和世界笔记。" />
       <Tabs
         value={tab}
         onChange={setTab}
         tabs={[
-          { value: "locations", label: "Locations" },
-          { value: "props", label: "Props" },
-          { value: "style", label: "Style" },
-          { value: "notes", label: "World notes" },
+          { value: "locations", label: "地点" },
+          { value: "props", label: "道具" },
+          { value: "style", label: "风格" },
+          { value: "notes", label: "世界笔记" },
         ]}
       />
       {tab === "locations" && <EntityGrid kind="locations" />}
@@ -66,7 +68,7 @@ function EntityGrid({ kind }: { kind: "locations" | "props" }) {
     () => post(`/projects/${projectId}/${kind}`, { name: name.trim(), description: { summary } }),
     {
       invalidate: [baseKey],
-      success: "Created",
+      success: "已创建",
       onSuccess: () => {
         setCreating(false);
         setName("");
@@ -76,18 +78,19 @@ function EntityGrid({ kind }: { kind: "locations" | "props" }) {
   );
   const restore = useAction((id: string) => post(`/${kind}/${id}/restore`), {
     invalidate: [baseKey],
-    success: "Restored",
+    success: "已恢复",
   });
   const list = data?.[kind] ?? [];
   const singular = kind === "locations" ? "location" : "prop";
+  const entityLabel = singular === "location" ? "地点" : "道具";
   return (
     <>
       <div className="mb-4 flex flex-wrap gap-2">
         <button type="button" className="btn-primary" onClick={() => setCreating(true)}>
-          <Plus className="size-4" /> New {singular}
+          <Plus className="size-4" /> 新建{entityLabel}
         </button>
         <button type="button" className="btn-secondary" onClick={() => setTrash(!trash)}>
-          {trash ? "Show active" : "Trash"}
+          {trash ? "显示使用中" : "回收站"}
         </button>
         {!trash && list.length > 0 && (
           // The same count → price → confirm dialog as a chapter's "generate all panels", with its "only missing"
@@ -95,22 +98,22 @@ function EntityGrid({ kind }: { kind: "locations" | "props" }) {
           <BulkGenerateButton
             projectId={projectId}
             scope={{ references: singular }}
-            label={`Generate all ${kind}`}
+            label={`生成全部${entityLabel}参考图`}
             noun={{
-              one: `${singular} reference`,
-              many: `${singular} references`,
-              missing: `Only ${kind} without this kind of reference`,
+              one: `${entityLabel}参考图`,
+              many: `${entityLabel}参考图`,
+              missing: `仅限缺少此类参考图的${entityLabel}`,
             }}
             kinds={
               singular === "location"
                 ? [
-                    { value: "location", label: "Wide view" },
-                    { value: "location_panorama", label: "Panorama" },
-                    { value: "location_sheet", label: "Sheet of its sides" },
+                    { value: "location", label: "广角视图" },
+                    { value: "location_panorama", label: "全景图" },
+                    { value: "location_sheet", label: "各侧面设定图" },
                   ]
                 : [
-                    { value: "prop", label: "Single view" },
-                    { value: "prop_multi_angle", label: "Turnaround" },
+                    { value: "prop", label: "单视图" },
+                    { value: "prop_multi_angle", label: "多角度视图" },
                   ]
             }
           />
@@ -119,9 +122,8 @@ function EntityGrid({ kind }: { kind: "locations" | "props" }) {
       <ErrorBox error={error} onRetry={() => refetch()} />
       {isLoading && <Spinner className="size-6" />}
       {data && !list.length && (
-        <EmptyState title={trash ? "Trash is empty" : `No ${kind} yet`}>
-          {!trash &&
-            "Story analysis creates recurring ones automatically. Only important recurring items need references."}
+        <EmptyState title={trash ? "回收站为空" : `暂无${entityLabel}`}>
+          {!trash && "故事分析会自动创建重复出现的地点与道具，重要的重复元素才需要参考图。"}
         </EmptyState>
       )}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
@@ -145,8 +147,8 @@ function EntityGrid({ kind }: { kind: "locations" | "props" }) {
                       v{e.currentVersion.versionNumber} {e.currentVersion.status}
                     </span>
                   )}
-                  <StatusChip status={e.referenceStatus} label={`ref: ${e.referenceStatus}`} />
-                  <span className="muted">{e.appearances} panels</span>
+                  <StatusChip status={e.referenceStatus} label={`参考图：${statusLabel(e.referenceStatus)}`} />
+                  <span className="muted">{e.appearances} 个画格</span>
                 </div>
               </div>
             </Link>
@@ -156,7 +158,7 @@ function EntityGrid({ kind }: { kind: "locations" | "props" }) {
                 className="btn-secondary m-3 mt-0 w-[calc(100%-1.5rem)] text-xs"
                 onClick={() => restore.mutate(e.id)}
               >
-                <RotateCcw className="size-3" /> Restore
+                <RotateCcw className="size-3" /> 恢复
               </button>
             )}
           </div>
@@ -165,11 +167,11 @@ function EntityGrid({ kind }: { kind: "locations" | "props" }) {
       <Modal
         open={creating}
         onClose={() => setCreating(false)}
-        title={`New ${singular}`}
+        title={`新建${entityLabel}`}
         footer={
           <>
             <button type="button" className="btn-secondary" onClick={() => setCreating(false)}>
-              Cancel
+              取消
             </button>
             <button
               type="button"
@@ -177,18 +179,18 @@ function EntityGrid({ kind }: { kind: "locations" | "props" }) {
               disabled={!name.trim() || create.isPending}
               onClick={() => create.mutate()}
             >
-              Create
+              创建
             </button>
           </>
         }
       >
         <div className="space-y-3">
           <label className="block">
-            <span className="label">Name</span>
+            <span className="label">名称</span>
             <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
           </label>
           <label className="block">
-            <span className="label">Summary</span>
+            <span className="label">摘要</span>
             <textarea className="input min-h-20" value={summary} onChange={(e) => setSummary(e.target.value)} />
           </label>
         </div>
@@ -205,17 +207,17 @@ type StyleState = {
 
 /** Every definition field that reaches the prompt, in the order styleSection() renders them. */
 const STYLE_FIELDS = [
-  ["summary", "Summary"],
-  ["lineTreatment", "Lines"],
-  ["colorPolicy", "Color"],
-  ["shading", "Shading"],
-  ["detailLevel", "Detail"],
-  ["faceRendering", "Faces"],
-  ["backgroundRendering", "Backgrounds"],
-  ["motionEffects", "Motion effects"],
-  ["contrast", "Contrast"],
-  ["screenTones", "Screentones"],
-  ["lighting", "Lighting style"],
+  ["summary", "摘要"],
+  ["lineTreatment", "线条"],
+  ["colorPolicy", "颜色"],
+  ["shading", "明暗"],
+  ["detailLevel", "细节"],
+  ["faceRendering", "面部绘制"],
+  ["backgroundRendering", "背景绘制"],
+  ["motionEffects", "动态效果"],
+  ["contrast", "对比度"],
+  ["screenTones", "网点"],
+  ["lighting", "光照风格"],
 ] as const;
 type StyleField = (typeof STYLE_FIELDS)[number][0];
 
@@ -249,7 +251,7 @@ function StyleTab() {
   const refresh = useCallback(() => qc.invalidateQueries({ queryKey: qk.style(projectId) }), [qc, projectId]);
   const makeCurrent = useAction((id: string) => post(`/project-styles/${id}/make-current`), {
     invalidate: [qk.style(projectId), qk.project(projectId)],
-    success: "Style version restored",
+    success: "风格版本已恢复",
   });
   const apply = useAction(
     () =>
@@ -277,7 +279,7 @@ function StyleTab() {
       }),
     {
       invalidate: [qk.style(projectId), qk.project(projectId)],
-      success: "New style version applied",
+      success: "已应用新风格版本",
       onSuccess: () => {
         setPresetKey(undefined);
         setCustom(undefined);
@@ -292,18 +294,18 @@ function StyleTab() {
     <div className="space-y-5">
       <section className="card p-4">
         <div className="mb-3 flex items-center gap-2">
-          <h2 className="mr-auto font-semibold">Art direction</h2>
+          <h2 className="mr-auto font-semibold">美术指导</h2>
           {current && (
             <span className="muted text-xs">
-              current: v{current.versionNumber} · {current.preset?.name ?? "custom"}
+              当前版本 v{current.versionNumber} · {current.preset ? stylePresetText(current.preset).name : "自定义"}
             </span>
           )}
           <DescribeImageButton
             projectId={projectId}
             aspect="style"
-            title="Take the art style from an image"
+            title="从图片提取美术风格"
             onUse={(d: ImageDescription) => {
-              // Fills the editor rather than applying: the user reviews it and clicks "Apply as new version".
+              // Fills the editor rather than applying: the user reviews it and clicks "应用为新版本".
               const st = d.style ?? {};
               const lines = Object.entries(st)
                 .filter(([, v]) => (Array.isArray(v) ? v.length : String(v ?? "").trim()))
@@ -312,11 +314,11 @@ function StyleTab() {
                 );
               setPresetKey(null);
               setCustom(lines.join("\n"));
-              toast.info("Style description filled in — review it, then apply as a new version");
+              toast.info("风格描述已填写，请检查后应用为新版本");
             }}
           />
           <button type="button" className="btn-primary" disabled={apply.isPending} onClick={() => apply.mutate()}>
-            Apply as new version
+            应用为新版本
           </button>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
@@ -331,8 +333,8 @@ function StyleTab() {
               aria-pressed={p.key === chosenKey}
               className={`rounded-lg border p-2 text-left text-sm ${p.key === chosenKey ? "border-accent-500 bg-accent-500/10" : "border-[var(--border)] hover:bg-[var(--panel-2)]"}`}
             >
-              <div className="font-medium">{p.name}</div>
-              <div className="muted line-clamp-2 text-xs">{p.definition.summary}</div>
+              <div className="font-medium">{stylePresetText(p).name}</div>
+              <div className="muted line-clamp-2 text-xs">{stylePresetText(p).summary}</div>
             </button>
           ))}
           <button
@@ -341,15 +343,15 @@ function StyleTab() {
             aria-pressed={chosenKey === null}
             className={`rounded-lg border p-2 text-left text-sm ${chosenKey === null ? "border-accent-500 bg-accent-500/10" : "border-[var(--border)]"}`}
           >
-            <div className="font-medium">No preset</div>
-            <div className="muted text-xs">Custom description only</div>
+            <div className="font-medium">不使用预设</div>
+            <div className="muted text-xs">仅使用自定义描述</div>
           </button>
         </div>
         <div className="mt-3">
           <div className="mb-1 flex items-baseline gap-2">
-            <span className="label mb-0">Style definition</span>
+            <span className="label mb-0">风格定义</span>
             <span className="muted text-xs">
-              {edited ? "Edited — applying saves it as a custom style" : "Every line below goes into the image prompt"}
+              {edited ? "已编辑，应用后将保存为自定义风格" : "以下每项都会用于图像提示词"}
             </span>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
@@ -364,23 +366,23 @@ function StyleTab() {
               </label>
             ))}
             <label className="block sm:col-span-2">
-              <span className="muted text-xs">Avoid — one per line</span>
+              <span className="muted text-xs">避免内容，每行一项</span>
               <textarea
                 className="input min-h-14 text-xs"
                 value={exclText}
-                placeholder="photoreal rendering&#10;3D render look"
+                placeholder="照片级写实渲染&#10;三维渲染效果"
                 onChange={(e) => setExcl(e.target.value)}
               />
             </label>
           </div>
         </div>
         <label className="mt-3 block">
-          <span className="label">Project-specific style description</span>
+          <span className="label">项目专用风格描述</span>
           <textarea
             className="input min-h-20"
             value={customText}
             onChange={(e) => setCustom(e.target.value)}
-            placeholder="e.g. heavy rain atmosphere, teal and orange grading"
+            placeholder="例如，暴雨氛围、青橙色调"
           />
         </label>
       </section>
@@ -395,17 +397,17 @@ function StyleTab() {
         />
       )}
       <section className="card p-4">
-        <h2 className="mb-2 font-semibold">Style history</h2>
+        <h2 className="mb-2 font-semibold">风格历史</h2>
         <ul className="space-y-1 text-sm">
           {style.data?.versions.map((v) => (
             <li key={v.id} className="flex items-center gap-2">
               <span className="font-medium">v{v.versionNumber}</span>
               <StatusChip status={v.status} />
-              <span>{v.preset?.name ?? "custom"}</span>
+              <span>{v.preset ? stylePresetText(v.preset).name : "自定义"}</span>
               <span className="muted truncate">{v.customDescription}</span>
               <span className="muted ml-auto text-xs">{fmt.date(v.createdAt)}</span>
               {v.id === style.data?.currentStyleId ? (
-                <span className="muted text-xs">current</span>
+                <span className="muted text-xs">当前</span>
               ) : (
                 // Applying a style always minted a new version, so comparing two meant retyping one by hand.
                 <button
@@ -414,7 +416,7 @@ function StyleTab() {
                   disabled={makeCurrent.isPending}
                   onClick={() => makeCurrent.mutate(v.id)}
                 >
-                  Make current
+                  设为当前
                 </button>
               )}
             </li>
@@ -442,17 +444,15 @@ function NotesEditor({ projectId, initial }: { projectId: string; initial: strin
   return (
     <section className="card p-4">
       <div className="mb-2 flex items-center">
-        <h2 className="mr-auto font-semibold">World notes</h2>
+        <h2 className="mr-auto font-semibold">世界笔记</h2>
         <SaveIndicator state={state} />
       </div>
-      <p className="muted mb-2 text-xs">
-        World rules, factions, technology, magic and uniforms. Included as structured context when planning chapters.
-      </p>
+      <p className="muted mb-2 text-xs">世界规则、阵营、科技、魔法和制服，会作为结构化上下文参与章节规划。</p>
       <textarea
         className="input min-h-80 font-mono text-sm"
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
-        aria-label="World notes"
+        aria-label="世界笔记"
       />
     </section>
   );

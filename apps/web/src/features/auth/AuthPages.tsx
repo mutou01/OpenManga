@@ -75,14 +75,14 @@ export function LoginPage() {
   };
   return (
     <AuthCard
-      title="Sign in"
-      subtitle="Use your username or email."
+      title="登录"
+      subtitle="使用用户名或邮箱登录。"
       footer={
         cfg.data?.registrationEnabled && (
           <>
-            New here?{" "}
+            还没有账号？
             <Link to="/register" className="text-accent-500 hover:underline">
-              Create an account
+              创建账号
             </Link>
           </>
         )
@@ -91,7 +91,7 @@ export function LoginPage() {
       <form onSubmit={submit} className="space-y-3">
         <div>
           <label htmlFor="identifier" className="label">
-            Username or email
+            用户名或邮箱
           </label>
           <input
             id="identifier"
@@ -105,7 +105,7 @@ export function LoginPage() {
         </div>
         <div>
           <label htmlFor="password" className="label">
-            Password
+            密码
           </label>
           <input
             id="password"
@@ -117,17 +117,17 @@ export function LoginPage() {
             required
           />
         </div>
-        <ErrorBox error={error} title="Sign-in failed" />
+        <ErrorBox error={error} title="登录失败" />
         <button type="submit" className="btn-primary w-full" disabled={busy}>
-          {busy && <Spinner />} Sign in
+          {busy && <Spinner />} 登录
         </button>
         <div className="flex justify-between text-xs">
           <Link to="/forgot-password" className="muted hover:underline">
-            Forgot password?
+            忘记密码？
           </Link>
           {cfg.data?.devMailboxEnabled && (
             <Link to="/dev/mailbox" className="muted hover:underline">
-              Dev mailbox
+              开发邮箱
             </Link>
           )}
         </div>
@@ -147,7 +147,7 @@ export function RegisterPage() {
     setForm((f) => ({ ...f, [k]: e.target.value }));
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (form.password !== form.confirm) return setError(new Error("Passwords do not match"));
+    if (form.password !== form.confirm) return setError(new Error("两次输入的密码不一致"));
     setBusy(true);
     setError(null);
     try {
@@ -167,24 +167,24 @@ export function RegisterPage() {
   if (cfg.data && !cfg.data.registrationEnabled)
     return (
       <AuthCard
-        title="Registration disabled"
+        title="注册已关闭"
         footer={
           <Link to="/login" search={{}} className="text-accent-500 hover:underline">
-            Back to sign in
+            返回登录
           </Link>
         }
       >
-        <p className="text-sm">Accounts on this server are created by an administrator.</p>
+        <p className="text-sm">此服务器的账号由管理员创建。</p>
       </AuthCard>
     );
   return (
     <AuthCard
-      title="Create account"
+      title="创建账号"
       footer={
         <>
-          Already have an account?{" "}
+          已有账号？
           <Link to="/login" search={{}} className="text-accent-500 hover:underline">
-            Sign in
+            登录
           </Link>
         </>
       }
@@ -192,7 +192,7 @@ export function RegisterPage() {
       <form onSubmit={submit} className="space-y-3">
         <div>
           <label htmlFor="username" className="label">
-            Username
+            用户名
           </label>
           <input
             id="username"
@@ -204,12 +204,12 @@ export function RegisterPage() {
             minLength={3}
             maxLength={32}
             pattern="[A-Za-z0-9_][A-Za-z0-9_.\-]{2,31}"
-            title="3-32 letters, digits, _ . -"
+            title="3–32 个字符，可使用英文字母、数字、下划线、句点和连字符"
           />
         </div>
         <div>
           <label htmlFor="email" className="label">
-            Email
+            邮箱
           </label>
           <input
             id="email"
@@ -223,7 +223,7 @@ export function RegisterPage() {
         </div>
         <div>
           <label htmlFor="pw" className="label">
-            Password (min 10 characters)
+            密码（至少 10 个字符）
           </label>
           <input
             id="pw"
@@ -238,7 +238,7 @@ export function RegisterPage() {
         </div>
         <div>
           <label htmlFor="pw2" className="label">
-            Confirm password
+            确认密码
           </label>
           <input
             id="pw2"
@@ -251,9 +251,9 @@ export function RegisterPage() {
             minLength={10}
           />
         </div>
-        <ErrorBox error={error} title="Could not create account" />
+        <ErrorBox error={error} title="无法创建账号" />
         <button type="submit" className="btn-primary w-full" disabled={busy}>
-          {busy && <Spinner />} Create account
+          {busy && <Spinner />} 创建账号
         </button>
       </form>
     </AuthCard>
@@ -281,24 +281,24 @@ export function ForgotPasswordPage() {
   };
   return (
     <AuthCard
-      title="Reset password"
-      subtitle="We'll send a one-time reset link."
+      title="重置密码"
+      subtitle="系统会发送一次性重置链接。"
       footer={
         <Link to="/login" search={{}} className="text-accent-500 hover:underline">
-          Back to sign in
+          返回登录
         </Link>
       }
     >
       {sent ? (
         <div className="space-y-2 text-sm">
-          <p>If an account exists for that username or email, a reset link has been sent. It expires in one hour.</p>
+          <p>如果该用户名或邮箱对应的账号存在，系统已发送密码重置链接，有效期为 1 小时。</p>
           {cfg.data?.devMailboxEnabled && (
             <p className="muted">
-              Email delivery is mocked on this server. The message is stored in the{" "}
+              此服务器使用模拟邮件，邮件保存在
               <Link to="/dev/mailbox" className="text-accent-500 hover:underline">
-                dev mailbox
-              </Link>{" "}
-              (administrators only in production).
+                开发邮箱
+              </Link>
+              （生产环境仅管理员可见）。
             </p>
           )}
         </div>
@@ -306,7 +306,7 @@ export function ForgotPasswordPage() {
         <form onSubmit={submit} className="space-y-3">
           <div>
             <label htmlFor="rid" className="label">
-              Username or email
+              用户名或邮箱
             </label>
             <input
               id="rid"
@@ -319,7 +319,7 @@ export function ForgotPasswordPage() {
           </div>
           <ErrorBox error={error} />
           <button type="submit" className="btn-primary w-full" disabled={busy}>
-            {busy && <Spinner />} Send reset link
+            {busy && <Spinner />} 发送重置链接
           </button>
         </form>
       )}
@@ -337,7 +337,7 @@ export function ResetPasswordPage() {
   const [error, setError] = useState<unknown>(null);
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (password !== confirm) return setError(new Error("Passwords do not match"));
+    if (password !== confirm) return setError(new Error("两次输入的密码不一致"));
     setBusy(true);
     setError(null);
     try {
@@ -353,25 +353,25 @@ export function ResetPasswordPage() {
   if (!token)
     return (
       <AuthCard
-        title="Invalid link"
+        title="链接无效"
         footer={
           <Link to="/forgot-password" className="text-accent-500 hover:underline">
-            Request a new link
+            申请新链接
           </Link>
         }
       >
-        <p className="text-sm">This reset link is missing its token.</p>
+        <p className="text-sm">重置链接缺少验证令牌。</p>
       </AuthCard>
     );
   return (
-    <AuthCard title="Choose a new password" subtitle="All existing sessions will be signed out.">
+    <AuthCard title="设置新密码" subtitle="更新密码后，所有已登录会话都会退出。">
       {done ? (
-        <p className="text-sm">Password updated. Redirecting to sign in…</p>
+        <p className="text-sm">密码已更新，正在返回登录页…</p>
       ) : (
         <form onSubmit={submit} className="space-y-3">
           <div>
             <label htmlFor="np" className="label">
-              New password (min 10 characters)
+              新密码（至少 10 个字符）
             </label>
             <input
               id="np"
@@ -387,7 +387,7 @@ export function ResetPasswordPage() {
           </div>
           <div>
             <label htmlFor="np2" className="label">
-              Confirm password
+              确认密码
             </label>
             <input
               id="np2"
@@ -402,7 +402,7 @@ export function ResetPasswordPage() {
           </div>
           <ErrorBox error={error} />
           <button type="submit" className="btn-primary w-full" disabled={busy}>
-            {busy && <Spinner />} Update password
+            {busy && <Spinner />} 更新密码
           </button>
         </form>
       )}

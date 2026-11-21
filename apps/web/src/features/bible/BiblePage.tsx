@@ -50,16 +50,16 @@ export const useBible = (projectId: string) =>
 
 const chapterLabel = (chs: Chapter[], id: string | null) => {
   const c = chs.find((x) => x.id === id);
-  return c ? `ch. ${c.order}` : null;
+  return c ? `第 ${c.order} 章` : null;
 };
 
-/** "ch. 3–11", "from ch. 7", "until ch. 12" or "whole story". */
+/** "ch. 3–11", "from ch. 7", "until ch. 12" or "整个故事". */
 function rangeText(chs: Chapter[], from: string | null, until: string | null) {
   const [a, b] = [chapterLabel(chs, from), chapterLabel(chs, until)];
-  if (a && b) return a === b ? a : `${a}–${b.replace("ch. ", "")}`;
-  if (a) return `from ${a}`;
-  if (b) return `until ${b}`;
-  return "whole story";
+  if (a && b) return a === b ? a : `${a}至${b}`;
+  if (a) return `自${a}开始`;
+  if (b) return `截至${b}`;
+  return "整个故事";
 }
 
 /** The story bible: canon that planning, narration and image prompts must respect. */
@@ -74,19 +74,19 @@ export function BiblePage() {
   return (
     <div className="mx-auto max-w-5xl p-4 sm:p-6">
       <PageHeader
-        title="Story bible"
-        subtitle="Canon that chapter planning, panel prompts, narration and panel images must respect, from the chapter it starts in."
+        title="故事设定集"
+        subtitle="章节规划、画格提示词、旁白及画格图片需遵循的故事设定，从指定章节开始生效。"
         actions={
           <>
             <button type="button" className="btn-secondary" onClick={() => setExtracting(true)}>
-              <Sparkles className="size-4" /> Extract from story
+              <Sparkles className="size-4" /> 从故事提取
             </button>
             <button
               type="button"
               className="btn-primary"
               onClick={() => (tab === "timeline" ? setEditState("new") : setEditFact("new"))}
             >
-              <Plus className="size-4" /> {tab === "timeline" ? "Add state" : "Add fact"}
+              <Plus className="size-4" /> {tab === "timeline" ? "添加状态" : "添加事实"}
             </button>
           </>
         }
@@ -101,10 +101,10 @@ export function BiblePage() {
             value={tab}
             onChange={setTab}
             tabs={[
-              { value: "facts", label: `Facts (${d.facts.length})` },
-              { value: "timeline", label: `States (${d.states.length})` },
-              { value: "continuity", label: "Continuity" },
-              { value: "rules", label: "Rule checks" },
+              { value: "facts", label: `事实（${d.facts.length}）` },
+              { value: "timeline", label: `角色状态（${d.states.length}）` },
+              { value: "continuity", label: "连贯性" },
+              { value: "rules", label: "规则检查" },
             ]}
           />
           {tab === "facts" && <FactList data={d} onEdit={setEditFact} />}
@@ -156,9 +156,9 @@ function FactList({ data, onEdit }: { data: BibleData; onEdit: (f: BibleFactRow)
   return (
     <>
       <div className="mb-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-end">
-        <Field label="Kind">
+        <Field label="类型">
           <select className="input" value={kind} onChange={(e) => setKind(e.target.value)}>
-            <option value="">All kinds</option>
+            <option value="">所有类型</option>
             {BIBLE_FACT_KINDS.map((k) => (
               <option key={k} value={k}>
                 {k}
@@ -166,36 +166,34 @@ function FactList({ data, onEdit }: { data: BibleData; onEdit: (f: BibleFactRow)
             ))}
           </select>
         </Field>
-        <Field label="In effect at">
+        <Field label="生效章节">
           <select className="input" value={chapterId} onChange={(e) => setChapterId(e.target.value)}>
-            <option value="">Any chapter</option>
+            <option value="">任意章节</option>
             {data.chapters.map((c) => (
               <option key={c.id} value={c.id}>
-                Chapter {c.order}: {c.title}
+                章节 {c.order}: {c.title}
               </option>
             ))}
           </select>
         </Field>
-        <Field label="Search">
+        <Field label="搜索">
           <input
             className="input"
             value={search}
-            placeholder="Subject or text"
+            placeholder="对象或内容"
             onChange={(e) => setSearch(e.target.value)}
           />
         </Field>
         <label className="flex items-center gap-2 pb-2 text-sm">
-          <input type="checkbox" checked={fixedOnly} onChange={(e) => setFixedOnly(e.target.checked)} /> Fixed rules
-          only
+          <input type="checkbox" checked={fixedOnly} onChange={(e) => setFixedOnly(e.target.checked)} /> 仅显示固定规则
         </label>
       </div>
       {!data.facts.length ? (
-        <EmptyState title="No facts yet">
-          Add facts by hand, or extract them from the story. A fixed fact is a rule every step must keep ("scar on the
-          LEFT jaw", "no guns exist in this world").
+        <EmptyState title="暂无事实">
+          手动添加事实，或从故事提取。固定事实是各环节都需遵循的规则，例如“左侧下颌有疤痕”“这个世界不存在枪械”。
         </EmptyState>
       ) : !shown.length ? (
-        <p className="muted text-sm">Nothing matches these filters.</p>
+        <p className="muted text-sm">没有符合筛选条件的内容。</p>
       ) : (
         <ul className="space-y-2">
           {shown.map((f) => (
@@ -204,13 +202,13 @@ function FactList({ data, onEdit }: { data: BibleData; onEdit: (f: BibleFactRow)
                 <div className="flex flex-wrap items-center gap-1.5 text-xs">
                   <span className="chip">{f.kind}</span>
                   {f.fixed && (
-                    <span className="chip" title="Fixed: a rule that must hold">
-                      <Lock className="size-3" /> fixed
+                    <span className="chip" title="固定规则，必须始终遵循">
+                      <Lock className="size-3" /> 固定
                     </span>
                   )}
                   {f.visual && (
-                    <span className="chip" title="Visual: reaches image prompts">
-                      <Eye className="size-3" /> visual
+                    <span className="chip" title="视觉设定，会加入图像提示词">
+                      <Eye className="size-3" /> 视觉
                     </span>
                   )}
                   <span className="muted">{rangeText(data.chapters, f.fromChapterId, f.untilChapterId)}</span>
@@ -221,10 +219,10 @@ function FactList({ data, onEdit }: { data: BibleData; onEdit: (f: BibleFactRow)
                   {f.text}
                 </p>
               </div>
-              <button type="button" className="btn-ghost p-1" aria-label="Edit fact" onClick={() => onEdit(f)}>
+              <button type="button" className="btn-ghost p-1" aria-label="编辑事实" onClick={() => onEdit(f)}>
                 <Pencil className="size-4" />
               </button>
-              <button type="button" className="btn-ghost p-1" aria-label="Delete fact" onClick={() => setRemoving(f)}>
+              <button type="button" className="btn-ghost p-1" aria-label="删除事实" onClick={() => setRemoving(f)}>
                 <Trash2 className="size-4" />
               </button>
             </li>
@@ -233,13 +231,13 @@ function FactList({ data, onEdit }: { data: BibleData; onEdit: (f: BibleFactRow)
       )}
       <ConfirmDialog
         open={Boolean(removing)}
-        title="Delete fact"
+        title="删除事实"
         danger
-        confirmLabel="Delete"
+        confirmLabel="删除"
         onClose={() => setRemoving(null)}
         onConfirm={() => removing && remove(removing)}
       >
-        Later generation will no longer be told: “{removing?.text}”.
+        删除后，后续生成将停止引用“{removing?.text}”.
       </ConfirmDialog>
     </>
   );
@@ -264,17 +262,16 @@ function Timeline({ data, onEdit }: { data: BibleData; onEdit: (s: CharacterStat
   };
   if (!data.states.length)
     return (
-      <EmptyState title="No character states yet">
-        A state holds for one character from a chapter (and scene) on: an injury, a look, the outfit in force, what they
-        carry, where they are, their rank, what they know.
+      <EmptyState title="暂无角色状态">
+        状态从指定章节和场景起对角色生效，可记录伤势、外观、服装、携带物品、位置、身份等级和已知信息。
       </EmptyState>
     );
   return (
     <>
       <div className="mb-3 max-w-xs">
-        <Field label="Character">
+        <Field label="角色">
           <select className="input" value={who} onChange={(e) => setWho(e.target.value)}>
-            <option value="">Everyone</option>
+            <option value="">所有角色</option>
             {cast.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -302,21 +299,21 @@ function Timeline({ data, onEdit }: { data: BibleData; onEdit: (s: CharacterStat
                       <div className="muted flex flex-wrap items-center gap-1.5 text-xs">
                         <span className="chip">{s.kind}</span>
                         <span>
-                          {chapterLabel(data.chapters, s.chapterId) ?? "from the start"}
-                          {s.sceneNumber ? `, scene ${s.sceneNumber}` : ""}
-                          {s.untilChapterId ? ` → until ${chapterLabel(data.chapters, s.untilChapterId)}` : ""}
+                          {chapterLabel(data.chapters, s.chapterId) ?? "从开头开始"}
+                          {s.sceneNumber ? `，第 ${s.sceneNumber} 场` : ""}
+                          {s.untilChapterId ? ` 至 ${chapterLabel(data.chapters, s.untilChapterId)}` : ""}
                         </span>
-                        {s.outfitId && <span>· outfit: {c.outfits.find((o) => o.id === s.outfitId)?.name}</span>}
+                        {s.outfitId && <span>· 服装 {c.outfits.find((o) => o.id === s.outfitId)?.name}</span>}
                       </div>
                       <p className="text-sm">{s.text}</p>
                     </div>
-                    <button type="button" className="btn-ghost p-1" aria-label="Edit state" onClick={() => onEdit(s)}>
+                    <button type="button" className="btn-ghost p-1" aria-label="编辑状态" onClick={() => onEdit(s)}>
                       <Pencil className="size-4" />
                     </button>
                     <button
                       type="button"
                       className="btn-ghost p-1"
-                      aria-label="Delete state"
+                      aria-label="删除状态"
                       onClick={() => setRemoving(s)}
                     >
                       <Trash2 className="size-4" />
@@ -328,19 +325,17 @@ function Timeline({ data, onEdit }: { data: BibleData; onEdit: (s: CharacterStat
         ))}
       </div>
       <p className="muted mt-3 text-xs">
-        A later look, outfit, location or rank replaces the earlier one; injuries, items, knowledge and other states
-        hold until their end chapter. An outfit state that names an outfit dresses the character in it wherever no panel
-        sets another.
+        后续外观、服装、位置或等级会替换先前状态。伤势、物品、知识等其他状态持续到截止章节。指定服装的状态会应用于未单独设置服装的画格。
       </p>
       <ConfirmDialog
         open={Boolean(removing)}
-        title="Delete state"
+        title="删除状态"
         danger
-        confirmLabel="Delete"
+        confirmLabel="删除"
         onClose={() => setRemoving(null)}
         onConfirm={() => removing && remove(removing)}
       >
-        Remove “{removing?.text}” from the timeline?
+        从时间线移除“{removing?.text}”？
       </ConfirmDialog>
     </>
   );
@@ -365,7 +360,7 @@ function ChapterSelect({
         <option value="">{none}</option>
         {data.chapters.map((c) => (
           <option key={c.id} value={c.id}>
-            Chapter {c.order}: {c.title}
+            章节 {c.order}: {c.title}
           </option>
         ))}
       </select>
@@ -424,20 +419,20 @@ export function FactForm({
     <Modal
       open
       onClose={onClose}
-      title={title ?? (fact ? "Edit fact" : "Add fact")}
+      title={title ?? (fact ? "编辑事实" : "添加事实")}
       footer={
         <>
           <button type="button" className="btn-secondary" onClick={onClose}>
-            Cancel
+            取消
           </button>
           <button type="button" className="btn-primary" disabled={busy || !f.text.trim()} onClick={save}>
-            {busy && <Spinner />} Save
+            {busy && <Spinner />} 保存
           </button>
         </>
       }
     >
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Kind">
+        <Field label="类型">
           <select
             className="input"
             value={f.kind}
@@ -450,7 +445,7 @@ export function FactForm({
             ))}
           </select>
         </Field>
-        <Field label="Subject" hint="Who or what it is about, by name. Empty for the whole story.">
+        <Field label="对象" hint="填写相关角色或事物名称，留空表示适用于整个故事。">
           <input
             className="input"
             list="bible-subjects"
@@ -464,7 +459,7 @@ export function FactForm({
           </datalist>
         </Field>
         <div className="sm:col-span-2">
-          <Field label="Fact">
+          <Field label="事实">
             <textarea
               className="input min-h-20"
               maxLength={1000}
@@ -474,29 +469,29 @@ export function FactForm({
           </Field>
         </div>
         <ChapterSelect
-          label="From chapter"
+          label="起始章节"
           data={data}
           value={f.fromChapterId}
-          none="The start"
+          none="故事开头"
           onChange={(v) => setF({ ...f, fromChapterId: v })}
         />
         <ChapterSelect
-          label="Through chapter"
+          label="截止章节"
           data={data}
           value={f.untilChapterId}
-          none="The end"
+          none="故事结尾"
           onChange={(v) => setF({ ...f, untilChapterId: v })}
         />
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" checked={f.fixed} onChange={(e) => setF({ ...f, fixed: e.target.checked })} />
           <span>
-            <strong>Fixed</strong> — a rule every step must keep, checked as a rule.
+            <strong>固定</strong> ——各环节都需遵循，并纳入规则检查。
           </span>
         </label>
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" checked={f.visual} onChange={(e) => setF({ ...f, visual: e.target.checked })} />
           <span>
-            <strong>Visual</strong> — it can be seen, so panel images are told too.
+            <strong>视觉</strong> ——可见的设定，也会提供给画格图像生成。
           </span>
         </label>
       </div>
@@ -546,28 +541,28 @@ function StateForm({
   };
   if (!data.characters.length)
     return (
-      <Modal open onClose={onClose} title="Add state">
-        <p className="text-sm">The project has no characters yet. Add the cast first.</p>
+      <Modal open onClose={onClose} title="添加状态">
+        <p className="text-sm">项目暂无角色，请先添加角色。</p>
       </Modal>
     );
   return (
     <Modal
       open
       onClose={onClose}
-      title={state ? "Edit state" : "Add state"}
+      title={state ? "编辑状态" : "添加状态"}
       footer={
         <>
           <button type="button" className="btn-secondary" onClick={onClose}>
-            Cancel
+            取消
           </button>
           <button type="button" className="btn-primary" disabled={busy || !s.text.trim()} onClick={save}>
-            {busy && <Spinner />} Save
+            {busy && <Spinner />} 保存
           </button>
         </>
       }
     >
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Character">
+        <Field label="角色">
           <select
             className="input"
             value={s.characterId}
@@ -580,7 +575,7 @@ function StateForm({
             ))}
           </select>
         </Field>
-        <Field label="Kind">
+        <Field label="类型">
           <select
             className="input"
             value={s.kind}
@@ -594,7 +589,7 @@ function StateForm({
           </select>
         </Field>
         <div className="sm:col-span-2">
-          <Field label="State">
+          <Field label="状态">
             <textarea
               className="input min-h-16"
               maxLength={1000}
@@ -604,13 +599,13 @@ function StateForm({
           </Field>
         </div>
         {s.kind === "outfit" && (
-          <Field label="Outfit" hint="Naming one of their outfits dresses them in it, reference image included.">
+          <Field label="服装" hint="选择已有服装后会应用该服装，并附带其参考图。">
             <select
               className="input"
               value={s.outfitId ?? ""}
               onChange={(e) => setS({ ...s, outfitId: e.target.value || null })}
             >
-              <option value="">None (text only)</option>
+              <option value="">无（仅文字）</option>
               {outfits.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.name}
@@ -620,13 +615,13 @@ function StateForm({
           </Field>
         )}
         <ChapterSelect
-          label="From chapter"
+          label="起始章节"
           data={data}
           value={s.chapterId}
-          none="The start"
+          none="故事开头"
           onChange={(v) => setS({ ...s, chapterId: v })}
         />
-        <Field label="From scene" hint="Scene number in that chapter; empty for its start.">
+        <Field label="起始场景" hint="该章节中的场景编号，留空表示从章节开头开始。">
           <input
             className="input"
             type="number"
@@ -637,10 +632,10 @@ function StateForm({
           />
         </Field>
         <ChapterSelect
-          label="Through chapter"
+          label="截止章节"
           data={data}
           value={s.untilChapterId}
-          none="Until replaced, or the end"
+          none="直到被替换或故事结尾"
           onChange={(v) => setS({ ...s, untilChapterId: v })}
         />
       </div>
@@ -659,7 +654,7 @@ function ExtractDialog({ data, onClose }: { data: BibleData; onClose: () => void
     try {
       await post(`/projects/${projectId}/bible/extract`, { ...aiText(), chapterId: chapterId ?? undefined });
       await qc.invalidateQueries({ queryKey: bibleKey(projectId) });
-      toast.success("Extraction queued");
+      toast.success("提取任务已加入队列");
       onClose();
     } catch (e) {
       toast.error(e);
@@ -671,28 +666,23 @@ function ExtractDialog({ data, onClose }: { data: BibleData; onClose: () => void
     <Modal
       open
       onClose={onClose}
-      title="Extract bible from story"
+      title="从故事提取故事设定集"
       footer={
         <>
           <AiChip cap="text" className="mr-auto" />
           <button type="button" className="btn-secondary" onClick={onClose}>
-            Cancel
+            取消
           </button>
           <button type="button" className="btn-primary" disabled={busy || !data.chapters.length} onClick={run}>
-            {busy && <Spinner />} Extract
+            {busy && <Spinner />} 提取
           </button>
         </>
       }
     >
       <div className="space-y-3 text-sm">
-        <p>
-          The text model reads the chapters and their chapter memory and proposes facts and character states. Nothing is
-          saved until you review the proposal and apply what you keep.
-        </p>
-        {!data.chapters.length && (
-          <p className="text-amber-600">Analyse and apply the story first: there are no chapters.</p>
-        )}
-        <ChapterSelect label="Chapters" data={data} value={chapterId} none="All chapters" onChange={setChapterId} />
+        <p>文本模型会读取章节及章节记忆，提出事实和角色状态。请审核并应用要保留的内容后保存。</p>
+        {!data.chapters.length && <p className="text-amber-600">暂无章节，请先分析故事并应用分析结果。</p>}
+        <ChapterSelect label="章节" data={data} value={chapterId} none="所有章节" onChange={setChapterId} />
       </div>
     </Modal>
   );
@@ -747,12 +737,12 @@ function ExtractionPanel({ data }: { data: BibleData }) {
   if (x.status !== "completed")
     return (
       <div className="card mb-4 flex flex-wrap items-center gap-2 p-3 text-sm">
-        <span>Bible extraction</span>
+        <span>故事设定集提取</span>
         <StatusChip status={x.status} />
         {x.status === "failed" && <span className="muted">{x.failureReason}</span>}
         {x.status === "awaiting_input" && (
           <Link className="underline" to="/projects/$projectId/generation/$jobId" params={{ projectId, jobId: x.id }}>
-            Paste the answer
+            粘贴回答
           </Link>
         )}
       </div>
@@ -762,9 +752,9 @@ function ExtractionPanel({ data }: { data: BibleData }) {
   return (
     <section className="card mb-4 space-y-3 p-3">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="mr-auto font-medium">Review the extracted bible</h2>
+        <h2 className="mr-auto font-medium">审核提取的故事设定集</h2>
         <button type="button" className="btn-secondary" disabled={busy} onClick={() => apply(false)}>
-          Discard
+          丢弃
         </button>
         <button
           type="button"
@@ -772,10 +762,10 @@ function ExtractionPanel({ data }: { data: BibleData }) {
           disabled={busy || counts.facts + counts.states === 0}
           onClick={() => apply(true)}
         >
-          {busy && <Spinner />} Save {counts.facts} facts, {counts.states} states
+          {busy && <Spinner />} 保存 {counts.facts} 条事实、{counts.states} 项状态
         </button>
       </div>
-      <p className="muted text-xs">Untick what you do not want. You can edit everything once saved.</p>
+      <p className="muted text-xs">取消勾选要舍弃的内容，保存后可继续编辑。</p>
       <div className="grid gap-3 md:grid-cols-2">
         <ul className="space-y-1 text-sm">
           {proposal.facts.map((f, i) => (
@@ -788,7 +778,7 @@ function ExtractionPanel({ data }: { data: BibleData }) {
                 />
                 <span>
                   <span className="chip mr-1 text-xs">{f.kind}</span>
-                  {f.fixed && <Lock className="mr-1 inline size-3" aria-label="fixed" />}
+                  {f.fixed && <Lock className="mr-1 inline size-3" aria-label="固定" />}
                   {f.subject && <strong>{f.subject}: </strong>}
                   {f.text}{" "}
                   <span className="muted text-xs">
@@ -817,8 +807,8 @@ function ExtractionPanel({ data }: { data: BibleData }) {
                   <strong>{s.character}</strong> <span className="chip mx-1 text-xs">{s.kind}</span>
                   {s.text}{" "}
                   <span className="muted text-xs">
-                    {chapterNo(s.fromChapter) ?? "from the start"}
-                    {s.fromScene ? `, scene ${s.fromScene}` : ""}
+                    {chapterNo(s.fromChapter) ?? "从开头开始"}
+                    {s.fromScene ? `，第 ${s.fromScene} 场` : ""}
                   </span>
                 </span>
               </label>

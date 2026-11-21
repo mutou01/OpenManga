@@ -109,18 +109,18 @@ export function useAiBody(cap: AiCapability) {
 }
 
 function choiceLabel(cap: AiCapability, c: Choice, o: AiOptions | undefined) {
-  if (cap === "text" && c.manual) return "Paste it yourself · no key";
+  if (cap === "text" && c.manual) return "手动粘贴 · 无需密钥";
   const cred = effectiveCredential(cap, c, o);
   if (cred) {
     const cat = providerCatalog(cred.kind);
     const models = cap === "text" ? cat?.textModels : cap === "image" ? cat?.imageModels : cat?.ttsModels;
-    return `${cred.label} · ${c.model || models?.[0] || "model?"}`;
+    return `${cred.label} · ${c.model || models?.[0] || "请选择模型"}`;
   }
   if (!o) return "…";
-  if (cap === "tts") return `Local · ${o.defaults.tts?.provider ?? "disabled"}`;
+  if (cap === "tts") return `本地 · ${o.defaults.tts?.provider ?? "已禁用"}`;
   const d = o.defaults[cap];
-  if (!d) return "No key selected";
-  return `Demo · ${d.provider} · ${c.model || d.model}`;
+  if (!d) return "未选择密钥";
+  return `演示 · ${d.provider} · ${c.model || d.model}`;
 }
 
 /** Provider + model (and voice for narration) selector for one capability. */
@@ -166,7 +166,7 @@ export function ModelPicker({ cap }: { cap: AiCapability }) {
 
   return (
     <div className="space-y-2 text-sm">
-      <Field label={cap === "text" ? "Text provider" : cap === "image" ? "Image provider" : "Voice provider"}>
+      <Field label={cap === "text" ? "文本提供商" : cap === "image" ? "图像提供商" : "语音提供商"}>
         <select
           className="input"
           value={choice.manual ? "manual" : (cred?.id ?? "")}
@@ -182,12 +182,12 @@ export function ModelPicker({ cap }: { cap: AiCapability }) {
         >
           <option value="">
             {cap === "tts"
-              ? `Local ${d?.tts?.provider ?? "TTS"}`
+              ? `本地 ${d?.tts?.provider ?? "TTS"}`
               : opts.data?.mockMode
-                ? "Demo provider (mock)"
+                ? "演示提供商（模拟）"
                 : creds.length
-                  ? "Select a key…"
-                  : "No key added yet"}
+                  ? "选择密钥…"
+                  : "尚未添加密钥"}
           </option>
           {creds.map((c) => (
             <option key={c.id} value={c.id}>
@@ -195,15 +195,15 @@ export function ModelPicker({ cap }: { cap: AiCapability }) {
             </option>
           ))}
           {/* Text only: an image cannot be pasted back as text, so a panel takes an upload instead. */}
-          {cap === "text" && <option value="manual">Paste it yourself — no key needed</option>}
+          {cap === "text" && <option value="manual">手动粘贴，无需密钥</option>}
         </select>
       </Field>
       {(cap !== "tts" || cred) && (
-        <Field label="Model">
+        <Field label="模型">
           <input
             className="input"
             list={`${id}-models`}
-            placeholder={cred ? (suggestions[0] ?? "model id") : defaultModel}
+            placeholder={cred ? (suggestions[0] ?? "模型 ID") : defaultModel}
             value={choice.model}
             onChange={(e) => setChoice(cap, { model: e.target.value })}
           />
@@ -215,14 +215,14 @@ export function ModelPicker({ cap }: { cap: AiCapability }) {
         </Field>
       )}
       {cap === "tts" && cred && (
-        <Field label="Voice">
+        <Field label="音色">
           <select
             className="input"
             value={choice.voice ?? ""}
             onChange={(e) => setChoice("tts", { voice: e.target.value })}
             disabled={voices.isLoading}
           >
-            <option value="">{voices.isLoading ? "Loading voices…" : "First available voice"}</option>
+            <option value="">{voices.isLoading ? "正在加载音色…" : "首个可用音色"}</option>
             {voices.data?.voices.map((v) => (
               <option key={v.id} value={v.id}>
                 {v.name}
@@ -233,19 +233,17 @@ export function ModelPicker({ cap }: { cap: AiCapability }) {
           </select>
         </Field>
       )}
-      {cap === "tts" && !cred && (
-        <p className="muted text-xs">Uses the project's default voice and speed below (local Kokoro).</p>
-      )}
+      {cap === "tts" && !cred && <p className="muted text-xs">使用下方项目默认的音色和语速（本地 Kokoro）。</p>}
       {listErr ? (
-        <p className="text-xs text-amber-600">Couldn't list models/voices: {String((listErr as Error).message)}</p>
+        <p className="text-xs text-amber-600">无法获取模型或音色列表 {String((listErr as Error).message)}</p>
       ) : null}
       {!creds.length && cap !== "tts" && (
         <p className="text-xs text-amber-600">
-          This server has no shared API keys.{" "}
+          此服务器没有共享的 API 密钥。{" "}
           <Link to="/account" className="underline">
-            Add your own API keys
+            添加自己的 API 密钥
           </Link>{" "}
-          to pick OpenAI, Anthropic, Google, Meta, OpenRouter, ElevenLabs and more.
+          以选择 OpenAI、Anthropic、Google、Meta、OpenRouter、ElevenLabs 等提供商。
         </p>
       )}
     </div>
@@ -265,8 +263,8 @@ export function AiChip({ cap, className }: { cap: AiCapability; className?: stri
         type="button"
         className="btn-ghost max-w-64 truncate px-2 py-1 text-xs"
         aria-expanded={open}
-        aria-label={`${cap} model: ${choiceLabel(cap, choice, opts.data)}`}
-        title="Choose provider and model for this run"
+        aria-label={`${{ text: "文本", image: "图像", tts: "语音" }[cap]}模型 ${choiceLabel(cap, choice, opts.data)}`}
+        title="为本次生成选择提供商和模型"
         onClick={() => setOpen((o) => !o)}
       >
         <Cpu className="size-3.5 shrink-0" />
@@ -294,7 +292,9 @@ export function ProviderKeys() {
   const [removing, setRemoving] = useState<Credential | null>(null);
   const cat = providerCatalog(form.kind)!;
   const caps = (k: ProviderKind) =>
-    (["text", "image", "tts"] as const).filter((c) => supports(k, c)).map((c) => (c === "tts" ? "voice" : c));
+    (["text", "image", "tts"] as const)
+      .filter((c) => supports(k, c))
+      .map((c) => ({ text: "文本", image: "图像", tts: "语音" })[c]);
 
   const save = async () => {
     setBusy(true);
@@ -307,7 +307,7 @@ export function ProviderKeys() {
         baseUrl: form.kind === "openai_compatible" ? form.baseUrl : null,
       });
       setForm({ ...form, label: "", apiKey: "", baseUrl: "" });
-      toast.success("Key verified and saved");
+      toast.success("密钥已验证并保存");
       await qc.invalidateQueries({ queryKey: aiOptionsKey });
     } catch (e) {
       setError(e);
@@ -320,12 +320,10 @@ export function ProviderKeys() {
     <section className="card space-y-3 p-4">
       <div className="flex items-center gap-2">
         <KeyRound className="size-4" />
-        <h2 className="font-medium">AI providers (bring your own key)</h2>
+        <h2 className="font-medium">AI 提供商（使用自己的密钥）</h2>
       </div>
       <p className="muted text-xs">
-        Add keys to choose a provider and model for each text, image or narration run. Keys are verified with the
-        provider, stored encrypted on the server, never shown again and only usable by you. Without keys, the server's
-        configured providers are used. Usage on your keys is billed by the provider to you.
+        添加密钥后，即可为每次文本、图像或旁白生成选择提供商和模型。密钥经提供商验证后加密存储在服务器上，仅供你使用，保存后无法再次查看。未添加密钥时，使用服务器配置的提供商。密钥产生的用量由提供商向你计费。
       </p>
       {opts.isLoading && <Spinner />}
       <ErrorBox error={opts.error} />
@@ -339,12 +337,12 @@ export function ProviderKeys() {
               <span className="muted text-xs">{caps(c.kind).join(" · ")}</span>
               {c.baseUrl && <span className="muted truncate text-xs">{c.baseUrl}</span>}
               <span className="muted ml-auto text-xs">
-                {c.lastUsedAt ? `used ${fmt.ago(c.lastUsedAt)}` : `added ${fmt.ago(c.createdAt)}`}
+                {c.lastUsedAt ? `使用于 ${fmt.ago(c.lastUsedAt)}` : `添加于 ${fmt.ago(c.createdAt)}`}
               </span>
               <button
                 type="button"
                 className="btn-ghost p-1 text-red-500"
-                aria-label={`Delete key ${c.label}`}
+                aria-label={`删除密钥 ${c.label}`}
                 onClick={() => setRemoving(c)}
               >
                 <Trash2 className="size-4" />
@@ -353,10 +351,10 @@ export function ProviderKeys() {
           ))}
         </ul>
       ) : (
-        !opts.isLoading && <p className="muted text-sm">No keys yet.</p>
+        !opts.isLoading && <p className="muted text-sm">尚未添加密钥。</p>
       )}
       <div className="grid gap-2 sm:grid-cols-2">
-        <Field label="Provider">
+        <Field label="提供商">
           <select
             className="input"
             value={form.kind}
@@ -369,7 +367,7 @@ export function ProviderKeys() {
             ))}
           </select>
         </Field>
-        <Field label="Label (optional)">
+        <Field label="名称（可选）">
           <input
             className="input"
             placeholder={cat.label}
@@ -380,7 +378,7 @@ export function ProviderKeys() {
         </Field>
         {form.kind === "openai_compatible" && (
           <div className="sm:col-span-2">
-            <Field label="Base URL (public https, OpenAI-compatible)">
+            <Field label="基础 URL（公网 HTTPS，兼容 OpenAI）">
               <input
                 className="input"
                 placeholder="https://api.example.com/v1"
@@ -391,7 +389,7 @@ export function ProviderKeys() {
           </div>
         )}
         <div className="sm:col-span-2">
-          <Field label="API key">
+          <Field label="API 密钥">
             <input
               className="input font-mono"
               type="password"
@@ -402,7 +400,7 @@ export function ProviderKeys() {
           </Field>
           {cat.keyUrl && (
             <a className="muted text-xs underline" href={cat.keyUrl} target="_blank" rel="noreferrer">
-              Get a {cat.label} key
+              获取 {cat.label} 密钥
             </a>
           )}
         </div>
@@ -414,26 +412,26 @@ export function ProviderKeys() {
         disabled={busy || form.apiKey.trim().length < 8 || (form.kind === "openai_compatible" && !form.baseUrl.trim())}
         onClick={save}
       >
-        {busy && <Spinner />} Verify and save key
+        {busy && <Spinner />} 验证并保存密钥
       </button>
       <ConfirmDialog
         open={Boolean(removing)}
         danger
-        title={`Delete key "${removing?.label}"?`}
-        confirmLabel="Delete key"
+        title={`删除密钥“${removing?.label}”？`}
+        confirmLabel="删除密钥"
         onClose={() => setRemoving(null)}
         onConfirm={async () => {
           try {
             await del(`/ai/credentials/${removing!.id}`);
             await qc.invalidateQueries({ queryKey: aiOptionsKey });
-            toast.success("Key deleted");
+            toast.success("密钥已删除");
           } catch (e) {
             toast.error(e);
           }
           setRemoving(null);
         }}
       >
-        Queued jobs that use this key will fail. Runs switch back to the server default provider.
+        使用此密钥的排队任务将失败。后续生成将恢复使用服务器默认提供商。
       </ConfirmDialog>
     </section>
   );

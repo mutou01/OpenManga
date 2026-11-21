@@ -1,10 +1,19 @@
-import { RETENTION_KINDS, RETENTION_LABELS, type RetentionKind } from "@openmanga/domain/browser";
+import { RETENTION_KINDS, type RetentionKind } from "@openmanga/domain/browser";
 import type { ProjectStorage } from "@openmanga/schemas";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { get, post, put } from "../../api/client.ts";
 import { useAction } from "../../api/hooks.ts";
 import { Field, fmt } from "../../components/ui.tsx";
+
+const RETENTION_LABELS: Record<RetentionKind, string> = {
+  render_cache: "视频片段缓存",
+  export: "导出文件",
+  panel_version: "旧版分镜画稿",
+  audio_take: "闲置旁白录音",
+  trash: "回收站文件",
+  prompt_reference: "提示词参考副本",
+};
 
 type View = {
   policy: ProjectStorage;
@@ -46,42 +55,37 @@ function Form({
 }) {
   const [p, setP] = useState<ProjectStorage>(v.policy);
   const save = useAction(() => put<View>(`/projects/${projectId}/storage`, p), {
-    success: "Storage policy saved",
+    success: "存储策略已保存",
     onSuccess: onSaved,
   });
   const apply = useAction(
     () => post<View & { deleted: number; bytes: number }>(`/projects/${projectId}/storage/apply`),
     {
-      success: (r) => `Deleted ${r.deleted} file(s), ${fmt.bytes(r.bytes)}`,
+      success: (r) => `已删除 ${r.deleted} 个文件，共 ${fmt.bytes(r.bytes)}`,
       onSuccess: onSaved,
     },
   );
   const days = (x: string) => (x === "" ? null : Math.max(1, Math.round(Number(x))));
   return (
-    <section className="card space-y-3 p-4" aria-label="Storage">
+    <section className="card space-y-3 p-4" aria-label="存储">
       <div>
-        <h2 className="font-medium">Storage</h2>
+        <h2 className="font-medium">存储</h2>
         <p className="muted text-xs">
-          This project stores {fmt.bytes(v.use.bytes)}
-          {v.use.capBytes !== null ? ` of its ${fmt.bytes(v.use.capBytes)} cap` : ""}.
+          本项目已使用 {fmt.bytes(v.use.bytes)}
+          {v.use.capBytes !== null ? `，上限为 ${fmt.bytes(v.use.capBytes)}` : ""}.
           {v.use.overCap && (
-            <strong className="text-red-600"> Over the cap: new AI work and exports wait until space is freed.</strong>
+            <strong className="text-red-600"> 已超出上限，释放空间后才能继续新的 AI 任务和导出。</strong>
           )}{" "}
-          A policy deletes only files that can be made again or are no longer used, at each hourly maintenance pass;
-          artwork a panel shows, approved art, references, uploads and narration in use are never touched.
+          每小时维护时，策略仅清理可重新生成或已闲置的文件。正在使用的分镜画稿、已批准画稿、参考图、上传文件和旁白均会保留。
         </p>
       </div>
-      <fieldset
-        disabled={!owner}
-        className="space-y-3"
-        title={owner ? undefined : "Only the project's owner sets this"}
-      >
+      <fieldset disabled={!owner} className="space-y-3" title={owner ? undefined : "只有项目所有者可以设置"}>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={p.enabled} onChange={(e) => setP({ ...p, enabled: e.target.checked })} />
-          Use a storage policy for this project
+          为此项目启用存储策略
         </label>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Delete expendable files older than (days)" hint="Empty: no age limit.">
+          <Field label="删除超过以下天数的可清理文件" hint="留空表示不限保留时间。">
             <input
               className="input"
               type="number"
@@ -90,7 +94,7 @@ function Form({
               onChange={(e) => setP({ ...p, maxAgeDays: days(e.target.value) })}
             />
           </Field>
-          <Field label="Storage cap (GB)" hint="The oldest expendable files go until the project is under it.">
+          <Field label="存储上限（GB）" hint="优先删除最旧的可清理文件，直到项目用量低于上限。">
             <input
               className="input"
               type="number"
@@ -109,19 +113,19 @@ function Form({
         />
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" className="btn-primary" disabled={save.isPending} onClick={() => save.mutate()}>
-            Save storage policy
+            保存存储策略
           </button>
           {v.preview && v.preview.files > 0 && (
             <>
               <span className="muted text-xs">
-                It would delete {v.preview.files} file(s), {fmt.bytes(v.preview.bytes)}, now.
+                现在应用将删除 {v.preview.files} 个文件，共 {fmt.bytes(v.preview.bytes)}。
               </span>
               <button type="button" className="btn-secondary" disabled={apply.isPending} onClick={() => apply.mutate()}>
-                Apply now
+                立即应用
               </button>
             </>
           )}
-          {v.preview && v.preview.files === 0 && <span className="muted text-xs">Nothing to delete now.</span>}
+          {v.preview && v.preview.files === 0 && <span className="muted text-xs">当前没有需要删除的文件。</span>}
         </div>
       </fieldset>
     </section>
@@ -147,9 +151,9 @@ export function KindAges({
     <table className="w-full text-sm">
       <thead className="muted text-left text-xs">
         <tr>
-          <th className="py-1 font-medium">Kind</th>
-          <th className="py-1 font-medium">Stored now</th>
-          <th className="py-1 font-medium">Keep for</th>
+          <th className="py-1 font-medium">类型</th>
+          <th className="py-1 font-medium">当前存储</th>
+          <th className="py-1 font-medium">保留期限</th>
         </tr>
       </thead>
       <tbody>
@@ -162,7 +166,7 @@ export function KindAges({
             <td className="py-1">
               <select
                 className="input w-auto py-0.5 text-xs"
-                aria-label={`${RETENTION_LABELS[k]}: how long`}
+                aria-label={`${RETENTION_LABELS[k]}保留期限`}
                 value={age(k) === undefined ? "default" : age(k) === null ? "never" : "days"}
                 onChange={(e) => {
                   const rest = { ...value };
@@ -171,16 +175,16 @@ export function KindAges({
                   onChange(rest);
                 }}
               >
-                <option value="default">Like the rest</option>
-                <option value="days">Its own age</option>
-                <option value="never">No age limit</option>
+                <option value="default">跟随通用设置</option>
+                <option value="days">单独设置天数</option>
+                <option value="never">不限保留时间</option>
               </select>
               {typeof age(k) === "number" && (
                 <input
                   className="input ml-1 w-20 py-0.5 text-xs"
                   type="number"
                   min={1}
-                  aria-label={`${RETENTION_LABELS[k]}: days`}
+                  aria-label={`${RETENTION_LABELS[k]}保留天数`}
                   value={age(k)!}
                   onChange={(e) => onChange({ ...value, [k]: Math.max(1, Math.round(Number(e.target.value) || 1)) })}
                 />

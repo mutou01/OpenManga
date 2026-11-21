@@ -24,6 +24,7 @@ import { api, get } from "../../api/client.ts";
 import { qk } from "../../api/hooks.ts";
 import { clsx, ErrorBox, Field, toast } from "../../components/ui.tsx";
 import { AiChip, useAiBody } from "../ai/AiPicker.tsx";
+import { imageAspectLabels } from "./aspect-labels.ts";
 
 const ICONS: Record<string, typeof ImageIcon> = {
   style: Sparkles,
@@ -73,11 +74,11 @@ function AspectCard({
         {on ? <Check className="size-4" /> : <Icon className="size-4" />}
       </span>
       <span className="min-w-0">
-        <span className="block text-sm font-medium">{aspect.label}</span>
-        <span className="muted block text-xs leading-snug">{aspect.hint}</span>
+        <span className="block text-sm font-medium">{imageAspectLabels[aspect.key].label}</span>
+        <span className="muted block text-xs leading-snug">{imageAspectLabels[aspect.key].hint}</span>
         {aspect.applies && (
           <span className="mt-1 inline-block rounded bg-emerald-500/15 px-1.5 py-0.5 text-[11px] text-emerald-700 dark:text-emerald-300">
-            can be applied to the project
+            可应用到项目
           </span>
         )}
       </span>
@@ -109,7 +110,7 @@ function ResultCard({ title, value, actions }: { title: string; value: unknown; 
               setTimeout(() => setCopied(false), 1500);
             }}
           >
-            {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />} {copied ? "Copied" : "Copy"}
+            {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />} {copied ? "已复制" : "复制"}
           </button>
         </div>
       </header>
@@ -226,11 +227,10 @@ export function DescribeImage({
           break;
         }
         if (["failed", "cancelled"].includes(d.job.status))
-          throw new Error(d.job.failureReason ?? "The description job did not finish");
+          throw new Error(d.job.failureReason ?? "图片描述任务未完成");
         // Paste mode: the job waits for a person, so polling here only runs out the clock.
-        if (d.job.status === "awaiting_input")
-          throw new Error("The description is waiting for your pasted answer: answer it on the Generation page");
-        if (Date.now() > deadline) throw new Error("Still running — check the Generation page for the result");
+        if (d.job.status === "awaiting_input") throw new Error("描述任务正在等待粘贴回答，请前往生成页面填写");
+        if (Date.now() > deadline) throw new Error("任务仍在运行，请到生成页面查看结果");
       }
       await qc.invalidateQueries({ queryKey: qk.assets(projectId) }).catch(() => {});
     } catch (e) {
@@ -253,7 +253,7 @@ export function DescribeImage({
             customDescription: description.style?.summary ?? description.overview,
           },
         });
-        toast.success("Project art style set from the image");
+        toast.success("已根据图片设置项目画风");
       } else if (kind === "character" && applyTo) {
         // A new version rather than an edit: it works whatever the current version's status is, and the previous
         // description stays in the character's version history to compare against or revert to.
@@ -265,18 +265,15 @@ export function DescribeImage({
             makeCurrent: true,
           },
         });
-        toast.success("New character version created from the image");
+        toast.success("已根据图片创建角色新版本");
       } else if (kind === "character") {
-        const name = window.prompt(
-          "Name this character",
-          description.character?.summary?.slice(0, 40) || "New character",
-        );
+        const name = window.prompt("为角色命名", description.character?.summary?.slice(0, 40) || "新角色");
         if (!name) return;
         await api(`/projects/${projectId}/characters`, {
           method: "POST",
           body: { name, description: description.character },
         });
-        toast.success(`Character "${name}" created from the image`);
+        toast.success(`已根据图片创建角色“${name}”`);
       } else if (applyTo) {
         await api(`/locations/${applyTo}/versions`, {
           method: "POST",
@@ -286,15 +283,15 @@ export function DescribeImage({
             makeCurrent: true,
           },
         });
-        toast.success("New location version created from the image");
+        toast.success("已根据图片创建地点新版本");
       } else {
-        const name = window.prompt("Name this location", description.location?.kind || "New location");
+        const name = window.prompt("为地点命名", description.location?.kind || "新地点");
         if (!name) return;
         await api(`/projects/${projectId}/locations`, {
           method: "POST",
           body: { name, description: description.location },
         });
-        toast.success(`Location "${name}" created from the image`);
+        toast.success(`已根据图片创建地点“${name}”`);
       }
       await qc.invalidateQueries();
     } catch (e) {
@@ -308,7 +305,7 @@ export function DescribeImage({
     if (onUse)
       return (
         <button type="button" className="btn-secondary px-2 py-1 text-xs" onClick={() => onUse(description!)}>
-          <Wand2 className="size-3.5" /> Use this
+          <Wand2 className="size-3.5" /> 使用此描述
         </button>
       );
     // A character or location can go either way: a brand new one, or a new version of one that already exists.
@@ -321,14 +318,14 @@ export function DescribeImage({
             className="input h-7 w-32 py-0 text-xs"
             defaultValue=""
             disabled={applying !== null}
-            aria-label={`Update an existing ${kind} from this image`}
+            aria-label={`根据图片更新已有${kind === "character" ? "角色" : "地点"}`}
             onChange={(e) => {
               const id = e.target.value;
               e.target.value = "";
               if (id) apply(kind, id);
             }}
           >
-            <option value="">Update existing…</option>
+            <option value="">更新已有对象……</option>
             {existing.map((x) => (
               <option key={x.id} value={x.id}>
                 {x.name}
@@ -371,8 +368,8 @@ export function DescribeImage({
             ) : (
               <span className="muted flex flex-col items-center gap-1 p-4 text-center text-sm">
                 <Upload className="size-5" />
-                Drop an image here, or click to choose
-                <span className="text-xs">PNG, JPEG or WebP</span>
+                将图片拖到这里，或点击选择
+                <span className="text-xs">PNG、JPEG 或 WebP</span>
               </span>
             )}
           </button>
@@ -388,10 +385,10 @@ export function DescribeImage({
               {file.name} · {(file.size / 1024).toFixed(0)} KB
             </p>
           )}
-          <Field label="What is this image? (optional)">
+          <Field label="这是什么图片？（可选）">
             <input
               className="input"
-              placeholder="frame from a trailer"
+              placeholder="预告片中的画面"
               value={note}
               maxLength={500}
               onChange={(e) => setNote(e.target.value)}
@@ -402,11 +399,11 @@ export function DescribeImage({
         <div className="space-y-3">
           <div>
             <div className="mb-2 flex items-center gap-2">
-              <span className="label">Extract</span>
-              <span className="muted text-xs">{picked.length} selected</span>
+              <span className="label">提取内容</span>
+              <span className="muted text-xs">{picked.length} 项已选</span>
               {picked.length > 0 && (
                 <button type="button" className="btn-ghost ml-auto px-2 py-0.5 text-xs" onClick={() => setPicked([])}>
-                  Clear
+                  清空
                 </button>
               )}
             </div>
@@ -416,10 +413,10 @@ export function DescribeImage({
               ))}
             </div>
           </div>
-          <Field label="Anything else to ask about the image? (optional)">
+          <Field label="还想了解图片的哪些内容？（可选）">
             <textarea
               className="input min-h-20"
-              placeholder="What lens and aperture would reproduce this depth of field?"
+              placeholder="使用什么镜头和光圈能呈现这样的景深？"
               value={custom}
               maxLength={2000}
               onChange={(e) => setCustom(e.target.value)}
@@ -427,7 +424,7 @@ export function DescribeImage({
           </Field>
           <div className="flex flex-wrap items-center gap-2">
             <AiChip cap="text" />
-            <span className="muted text-xs">Needs a vision-capable model</span>
+            <span className="muted text-xs">需要支持视觉输入的模型</span>
             <button
               type="button"
               className="btn-primary ml-auto"
@@ -435,7 +432,7 @@ export function DescribeImage({
               onClick={run}
             >
               {busy ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-              {busy ? "Reading the image…" : "Describe image"}
+              {busy ? "正在识别图片……" : "描述图片"}
             </button>
           </div>
           <ErrorBox error={error} />
@@ -445,49 +442,37 @@ export function DescribeImage({
       {description && (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-medium">What the model saw</h2>
+            <h2 className="font-medium">识别结果</h2>
             {reusedFrom && (
               <span className="chip bg-sky-500/15 text-xs text-sky-700 dark:text-sky-300">
-                reused from {reusedFrom.projectTitle} — nothing was spent
+                复用自 {reusedFrom.projectTitle} ，未产生费用
               </span>
             )}
           </div>
-          {description.overview && <ResultCard title="Overview" value={description.overview} />}
+          {description.overview && <ResultCard title="概述" value={description.overview} />}
           <div className="grid gap-3 xl:grid-cols-2">
             {description.style && (
-              <ResultCard
-                title="Art style"
-                value={description.style}
-                actions={applyButton("style", "Use as project style")}
-              />
+              <ResultCard title="画风" value={description.style} actions={applyButton("style", "用作项目画风")} />
             )}
             {description.character && (
-              <ResultCard
-                title="Character"
-                value={description.character}
-                actions={applyButton("character", "Create character")}
-              />
+              <ResultCard title="角色" value={description.character} actions={applyButton("character", "创建角色")} />
             )}
             {description.location && (
-              <ResultCard
-                title="Location"
-                value={description.location}
-                actions={applyButton("location", "Create location")}
-              />
+              <ResultCard title="地点" value={description.location} actions={applyButton("location", "创建地点")} />
             )}
-            {description.outfit && <ResultCard title="Outfit" value={description.outfit} />}
-            {description.lighting && <ResultCard title="Lighting & palette" value={description.lighting} />}
-            {description.composition && <ResultCard title="Composition" value={description.composition} />}
-            {description.mood && <ResultCard title="Mood & tone" value={description.mood} />}
-            {description.props && <ResultCard title="Props & objects" value={description.props} />}
-            {description.era && <ResultCard title="Era & culture" value={description.era} />}
-            {description.pose && <ResultCard title="Pose & layout" value={description.pose} />}
-            {description.technique && <ResultCard title="Medium & technique" value={description.technique} />}
-            {description.custom && <ResultCard title="Your question" value={description.custom} />}
+            {description.outfit && <ResultCard title="服装" value={description.outfit} />}
+            {description.lighting && <ResultCard title="光照与配色" value={description.lighting} />}
+            {description.composition && <ResultCard title="构图" value={description.composition} />}
+            {description.mood && <ResultCard title="氛围与基调" value={description.mood} />}
+            {description.props && <ResultCard title="道具与物件" value={description.props} />}
+            {description.era && <ResultCard title="时代与文化" value={description.era} />}
+            {description.pose && <ResultCard title="姿势与布局" value={description.pose} />}
+            {description.technique && <ResultCard title="媒介与技法" value={description.technique} />}
+            {description.custom && <ResultCard title="你的问题" value={description.custom} />}
           </div>
           {description.uncertain?.length > 0 && (
             <p className="rounded-md bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-300">
-              Could not tell from the image: {description.uncertain.join("; ")}
+              无法从图片判断的内容 {description.uncertain.join("; ")}
             </p>
           )}
         </div>

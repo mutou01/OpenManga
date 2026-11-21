@@ -72,13 +72,13 @@ export function CompareModels({
           model: r.model || modelsOf(r.credentialId)[0] || null,
         })),
       }),
-    { invalidate: [key], success: "Drawing with each model" },
+    { invalidate: [key], success: "正在使用各模型生成" },
   );
   const pick = useAction(
     (jobId: string) =>
       post<{ credentialId: string | null; model: string | null }>(`/panels/${panelId}/compare/pick`, { jobId }),
     {
-      success: "Using that one: it is also your image model now",
+      success: "已使用此结果，并将其设为当前图片模型",
       onSuccess: (r) => {
         setChoice("image", { credentialId: r.credentialId, model: r.model ?? "" });
         for (const k of invalidate) void qc.invalidateQueries({ queryKey: k });
@@ -86,26 +86,25 @@ export function CompareModels({
     },
   );
   const label = (r: { credentialId: string | null }) =>
-    creds.find((c) => c.id === r.credentialId)?.label ?? "Server default";
+    creds.find((c) => c.id === r.credentialId)?.label ?? "服务器默认";
   return (
     <details className="rounded-lg border border-[var(--border)] p-2">
-      <summary className="cursor-pointer text-sm font-medium">Compare models</summary>
+      <summary className="cursor-pointer text-sm font-medium">比较模型</summary>
       <div className="mt-2 space-y-2 text-xs">
         <p className="muted">
-          Draw this panel with several image models at once, then keep the best. Each run spends that key's credits; the
-          panel keeps its artwork until you pick one.
+          使用多个图片模型同时生成本分镜，再选择最佳结果。每次生成消耗对应密钥的额度，选择结果后才会替换当前分镜图片。
         </p>
         {rows.map((r, i) => (
           <div key={i} className="flex gap-1">
             <select
               className="input py-1 text-xs"
-              aria-label={`Model ${i + 1}: key`}
+              aria-label={`模型 ${i + 1} 的密钥`}
               value={r.credentialId ?? ""}
               onChange={(e) =>
                 setRows((rs) => rs.map((x, k) => (k === i ? { credentialId: e.target.value || null, model: "" } : x)))
               }
             >
-              {opts.data?.defaults.image && <option value="">Server default</option>}
+              {opts.data?.defaults.image && <option value="">服务器默认</option>}
               {creds.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.label}
@@ -114,9 +113,9 @@ export function CompareModels({
             </select>
             <input
               className="input py-1 text-xs"
-              aria-label={`Model ${i + 1}: model`}
+              aria-label={`模型 ${i + 1} 的名称`}
               list={`models-${panelId}-${i}`}
-              placeholder={modelsOf(r.credentialId)[0] ?? "model"}
+              placeholder={modelsOf(r.credentialId)[0] ?? "模型"}
               value={r.model}
               onChange={(e) => setRows((rs) => rs.map((x, k) => (k === i ? { ...x, model: e.target.value } : x)))}
             />
@@ -129,7 +128,7 @@ export function CompareModels({
               <button
                 type="button"
                 className="btn-ghost p-1"
-                aria-label={`Remove model ${i + 1}`}
+                aria-label={`移除模型 ${i + 1}`}
                 onClick={() => setRows((rs) => rs.filter((_, k) => k !== i))}
               >
                 <Trash2 className="size-3.5" />
@@ -144,7 +143,7 @@ export function CompareModels({
               className="btn-ghost px-2 py-1 text-xs"
               onClick={() => setRows((rs) => [...rs, { credentialId: first, model: "" }])}
             >
-              <Plus className="size-3.5" /> Model
+              <Plus className="size-3.5" /> 模型
             </button>
           )}
           <button
@@ -153,17 +152,17 @@ export function CompareModels({
             disabled={locked || run.isPending}
             onClick={() => run.mutate()}
           >
-            Draw with {rows.length} models
+            使用 {rows.length} 个模型生成
           </button>
         </div>
         {Boolean(q.data?.runs.length) && (
-          <ul className="grid grid-cols-2 gap-2" aria-label="Comparison">
+          <ul className="grid grid-cols-2 gap-2" aria-label="比较结果">
             {q.data!.runs.map((r) => (
               <li key={r.jobId} className="space-y-1 rounded-md border border-[var(--border)] p-1">
                 {r.assetId ? (
                   <AssetImage
                     assetId={r.assetId}
-                    alt={`${r.model} result`}
+                    alt={`${r.model} 的结果`}
                     className="aspect-square w-full rounded"
                     fit="contain"
                   />
@@ -176,11 +175,11 @@ export function CompareModels({
                   {label(r)} · {r.model}
                 </div>
                 <div className="muted">
-                  {r.durationMs !== null ? `${(r.durationMs / 1000).toFixed(1)} s` : "…"} · {fmt.usd(r.costUsd)}
+                  {r.durationMs !== null ? `${(r.durationMs / 1000).toFixed(1)} 秒` : "…"} · {fmt.usd(r.costUsd)}
                 </div>
                 {r.check?.verdict && (
                   <div className={r.check.verdict === "ok" ? "text-emerald-600" : "text-amber-600"}>
-                    Check: {r.check.verdict}
+                    检查结果 {r.check.verdict}
                     {r.check.problems?.length ? ` (${r.check.problems.length})` : ""}
                   </div>
                 )}
@@ -191,7 +190,7 @@ export function CompareModels({
                   disabled={!r.assetId || locked || pick.isPending}
                   onClick={() => pick.mutate(r.jobId)}
                 >
-                  Use this one
+                  使用此结果
                 </button>
               </li>
             ))}

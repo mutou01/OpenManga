@@ -86,8 +86,8 @@ imageToolRoutes.post("/panels/:id/tools", async (c) => {
   const deps = c.get("deps");
   const [panel] = await deps.db.select().from(panels).where(eq(panels.id, panelId));
   if (!panel) throw notFound("Panel");
-  if (panel.approvalStatus === "locked") throw conflict("Panel is locked");
-  if (!panel.activeArtworkAssetId) throw conflict("The panel has no artwork yet");
+  if (panel.approvalStatus === "locked") throw conflict("画格已锁定");
+  if (!panel.activeArtworkAssetId) throw conflict("画格尚未绘制");
   const source = await deps.assets.get(panel.activeArtworkAssetId);
   if (!source || source.deletedAt) throw notFound("Artwork");
   const data = await deps.assets.read(source);
@@ -181,8 +181,8 @@ imageToolRoutes.post("/panels/:id/guide/tools", async (c) => {
   const { tool } = await body(c, GuideTool);
   const deps = c.get("deps");
   const [panel] = await deps.db.select().from(panels).where(eq(panels.id, panelId));
-  if (!panel?.guide) throw conflict("The panel has no layout guide");
-  if (panel.approvalStatus === "locked") throw conflict("Panel is locked");
+  if (!panel?.guide) throw conflict("画格尚无布局参考图");
+  if (panel.approvalStatus === "locked") throw conflict("画格已锁定");
   const g = await deps.assets.get(panel.guide.assetId);
   if (!g || g.deletedAt) throw notFound("Guide image");
   const out =

@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { ConcurrencyLimiter, classifyHttpStatus, ProviderError, parseRetryAfter, withRetry } from "./provider.ts";
 
+test("provider timeouts have a Chinese user message and keep the raw diagnostics", () => {
+  const error = new ProviderError("test-provider", "timeout", "upstream connection timed out");
+  expect(error.userMessage).toBe("AI 服务商响应超时，任务将自动重试。");
+  expect(error.message).toBe("upstream connection timed out");
+  expect(error.retryable).toBe(true);
+});
+
 describe("retry policy", () => {
   const noSleep = async () => {};
   test("retries transient errors then succeeds", async () => {

@@ -304,7 +304,7 @@ export class JobService {
           status: "cancelled",
           finishedAt: new Date(),
           cancelRequestedAt: new Date(),
-          failureReason: job.status === "paused" ? "Cancelled while paused" : "Cancelled while waiting for an answer",
+          failureReason: job.status === "paused" ? "已取消暂停的任务" : "已取消等待回复的任务",
         })
         .where(eq(generationJobs.id, jobId));
       await this.opts.events?.publish(job.projectId, {
@@ -328,7 +328,7 @@ export class JobService {
             status: "cancelled",
             finishedAt: new Date(),
             cancelRequestedAt: new Date(),
-            failureReason: "Cancelled before start",
+            failureReason: "任务开始前已取消",
           })
           .where(eq(generationJobs.id, jobId));
         await this.opts.events?.publish(job.projectId, {
@@ -380,7 +380,7 @@ export class JobService {
       if (!removed) continue;
       const rows = await this.db
         .update(generationJobs)
-        .set({ status: "paused", failureReason: `Paused: ${reason}` })
+        .set({ status: "paused", failureReason: `已暂停：${reason}` })
         .where(and(eq(generationJobs.id, job.id), eq(generationJobs.status, "queued")))
         .returning({ id: generationJobs.id });
       if (!rows.length) continue;
@@ -393,7 +393,7 @@ export class JobService {
         targetType: job.targetType,
         targetId: job.targetId,
         batchId: job.batchId,
-        failureReason: `Paused: ${reason}`,
+        failureReason: `已暂停：${reason}`,
       });
     }
     return paused;
@@ -511,7 +511,7 @@ export class JobService {
     if (!removed) return "not_cancellable";
     const rows = await this.db
       .update(audioJobs)
-      .set({ status: "cancelled", finishedAt: new Date(), failureReason: "Cancelled before start" })
+      .set({ status: "cancelled", finishedAt: new Date(), failureReason: "任务开始前已取消" })
       .where(and(eq(audioJobs.id, jobId), eq(audioJobs.status, "queued")))
       .returning({ id: audioJobs.id });
     if (!rows.length) return "not_cancellable";

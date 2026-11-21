@@ -191,7 +191,7 @@ export async function processExport(deps: WorkerDeps, bullJob: Job) {
     }
     await mkdir(deps.config.TEMP_ROOT, { recursive: true });
     const [project] = await deps.db.select().from(projects).where(eq(projects.id, job.projectId));
-    if (!project) throw new UnrecoverableError("Project no longer exists");
+    if (!project) throw new UnrecoverableError("项目已不存在");
     // Files built on disk (video, PDF, archives) are stored from the temp dir, so everything happens before it is removed.
     const files = await withTempDir(deps.config.TEMP_ROOT, async (dir) => {
       const files = await buildExport(deps, job, opts, project, progress, dir);
@@ -297,8 +297,8 @@ export async function processExport(deps: WorkerDeps, bullJob: Job) {
       e instanceof UnrecoverableError
         ? message
         : isImport
-          ? "Import failed while restoring the project. Check the logs and upload the file again."
-          : "Export failed while composing files. Check the logs or retry.";
+          ? "恢复项目时导入失败，请查看日志后重新上传。"
+          : "合成文件时导出失败，请查看日志或重试。";
     await deps.db
       .update(exportJobs)
       .set({ status: final ? "failed" : "queued", failureReason: safe, finishedAt: final ? new Date() : null })
@@ -370,7 +370,7 @@ async function buildExport(
     case "jpg_pages": {
       const fmt = job.kind === "png_pages" ? "png" : "jpg";
       const ids = await pagesFor(deps, opts, project.id);
-      if (!ids.length) throw new UnrecoverableError("No pages to export");
+      if (!ids.length) throw new UnrecoverableError("没有可以导出的页面");
       const zip = ids.length > 1 ? new ZipWriter(join(dir, "pages.zip")) : null;
       for (const [i, { id: pid, chapter: chapterNo }] of ids.entries()) {
         const page = await loadRenderPage(deps.db, deps.assets.storage, pid, project.readingDirection, opts.language);
@@ -421,12 +421,12 @@ async function buildExport(
     }
     case "print_cover": {
       const check = await printCoverCheck(deps.db, project, opts, { ...opts.pdf, print: opts.print });
-      if (!check) throw new UnrecoverableError("Choose a print size for the cover (not the page's own size)");
+      if (!check) throw new UnrecoverableError("请选择封面的成品尺寸");
       const { layout } = check;
       const block = layout.issues.find((i) => i.severity === "block");
       if (block) throw new UnrecoverableError(block.message);
       const art = check.artAssetId ? await deps.assets.get(check.artAssetId) : null;
-      if (!art || art.deletedAt) throw new UnrecoverableError("The cover art is missing from storage");
+      if (!art || art.deletedAt) throw new UnrecoverableError("存储中缺少封面图");
       const cover = await renderPrintCover(layout, await deps.assets.read(art), opts.pdf.dpi);
       await progress(0.6);
       const path = join(dir, "cover.pdf");
@@ -475,7 +475,7 @@ async function buildExport(
     }
     case "webtoon": {
       const ids = await pagesFor(deps, opts, project.id);
-      if (!ids.length) throw new UnrecoverableError("No pages to export");
+      if (!ids.length) throw new UnrecoverableError("没有可以导出的页面");
       const width = opts.webtoon.width ?? project.settings.webtoonWidth;
       const gap = opts.webtoon.gap ?? project.settings.webtoonGap;
       const maxH = opts.webtoon.maxChunkHeight ?? project.settings.webtoonChunkHeight;
@@ -546,7 +546,7 @@ async function buildExport(
     }
     case "narration_audio":
     case "timeline": {
-      if (!opts.chapterId) throw new UnrecoverableError("Choose a chapter");
+      if (!opts.chapterId) throw new UnrecoverableError("请选择章节");
       const rows = await deps.db
         .select({ s: narrationSegments, l: narrationLines, a: audioAssets })
         .from(narrationSegments)
@@ -574,8 +574,7 @@ async function buildExport(
       if (job.kind === "timeline")
         return [{ name: `${prefix}_timeline.json`, data: timelineJson, mime: "application/json" }];
       const withAudio = rows.filter((r) => r.a);
-      if (!withAudio.length)
-        throw new UnrecoverableError("No synthesized narration in this chapter yet. Synthesize segments first.");
+      if (!withAudio.length) throw new UnrecoverableError("此章尚无已合成的旁白音频，请先合成。");
       const zip = new ZipWriter(join(dir, "narration.zip"));
       await zip.add("timeline.json", timelineJson);
       const parts: { wav: Uint8Array; pauseAfterMs: number }[] = [];
@@ -603,7 +602,7 @@ async function buildExport(
       if (missing)
         await zip.add(
           "MISSING_SEGMENTS.txt",
-          new TextEncoder().encode(`${missing} segment(s) had no synthesized audio and were skipped.\n`),
+          new TextEncoder().encode(`有 ${missing} 段旁白缺少合成音频，导出时已跳过。\n`),
         );
       await progress(1);
       return [
@@ -767,7 +766,7 @@ async function buildExport(
         opts.language || project.language,
       );
       const shots = planned.shots.filter((s) => s.art && s.panel);
-      if (!shots.length) throw new UnrecoverableError("None of the picked panels has artwork");
+      if (!shots.length) throw new UnrecoverableError("所选画格均缺少图片");
       const name = `${prefix}_${safeName(opts.label || (job.kind === "carousel" ? "carousel" : "quote")).toLowerCase()}_${width}x${height}`;
       if (job.kind === "quote_image") {
         const s = shots[0]!;
@@ -809,8 +808,7 @@ async function buildExport(
       // Packs what already exists (exports make no AI calls): the newest finished video of the same scope, with
       // its subtitles and chapter timestamps, the thumbnail and the saved publishing text.
       const yt = project.settings.youtubePackage;
-      if (!yt?.titles.length)
-        throw new UnrecoverableError("Write the YouTube package first (Exports → YouTube package)");
+      if (!yt?.titles.length) throw new UnrecoverableError("请先在「导出 → YouTube 发布套件」中编写发布文案");
       const [video] = await deps.db
         .select({ id: exportJobs.id })
         .from(exportJobs)
@@ -829,7 +827,7 @@ async function buildExport(
         .limit(1);
       if (!video)
         throw new UnrecoverableError(
-          `Render the ${opts.chapterId ? "chapter's" : "whole project's"} video first; the package reuses the newest one`,
+          `请先渲染${opts.chapterId ? "章节视频" : "整部视频"}，套件会使用最近一次的渲染结果`,
         );
       const files = await deps.db
         .select({ name: exportsTable.fileName, a: assets })
@@ -895,7 +893,7 @@ async function buildExport(
     case "psd_pages":
     case "layered_package": {
       const ids = await pagesFor(deps, opts, project.id);
-      if (!ids.length) throw new UnrecoverableError("No pages to export");
+      if (!ids.length) throw new UnrecoverableError("没有可以导出的页面");
       const psd = job.kind === "psd_pages";
       const zip = !psd || ids.length > 1 ? new ZipWriter(join(dir, "layers.zip")) : null;
       const pagesOut: Record<string, unknown>[] = [];
@@ -935,7 +933,7 @@ async function buildExport(
     case "cbz":
     case "epub": {
       const ids = await pagesFor(deps, opts, project.id);
-      if (!ids.length) throw new UnrecoverableError("No pages to export");
+      if (!ids.length) throw new UnrecoverableError("没有可以导出的页面");
       const meta: BookMeta = {
         id: job.id,
         title: opts.chapterId ? `${project.title} — ${chapterTitle}` : project.title,
@@ -964,7 +962,7 @@ async function buildExport(
             data: new Uint8Array(jpg.data),
             width: jpg.info.width,
             height: jpg.info.height,
-            alt: `Cover: ${meta.title}`,
+            alt: `封面 · ${meta.title}`,
           };
         }
       }
@@ -1132,7 +1130,7 @@ async function chapterFile(deps: WorkerDeps, starts: { chapterId: string; startM
   const text = youtubeChapters(
     starts.map((s) => {
       const ch = rows.find((r) => r.id === s.chapterId);
-      return { startMs: s.startMs, title: ch ? `Chapter ${ch.order}: ${ch.title}` : "Chapter" };
+      return { startMs: s.startMs, title: ch ? `第 ${ch.order} 章 · ${ch.title}` : "章节" };
     }),
   );
   return text
@@ -1152,7 +1150,7 @@ async function* interiorPages(
   chapterTitle: string,
 ) {
   const chs = await printChapters(deps.db, project.id, opts);
-  if (!chs.length) throw new UnrecoverableError("No pages to export");
+  if (!chs.length) throw new UnrecoverableError("没有可以导出的页面");
   const cover =
     project.coverAssetId && !KDP_TRIM_IN[opts.pdf.pageSize] ? await deps.assets.get(project.coverAssetId) : null;
   const { entries, toc } = interiorSequence(chs, {
@@ -1448,7 +1446,7 @@ export async function buildInterchange(
       // Failing beats writing a zero-byte entry: that ships a package whose images are empty but which imports
       // "successfully", with the loss showing up only as a missing-files warning at the other end.
       const data = await deps.assets.read(a);
-      if (!data.length) throw new UnrecoverableError(`Asset ${a.id} (${a.type}) is missing from storage`);
+      if (!data.length) throw new UnrecoverableError(`存储中缺少素材 ${a.id}（${a.type}）`);
       await zip.add(path, data);
     }
     return key;

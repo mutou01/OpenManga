@@ -236,8 +236,7 @@ characterRoutes.patch("/characters/:id", async (c) => {
     if (!v) throw notFound("Version");
     // New panels pin the current version and take their identity reference from it, and a draft's references are
     // never used for identity — so a draft as current would generate that character with no reference at all.
-    if (v.status === "draft")
-      throw conflict("A draft cannot be the current version. Approve it first, which makes it current.");
+    if (v.status === "draft") throw conflict("请先审核草稿，通过后会设为当前版本。");
   }
   const [row] = await db.update(characters).set(input).where(eq(characters.id, id)).returning();
   return c.json({ character: row });
@@ -276,19 +275,19 @@ characterRoutes.delete("/character-versions/:id", async (c) => {
   const [v] = await db.select().from(characterVersions).where(eq(characterVersions.id, id));
   if (!v) throw notFound("Version");
   // Only a draft: an approved or locked version is part of the record that panels were drawn against.
-  if (v.status !== "draft") throw conflict(`Only a draft version can be deleted; this one is ${v.status}`);
+  if (v.status !== "draft") throw conflict(`仅可删除草稿。当前版本状态为 ${v.status}`);
   const siblings = await db
     .select({ id: characterVersions.id, n: characterVersions.versionNumber })
     .from(characterVersions)
     .where(eq(characterVersions.characterId, v.characterId))
     .orderBy(desc(characterVersions.versionNumber));
-  if (siblings.length < 2) throw conflict("A character keeps at least one version");
+  if (siblings.length < 2) throw conflict("角色须至少保留一个版本");
   const [used] = await db
     .select({ id: panels.id })
     .from(panels)
     .where(sql`${panels.characterVersionIds} @> ${JSON.stringify([id])}::jsonb`)
     .limit(1);
-  if (used) throw conflict("Panels were drawn against this version; migrate them first");
+  if (used) throw conflict("已有画格依赖此版本，请先迁移相关画格");
   const [ch] = await db.select().from(characters).where(eq(characters.id, v.characterId));
   await db.transaction(async (tx) => {
     // Hand "current" to the newest surviving version rather than leaving the character pointing at nothing.
@@ -351,7 +350,7 @@ characterRoutes.patch("/character-versions/:id", async (c) => {
   const [v] = await db.select().from(characterVersions).where(eq(characterVersions.id, id));
   if (!v) throw notFound("Version");
   if (v.status !== "draft")
-    throw conflict(`Version v${v.versionNumber} is ${v.status}. Create a new appearance version to change it.`);
+    throw conflict(`第 ${v.versionNumber} 版的状态为 ${v.status}，请创建新的外观版本后再修改。`);
   const input = await body(c, PatchVersion);
   const [row] = await db
     .update(characterVersions)
@@ -396,7 +395,7 @@ characterRoutes.post("/character-versions/:id/status", async (c) => {
   const { db } = c.get("deps");
   const [v] = await db.select().from(characterVersions).where(eq(characterVersions.id, id));
   if (!v) throw notFound("Version");
-  if (!canTransition(v.status, status)) throw conflict(`Cannot change a ${v.status} version to ${status}`);
+  if (!canTransition(v.status, status)) throw conflict(`版本状态无法从 ${v.status} 更改为 ${status}`);
   if (status === "draft") {
     const [used] = await db
       .select({ id: panels.id })
@@ -405,8 +404,7 @@ characterRoutes.post("/character-versions/:id/status", async (c) => {
         sql`${panels.characterVersionIds} @> ${JSON.stringify([id])}::jsonb and ${panels.activeArtworkAssetId} is not null`,
       )
       .limit(1);
-    if (used)
-      throw conflict("This version already has generated panels. Create a new version instead of reopening it.");
+    if (used) throw conflict("此版本已用于生成画格，请创建新版本后再修改。");
   }
   const [row] = await db.update(characterVersions).set({ status }).where(eq(characterVersions.id, id)).returning();
   // Approval is the promotion: a version becomes the one new panels pin only once it is fit to draw from.
@@ -542,8 +540,8 @@ characterRoutes.post("/characters/:id/migrate-panels", async (c) => {
         409,
         "no_approved_reference",
         refs.length
-          ? "The target version's approved references were made from an older description. Regenerate a reference on it first, or migrate anyway."
-          : "The target version has no approved reference, so migrated panels would lose identity pinning. Generate and approve a reference on it first, or migrate anyway.",
+          ? "目标版本已批准的参考图依据旧版描述生成。请先为该版本重新生成参考图，或确认继续迁移。"
+          : "目标版本没有已批准的参考图，迁移后将失去角色身份约束。请先生成并批准参考图，或确认继续迁移。",
       );
   }
   const rows = await db

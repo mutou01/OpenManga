@@ -61,13 +61,12 @@ productionRoutes.post("/projects/:projectId/production-runs", async (c) => {
   const input = await body(c, StartRun);
   const { db } = c.get("deps");
   // A run spends without asking at every step, so it only runs inside a cap the owner set.
-  if (p.settings.budgetUsd == null)
-    throw badRequest("Set an AI budget cap in project settings first: a production run spends up to it unattended.");
+  if (p.settings.budgetUsd == null) throw badRequest("请先在项目设置中设置 AI 预算上限，自动制作会按此上限控制费用。");
   const [active] = await db
     .select({ id: productionRuns.id })
     .from(productionRuns)
     .where(and(eq(productionRuns.projectId, p.id), inArray(productionRuns.status, [...ACTIVE])));
-  if (active) throw conflict("This project already has a production run in progress.");
+  if (active) throw conflict("此项目已有一项制作流程正在运行。");
   const options = {
     reviewGates: input.reviewGates,
     preparePrompts: input.preparePrompts,
@@ -80,7 +79,7 @@ productionRoutes.post("/projects/:projectId/production-runs", async (c) => {
     ? (await pipelineStaleness(db, p)).stages.filter((s) => s.count > 0).map((s) => s.key)
     : [];
   const steps = initialSteps(options, stale);
-  if (!steps.length) throw conflict("Nothing is out of date.");
+  if (!steps.length) throw conflict("所有内容均已更新。");
   const [run] = await db
     .insert(productionRuns)
     .values({ projectId: p.id, userId: user(c).id, options, steps })
@@ -181,12 +180,21 @@ productionRoutes.get("/projects/:projectId/health", async (c) => {
     (select coalesce(sum(a.byte_size), 0)::float8 from assets a where a.project_id = ${p.id})
       + (select coalesce(sum(v.byte_size), 0)::float8 from asset_variants v join assets a on a.id = v.asset_id
         where a.project_id = ${p.id}) as disk`);
+  const stageNames = {
+    story: "故事",
+    plan: "规划",
+    prompts: "提示词",
+    art: "画面",
+    narration: "旁白",
+    audio: "音频",
+    render: "视频",
+  };
   const stage = (k: string) => staleness.stages.find((s) => s.key === k)!;
   const items: HealthItem[] = [
     // What an export would ship incomplete: the same checks as Exports' readiness, blocking ones first.
     ...readiness.issues.map((i) => ({
       key: `readiness.${i.code}${i.chapterId ? `.${i.chapterId}` : ""}`,
-      label: `${i.chapterLabel ? `${i.chapterLabel}: ` : ""}${i.message}`,
+      label: `${i.chapterLabel ? `${i.chapterLabel}：` : ""}${i.message}`,
       count: i.count,
       severity: i.severity,
       link:
@@ -206,7 +214,7 @@ productionRoutes.get("/projects/:projectId/health", async (c) => {
     },
     {
       key: "checks",
-      label: `${n?.checks ?? 0} panel(s) whose artwork failed a visual check`,
+      label: `${n?.checks ?? 0} 个画格未通过画面检查`,
       count: n?.checks ?? 0,
       severity: "block",
       link: { to: "/projects/$projectId/storyboard", search: { filter: "mismatch" } },
@@ -215,35 +223,35 @@ productionRoutes.get("/projects/:projectId/health", async (c) => {
       .filter((s) => s.key !== "render")
       .map((s) => ({
         key: `stale.${s.key}`,
-        label: `Out of date (${s.key}): ${s.key === "story" ? s.note : `${s.count} — ${s.note}`}`,
+        label: `${stageNames[s.key]}待更新：${s.note}`,
         count: s.count,
         severity: "info" as const,
         link: { to: s.key === "story" ? "/projects/$projectId/story" : "/projects/$projectId" },
       })),
     ...publishing.map((f) => ({
       key: `publishing.${f.key}`,
-      label: `${f.key === "youtube_text" ? "YouTube text" : "Thumbnail headline"} may be out of date: ${f.reasons.join("; ")}`,
+      label: `${f.key === "youtube_text" ? "YouTube 文案" : "缩略图标题字"}可能需要更新：${f.reasons.join("；")}`,
       count: f.stale ? 1 : 0,
       severity: "info" as const,
       link: { to: "/projects/$projectId" },
     })),
     {
       key: "generation.active",
-      label: `${(n?.active ?? 0) + (n?.audio_active ?? 0) + (n?.exports_active ?? 0)} job(s) still queued or running (generation, narration audio, exports)`,
+      label: `${(n?.active ?? 0) + (n?.audio_active ?? 0) + (n?.exports_active ?? 0)} 项生成、音频合成或导出任务正在排队或运行`,
       count: (n?.active ?? 0) + (n?.audio_active ?? 0) + (n?.exports_active ?? 0),
       severity: "info",
       link: { to: "/projects/$projectId/generation" },
     },
     {
       key: "generation.failed",
-      label: `${n?.failed ?? 0} failed generation job(s) not retried`,
+      label: `${n?.failed ?? 0} 项生成任务失败，尚未重试`,
       count: n?.failed ?? 0,
       severity: "info",
       link: { to: "/projects/$projectId/generation" },
     },
     {
       key: "shots",
-      label: `${repeated.reduce((n, ch) => n + ch.runs.length, 0)} run(s) of panels repeating the same shot, in ${repeated.length} chapter(s)`,
+      label: `${repeated.length} 章中有 ${repeated.reduce((n, ch) => n + ch.runs.length, 0)} 组画格连续使用相同景别`,
       count: repeated.reduce((n, ch) => n + ch.runs.length, 0),
       severity: "info",
       link: {
@@ -253,7 +261,7 @@ productionRoutes.get("/projects/:projectId/health", async (c) => {
     },
     {
       key: "comments",
-      label: `${n?.comments ?? 0} open comment thread(s)`,
+      label: `${n?.comments ?? 0} 条待处理的评论讨论`,
       count: n?.comments ?? 0,
       severity: "info",
       link: { to: "/projects/$projectId/comments" },
@@ -364,8 +372,7 @@ productionRoutes.post("/production-runs/:id/continue", async (c) => {
   const run = await runWithAccess(c, uuidParam(c, "id"));
   // A run acts as the member who started it, on their keys: continuing it is theirs to do. Anyone who can generate
   // may still cancel it.
-  if (run.userId !== user(c).id)
-    throw new ApiError(403, "not_your_run", "Another member started this run; only they can continue it.");
+  if (run.userId !== user(c).id) throw new ApiError(403, "not_your_run", "只有发起任务的成员可以继续此流程。");
   if (run.status === "completed" || run.status === "completed_with_warnings" || run.status === "cancelled")
     throw conflict(`The run is ${run.status.replaceAll("_", " ")}`);
   const steps = run.steps.map((s) => {

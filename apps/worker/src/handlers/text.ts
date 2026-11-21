@@ -174,7 +174,7 @@ export async function storyAnalysis(deps: WorkerDeps, job: ProjectJob) {
     .select()
     .from(storyRevisions)
     .where(eq(storyRevisions.id, String(job.input.storyRevisionId)));
-  if (!rev) throw new InputError("Story revision no longer exists");
+  if (!rev) throw new InputError("故事修订版已不存在");
   const [project] = await deps.db.select().from(projects).where(eq(projects.id, job.projectId));
   // A target runtime sets how many chapters the story is cut into, so each fits a single chapter plan.
   const target = project?.settings.targetRuntime;
@@ -210,7 +210,7 @@ export async function storyRewrite(deps: WorkerDeps, job: ProjectJob) {
     .select()
     .from(storyRevisions)
     .where(eq(storyRevisions.id, String(job.input.storyRevisionId)));
-  if (!rev) throw new InputError("Story revision no longer exists");
+  if (!rev) throw new InputError("故事修订版已不存在");
   const r = await structured(
     deps,
     job,
@@ -279,7 +279,7 @@ export async function adScript(deps: WorkerDeps, job: ProjectJob) {
 /** Publishing text for the project's video, saved on the project (and editable there) rather than on the job. */
 export async function youtubePackage(deps: WorkerDeps, job: ProjectJob) {
   const [p] = await deps.db.select().from(projects).where(eq(projects.id, job.projectId));
-  if (!p) throw new InputError("Project no longer exists");
+  if (!p) throw new InputError("项目已不存在");
   const chs = await deps.db
     .select({ order: chapters.order, title: chapters.title, summary: chapters.summary })
     .from(chapters)
@@ -349,7 +349,7 @@ export async function narrationRetime(deps: WorkerDeps, job: ProjectJob) {
           ),
         )
     : [];
-  if (!rows.length || !p) throw new InputError("None of those narration lines exist any more");
+  if (!rows.length || !p) throw new InputError("选中的旁白均已不存在");
   const count = (t: string) => t.split(/\s+/).filter(Boolean).length;
   const lines = rows.map((r) => ({
     lineId: r.id,
@@ -384,7 +384,7 @@ export async function narrationRetime(deps: WorkerDeps, job: ProjectJob) {
 export async function socialCopy(deps: WorkerDeps, job: ProjectJob) {
   const items = (job.input.items ?? []) as { id: string; kind: string; label: string; narration: string }[];
   const [p] = await deps.db.select().from(projects).where(eq(projects.id, job.projectId));
-  if (!p || !items.length) throw new InputError("Nothing to write social copy for");
+  if (!p || !items.length) throw new InputError("没有可用于编写社交平台文案的内容");
   const r = await structured(
     deps,
     job,
@@ -652,7 +652,7 @@ async function planByScene(
 export async function chapterPlan(deps: WorkerDeps, job: ProjectJob) {
   const chapterId = String(job.input.chapterId);
   const { chapter, data } = await projectPlanningData(deps, job.projectId, chapterId);
-  if (!chapter) throw new InputError("Chapter no longer exists");
+  if (!chapter) throw new InputError("章节已不存在");
   const [proj] = await deps.db
     .select({ settings: projects.settings })
     .from(projects)
@@ -699,9 +699,9 @@ export async function chapterPlan(deps: WorkerDeps, job: ProjectJob) {
 export async function pagePrompts(deps: WorkerDeps, job: ProjectJob) {
   const pageId = String(job.input.pageId);
   const [page] = await deps.db.select().from(pages).where(eq(pages.id, pageId));
-  if (!page) throw new InputError("Page no longer exists");
+  if (!page) throw new InputError("页面已不存在");
   const pns = await deps.db.select().from(panels).where(eq(panels.pageId, pageId)).orderBy(asc(panels.order));
-  if (!pns.length) throw new InputError("Page has no panels");
+  if (!pns.length) throw new InputError("页面中没有画格");
   const specs = await deps.db.execute<{ panel_id: string; spec: Record<string, unknown> }>(
     sql`select distinct on (panel_id) panel_id, spec from panel_specs where panel_id in (${sql.join(
       pns.map((p) => sql`${p.id}`),
@@ -858,7 +858,7 @@ export async function pagePrompts(deps: WorkerDeps, job: ProjectJob) {
 export async function narrationText(deps: WorkerDeps, job: ProjectJob) {
   const chapterId = String(job.input.chapterId);
   const [chapter] = await deps.db.select().from(chapters).where(eq(chapters.id, chapterId));
-  if (!chapter) throw new InputError("Chapter no longer exists");
+  if (!chapter) throw new InputError("章节已不存在");
   const rows = await deps.db
     .select({
       id: panels.id,
@@ -1042,8 +1042,8 @@ export async function narrationText(deps: WorkerDeps, job: ProjectJob) {
 export async function imageDescribe(deps: WorkerDeps, job: ProjectJob) {
   const assetId = String(job.input.assetId);
   const asset = await deps.assets.get(assetId);
-  if (!asset) throw new InputError("The image no longer exists");
-  if (asset.projectId !== job.projectId) throw new InputError("That image belongs to another project");
+  if (!asset) throw new InputError("图片已不存在");
+  if (asset.projectId !== job.projectId) throw new InputError("该图片属于其他项目");
   // A preview is plenty to describe from and keeps the request (and its bill) small; canonical bytes are the
   // fallback for anything sharp cannot resize.
   const preview = await deps.assets.ensureResized(asset, "preview");
@@ -1107,7 +1107,7 @@ export async function bibleExtract(deps: WorkerDeps, job: ProjectJob) {
     .from(chapters)
     .where(and(eq(chapters.projectId, job.projectId), chapterId ? eq(chapters.id, chapterId) : undefined))
     .orderBy(asc(chapters.order));
-  if (!chs.length) throw new InputError(chapterId ? "Chapter no longer exists" : "The project has no chapters yet");
+  if (!chs.length) throw new InputError(chapterId ? "章节已不存在" : "项目尚无章节");
   const cast = await deps.db
     .select({ id: characters.id, name: characters.name, role: characters.role })
     .from(characters)
@@ -1137,10 +1137,7 @@ export async function bibleExtract(deps: WorkerDeps, job: ProjectJob) {
   const existing = await loadBible(deps.db, job.projectId);
   const texts = await chapterTextsForExtraction(deps, chs, project?.language ?? "en");
   // With nothing to read, any model answers "no facts", which looks like a result; say what is missing instead.
-  if (!texts.some((t) => t.trim()))
-    throw new InputError(
-      "These chapters have no text to read yet: no source text or summary, and no narration. Analyse the story or write the narration first.",
-    );
+  if (!texts.some((t) => t.trim())) throw new InputError("这些章节没有可读取的文本。请先分析故事或编写旁白。");
   const r = await structured(
     deps,
     job,
@@ -1184,7 +1181,7 @@ export async function timelineExtract(deps: WorkerDeps, job: ProjectJob) {
     .from(chapters)
     .where(and(eq(chapters.projectId, job.projectId), chapterId ? eq(chapters.id, chapterId) : undefined))
     .orderBy(asc(chapters.order));
-  if (!chs.length) throw new InputError(chapterId ? "Chapter no longer exists" : "The project has no chapters yet");
+  if (!chs.length) throw new InputError(chapterId ? "章节已不存在" : "项目尚无章节");
   const cast = await deps.db
     .select({ id: characters.id, name: characters.name, role: characters.role })
     .from(characters)
@@ -1200,10 +1197,7 @@ export async function timelineExtract(deps: WorkerDeps, job: ProjectJob) {
     .where(eq(timelineEvents.projectId, job.projectId))
     .orderBy(asc(timelineEvents.order));
   const texts = await chapterTextsForExtraction(deps, chs, project?.language ?? "en");
-  if (!texts.some((t) => t.trim()))
-    throw new InputError(
-      "These chapters have no text to read yet: no source text or summary, and no narration. Analyse the story or write the narration first.",
-    );
+  if (!texts.some((t) => t.trim())) throw new InputError("这些章节没有可读取的文本。请先分析故事或编写旁白。");
   const r = await structured(
     deps,
     job,
@@ -1230,10 +1224,10 @@ export async function letteringTranslate(deps: WorkerDeps, job: ProjectJob) {
   const chapterId = String(job.input.chapterId);
   const language = String(job.input.language);
   const [project] = await deps.db.select().from(projects).where(eq(projects.id, job.projectId));
-  if (!project) throw new InputError("Project no longer exists");
-  if (language === project.language) throw new InputError("That is the project's own language");
+  if (!project) throw new InputError("项目已不存在");
+  if (language === project.language) throw new InputError("所选语言与项目原语言相同");
   const lines = await chapterLettering(deps.db, chapterId, project.language);
-  if (!lines.length) throw new InputError("This chapter has no bubbles or captions to translate");
+  if (!lines.length) throw new InputError("此章节没有可翻译的对白气泡或说明文字");
   const refs = lines.map((l, i) => ({ ...l, ref: `${l.sourceType === "dialogue" ? "d" : "c"}${i + 1}` }));
   const cast = await deps.db
     .select({ name: characters.name })
@@ -1284,13 +1278,13 @@ const VIDEO_EDIT_PANEL_LIMIT = 400; // ponytail: cap the prompt; list only the c
 export async function videoEdit(deps: WorkerDeps, job: ProjectJob) {
   const instruction = String(job.input.instruction ?? "");
   const [p] = await deps.db.select().from(projects).where(eq(projects.id, job.projectId));
-  if (!p) throw new InputError("The project is gone");
+  if (!p) throw new InputError("项目已不存在");
   const chs = await deps.db
     .select({ id: chapters.id, order: chapters.order, title: chapters.title })
     .from(chapters)
     .where(eq(chapters.projectId, p.id))
     .orderBy(asc(chapters.order));
-  if (!chs.length) throw new InputError("This project has no chapters yet");
+  if (!chs.length) throw new InputError("项目尚无章节");
   const pns = await deps.db
     .select({
       id: panels.id,

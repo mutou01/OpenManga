@@ -132,8 +132,8 @@ doc({
 agentRunRoutes.post("/agent-runs/:id/plan", async (c) => {
   const r = await ownRun(c, uuidParam(c, "id"));
   const input = await body(c, PlanDecision);
-  if (r.status !== "awaiting_plan") throw conflict("The run is not waiting for its plan to be approved");
-  if (input.decision === "revise" && !input.feedback) throw conflict("Say what to change in the plan");
+  if (r.status !== "awaiting_plan") throw conflict("此任务当前没有等待审核的计划");
+  if (input.decision === "revise" && !input.feedback) throw conflict("请说明计划需要如何修改");
   const deps = c.get("deps");
   await deps.db
     .update(agentRuns)

@@ -436,7 +436,7 @@ async function requeueRefused(deps: WorkerDeps, row: BatchRow, jobs: GenerationJ
 async function finishCancelledBatchJob(deps: WorkerDeps, job: GenerationJob) {
   await deps.db
     .update(generationJobs)
-    .set({ status: "cancelled", finishedAt: new Date(), failureReason: "Cancelled while waiting in a batch" })
+    .set({ status: "cancelled", finishedAt: new Date(), failureReason: "已取消等待批处理的任务" })
     .where(and(eq(generationJobs.id, job.id), inArray(generationJobs.status, ["cancel_requested", "submitted"])));
   if (job.targetId) {
     const [panel] = await deps.db.select().from(panels).where(eq(panels.id, job.targetId));

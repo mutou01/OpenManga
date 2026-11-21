@@ -1,4 +1,4 @@
-import { RETENTION_LABELS, type RetentionKind } from "@openmanga/domain/browser";
+import type { RetentionKind } from "@openmanga/domain/browser";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { HardDrive } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -6,6 +6,15 @@ import { get, post, put } from "../../api/client.ts";
 import { useAction } from "../../api/hooks.ts";
 import { ErrorBox, Field, fmt, Spinner } from "../../components/ui.tsx";
 import { KindAges } from "../project/StorageSection.tsx";
+
+const RETENTION_LABELS: Record<RetentionKind, string> = {
+  render_cache: "视频片段缓存",
+  export: "导出文件",
+  panel_version: "旧版分镜图片",
+  audio_take: "未使用的旁白录音",
+  trash: "回收站文件",
+  prompt_reference: "提示词参考副本",
+};
 
 type Policy = {
   enabled: boolean;
@@ -39,7 +48,7 @@ export function SummaryList({ s }: { s: Summary }) {
     <ul className="list-inside list-disc text-xs">
       {Object.entries(s.byKind).map(([k, v]) => (
         <li key={k}>
-          {RETENTION_LABELS[k as RetentionKind]}: {v!.files} file(s), {fmt.bytes(v!.bytes)}
+          {RETENTION_LABELS[k as RetentionKind]}，{v!.files} 个文件， {fmt.bytes(v!.bytes)}
         </li>
       ))}
     </ul>
@@ -53,7 +62,7 @@ export function SummaryList({ s }: { s: Summary }) {
 export function StorageTab() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: storageKeys.view, queryFn: () => get<StorageView>("/admin/storage") });
-  const [p, setP] = useState<Policy | null>(null);
+  const [p, setP] = useState<Policy | null>(() => q.data?.policy ?? null);
   useEffect(() => {
     if (q.data && !p) setP(q.data.policy);
   }, [q.data, p]);
@@ -62,7 +71,7 @@ export function StorageTab() {
     void qc.invalidateQueries({ queryKey: storageKeys.alert });
   };
   const save = useAction((v: Policy) => put<StorageView>("/admin/storage/policy", v), {
-    success: "Storage policy saved",
+    success: "存储策略已保存",
     onSuccess: (v) => {
       qc.setQueryData(storageKeys.view, v);
       setP(v.policy);
@@ -70,7 +79,7 @@ export function StorageTab() {
     },
   });
   const approve = useAction(() => post("/admin/storage/approve"), {
-    success: "Deleting: the warning clears when it is done",
+    success: "正在删除，完成后告警会消失",
     onSuccess: () => setTimeout(refresh, 3000),
   });
   if (q.error) return <ErrorBox error={q.error} onRetry={() => q.refetch()} />;
@@ -82,19 +91,17 @@ export function StorageTab() {
     <div className="grid gap-4 lg:grid-cols-2">
       <section className="card space-y-3 p-4">
         <h2 className="flex items-center gap-2 font-medium">
-          <HardDrive className="size-4" /> Storage policy
+          <HardDrive className="size-4" /> 存储策略
         </h2>
         <p className="muted text-xs">
-          Files the app can do without are deleted when they are older than the age limit, and then the oldest of them
-          until everything stored is under the size limit — whichever is crossed first. Never deleted: artwork a panel
-          shows, approved or locked art, references, covers, thumbnails, your uploads, and narration a line plays.
+          超过保留期限的可清理文件会被删除；若总存储量仍超限，将继续从最旧的可清理文件开始删除，直到低于上限。正在使用的分镜图片、已批准或锁定的图片、参考图、封面、缩略图、上传文件及正在使用的旁白音频均会保留。
         </p>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={p.enabled} onChange={(e) => setP({ ...p, enabled: e.target.checked })} />
-          Apply a storage policy
+          启用存储策略
         </label>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Delete files older than (days)" hint="Empty: no age limit">
+          <Field label="删除超过保留期限的文件（天）" hint="留空表示不限保留时间">
             <input
               className="input"
               type="number"
@@ -103,7 +110,7 @@ export function StorageTab() {
               onChange={(e) => setP({ ...p, maxAgeDays: number(e.target.value) })}
             />
           </Field>
-          <Field label="Keep total storage under (GB)" hint="Empty: no size limit">
+          <Field label="总存储上限（GB）" hint="留空表示不限大小">
             <input
               className="input"
               type="number"
@@ -120,7 +127,7 @@ export function StorageTab() {
           onChange={(kindAges) => setP({ ...p, kindAges })}
         />
         <fieldset className="space-y-1 text-sm">
-          <legend className="label">When files are due</legend>
+          <legend className="label">文件满足清理条件时</legend>
           <label className="flex items-start gap-2">
             <input
               type="radio"
@@ -129,10 +136,8 @@ export function StorageTab() {
               onChange={() => setP({ ...p, mode: "approve" })}
             />
             <span>
-              Ask me first
-              <span className="muted block text-xs">
-                A warning stays at the top of every page for administrators until you approve or change the policy.
-              </span>
+              先询问我
+              <span className="muted block text-xs">管理员会在各页面顶部看到告警，直到批准清理或更改策略。</span>
             </span>
           </label>
           <label className="flex items-start gap-2">
@@ -143,23 +148,21 @@ export function StorageTab() {
               onChange={() => setP({ ...p, mode: "auto" })}
             />
             <span>
-              Delete automatically
-              <span className="muted block text-xs">
-                At the hourly maintenance pass, with an entry in the audit log.
-              </span>
+              自动删除
+              <span className="muted block text-xs">在每小时的维护任务中执行，并记录到审计日志。</span>
             </span>
           </label>
         </fieldset>
         <button type="button" className="btn-primary" disabled={save.isPending} onClick={() => save.mutate(p)}>
-          Save policy
+          保存策略
         </button>
       </section>
 
       <section className="card space-y-3 p-4">
-        <h2 className="font-medium">Usage</h2>
+        <h2 className="font-medium">使用情况</h2>
         <p className="text-sm">
-          {fmt.bytes(d.usage.totalBytes)} stored, {fmt.bytes(expendable)} of it expendable
-          {d.disk && ` · disk ${fmt.bytes(d.disk.freeBytes)} free of ${fmt.bytes(d.disk.totalBytes)}`}
+          已存储 {fmt.bytes(d.usage.totalBytes)}，其中可清理 {fmt.bytes(expendable)}
+          {d.disk && ` · 磁盘可用 ${fmt.bytes(d.disk.freeBytes)}，总计 ${fmt.bytes(d.disk.totalBytes)}`}
         </p>
         <ul className="space-y-0.5 text-xs">
           {Object.entries(RETENTION_LABELS).map(([k, label]) => {
@@ -167,7 +170,7 @@ export function StorageTab() {
             return (
               <li key={k} className="flex justify-between gap-2">
                 <span>{label}</span>
-                <span className="muted tabular-nums">{v ? `${v.files} · ${fmt.bytes(v.bytes)}` : "none"}</span>
+                <span className="muted tabular-nums">{v ? `${v.files} · ${fmt.bytes(v.bytes)}` : "无"}</span>
               </li>
             );
           })}
@@ -175,32 +178,32 @@ export function StorageTab() {
         {d.pending?.files ? (
           <div className="space-y-2 rounded-lg bg-amber-500/10 p-3 text-sm">
             <p>
-              Waiting for your approval:{" "}
+              等待你审批{" "}
               <strong>
-                {d.pending.files} file(s), {fmt.bytes(d.pending.bytes)}
+                {d.pending.files} 个文件， {fmt.bytes(d.pending.bytes)}
               </strong>{" "}
-              ({d.pending.reasons.age} past the age limit, {d.pending.reasons.size} to get under the size limit).
+              （{d.pending.reasons.age} 个超过保留期限，{d.pending.reasons.size} 个用于释放超限空间）。
             </p>
             <SummaryList s={d.pending} />
             <button type="button" className="btn-danger" disabled={approve.isPending} onClick={() => approve.mutate()}>
-              Delete {d.pending.files} file(s) now
+              立即删除 {d.pending.files} 个文件
             </button>
           </div>
         ) : d.preview ? (
           <div className="space-y-1 text-sm">
             <p>
-              Now the policy would delete {d.preview.files} file(s), {fmt.bytes(d.preview.bytes)}, leaving{" "}
-              {fmt.bytes(d.preview.afterBytes)}.
+              当前策略预计删除 {d.preview.files} 个文件，共 {fmt.bytes(d.preview.bytes)}，清理后剩余{" "}
+              {fmt.bytes(d.preview.afterBytes)}。
             </p>
             <SummaryList s={d.preview} />
           </div>
         ) : (
-          <p className="muted text-sm">No policy applies: nothing is deleted.</p>
+          <p className="muted text-sm">暂无生效策略，不会删除文件。</p>
         )}
         {(d.pending?.overLimitBytes ?? 0) > 0 && (
           <p className="text-sm text-red-600 dark:text-red-400">
-            Still {fmt.bytes(d.pending!.overLimitBytes)} over the size limit after every expendable file: the rest is in
-            use. Raise the limit or delete projects you no longer need.
+            清理全部可清理文件后，仍超出上限 {fmt.bytes(d.pending!.overLimitBytes)}
+            ，剩余文件正在使用中。请提高上限或删除不再需要的项目。
           </p>
         )}
       </section>

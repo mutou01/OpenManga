@@ -6,6 +6,7 @@ import { useState } from "react";
 import { logout, useMe, useMeta } from "../api/hooks.ts";
 import { StorageAlert } from "../features/admin/StorageAlert.tsx";
 import { NotificationBell } from "../features/comments/NotificationBell.tsx";
+import { UI_LOCALE } from "../lib/locale.ts";
 import { Logo } from "./Logo.tsx";
 
 const WEB_BUILD = buildLabel(__WEB_BUILD__);
@@ -18,12 +19,12 @@ export function AppShell() {
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
   const [menuOpen, setMenuOpen] = useState(false);
   const links = [
-    { to: "/series" as const, label: "Series", icon: Library },
-    { to: "/profiles" as const, label: "Profiles", icon: Tv },
-    { to: "/experts" as const, label: "Experts", icon: MessagesSquare },
-    { to: "/agents" as const, label: "Agents", icon: Bot },
-    { to: "/usage" as const, label: "Usage", icon: BarChart3 },
-    ...(me?.role === "admin" ? [{ to: "/admin" as const, label: "Admin", icon: Shield }] : []),
+    { to: "/series" as const, label: "系列", icon: Library },
+    { to: "/profiles" as const, label: "频道配置", icon: Tv },
+    { to: "/experts" as const, label: "专家", icon: MessagesSquare },
+    { to: "/agents" as const, label: "智能体", icon: Bot },
+    { to: "/usage" as const, label: "用量", icon: BarChart3 },
+    ...(me?.role === "admin" ? [{ to: "/admin" as const, label: "管理", icon: Shield }] : []),
   ];
   const signOut = async () => {
     setMenuOpen(false);
@@ -50,8 +51,8 @@ export function AppShell() {
           <span
             className="muted hidden font-mono text-[11px] sm:inline"
             title={[
-              `Server ${meta.build.label}${meta.build.sha ? ` · ${meta.build.sha.slice(0, 7)}` : ""}`,
-              `Web ${WEB_BUILD}${__WEB_BUILD__.sha ? ` · ${__WEB_BUILD__.sha.slice(0, 7)}` : ""}`,
+              `服务端 ${meta.build.label}${meta.build.sha ? ` · ${meta.build.sha.slice(0, 7)}` : ""}`,
+              `网页端 ${WEB_BUILD}${__WEB_BUILD__.sha ? ` · ${__WEB_BUILD__.sha.slice(0, 7)}` : ""}`,
             ].join("\n")}
           >
             {meta.build.label}
@@ -60,9 +61,9 @@ export function AppShell() {
         {meta?.mockMode && (
           <span
             className="chip bg-amber-500/15 text-amber-600 dark:text-amber-300"
-            title="AI providers are mocked; no API spend"
+            title="使用模拟 AI 服务，不产生 API 费用"
           >
-            Mock AI
+            模拟 AI
           </span>
         )}
         <div className="ml-auto">
@@ -74,13 +75,16 @@ export function AppShell() {
               <l.icon className="size-4" /> {l.label}
             </Link>
           ))}
-          <button type="button" className="btn-ghost" onClick={toggleTheme} aria-label="Toggle theme">
+          <button type="button" className="btn-ghost" onClick={toggleTheme} aria-label="切换主题">
             {dark ? <Sun className="size-4" /> : <Moon className="size-4" />}
           </button>
           <Link to="/account" className="btn-ghost">
             <User className="size-4" /> {me?.username}
           </Link>
-          <button type="button" className="btn-ghost" aria-label="Sign out" onClick={signOut}>
+          <select aria-label="语言" className="input w-auto shrink-0 py-1 text-sm" defaultValue={UI_LOCALE}>
+            <option value={UI_LOCALE}>简体中文</option>
+          </select>
+          <button type="button" className="btn-ghost" aria-label="退出登录" onClick={signOut}>
             <LogOut className="size-4" />
           </button>
         </nav>

@@ -6,6 +6,7 @@ import { get, post } from "../../api/client.ts";
 import { qk, useAction } from "../../api/hooks.ts";
 import type { JobListItem } from "../../api/types.ts";
 import { AssetImage, EmptyState, ErrorBox, fmt, PageHeader, Pager, Spinner, StatusChip } from "../../components/ui.tsx";
+import { statusLabel } from "../../lib/locale.ts";
 import { useProjectId } from "../project/ProjectLayout.tsx";
 import { ActiveBatches } from "./BatchStatus.tsx";
 import { JOB_STATUSES, KIND_LABELS, kindLabel, ProgressBar } from "./shared.tsx";
@@ -43,14 +44,11 @@ export function GenerationPage() {
 
   const cancel = useAction((id: string) => post<{ result: string }>(`/generations/${id}/cancel`), {
     invalidate: [qk.generations(projectId)],
-    success: (r) =>
-      r.result === "cancel_requested"
-        ? "Cancellation requested; running output will not be activated"
-        : "Job cancelled",
+    success: (r) => (r.result === "cancel_requested" ? "已请求取消，正在生成的结果不会启用" : "任务已取消"),
   });
   const retry = useAction((id: string) => post(`/generations/${id}/retry`), {
     invalidate: [qk.generations(projectId)],
-    success: "Retry queued",
+    success: "重试已加入队列",
   });
 
   const counts = q.data?.counts ?? {};
@@ -76,7 +74,7 @@ export function GenerationPage() {
 
   return (
     <div className="mx-auto max-w-6xl p-6">
-      <PageHeader title="Generation" subtitle="Every AI call, what it was sent, what it cost." />
+      <PageHeader title="生成任务" subtitle="查看每次 AI 调用的请求内容与费用。" />
       <ActiveBatches projectId={projectId} className="mb-4" />
       <div className="card mb-4 p-4">
         <div className="mb-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
@@ -87,18 +85,17 @@ export function GenerationPage() {
               className="text-left"
               onClick={() => setStatusAt(status === s ? "" : s === "cancelled" ? "cancelled,cancel_requested" : s)}
             >
-              <div className="muted text-xs capitalize">{s}</div>
+              <div className="muted text-xs capitalize">{statusLabel(s)}</div>
               <div className="text-xl font-semibold">{counts[s] ?? 0}</div>
             </button>
           ))}
         </div>
-        <ProgressBar value={total ? done / total : 0} label="Jobs finished" />
+        <ProgressBar value={total ? done / total : 0} label="已结束的任务" />
         <div className="muted mt-1 text-xs">
-          {counts.completed ?? 0} / {total} completed · {counts.processing ?? 0} generating · {counts.queued ?? 0}{" "}
-          queued
+          已完成 {counts.completed ?? 0} / {total} · 生成中 {counts.processing ?? 0} · 排队中 {counts.queued ?? 0}
           {(counts.awaiting_input ?? 0) > 0 && (
             <button type="button" className="ml-1 underline" onClick={() => setStatusAt("awaiting_input")}>
-              · {counts.awaiting_input} waiting for your answer
+              · {counts.awaiting_input} 项等待你的回答
             </button>
           )}
         </div>
@@ -109,12 +106,12 @@ export function GenerationPage() {
           className="input w-auto"
           value={status}
           onChange={(e) => setStatusAt(e.target.value)}
-          aria-label="Filter by status"
+          aria-label="按状态筛选"
         >
-          <option value="">All statuses</option>
+          <option value="">全部状态</option>
           {JOB_STATUSES.map((s) => (
             <option key={s} value={s}>
-              {s.replace(/_/g, " ")}
+              {statusLabel(s)}
             </option>
           ))}
         </select>
@@ -122,9 +119,9 @@ export function GenerationPage() {
           className="input w-auto"
           value={kind}
           onChange={(e) => setKindAt(e.target.value)}
-          aria-label="Filter by kind"
+          aria-label="按类型筛选"
         >
-          <option value="">All kinds</option>
+          <option value="">全部类型</option>
           {Object.entries(KIND_LABELS).map(([k, l]) => (
             <option key={k} value={k}>
               {l}
@@ -138,22 +135,22 @@ export function GenerationPage() {
       {q.isLoading ? (
         <Spinner />
       ) : !jobs.length ? (
-        <EmptyState icon={<Cpu className="size-8" />} title="No generation jobs">
-          Jobs appear here when you analyze stories, generate references, panels, edits or narration text.
+        <EmptyState icon={<Cpu className="size-8" />} title="暂无生成任务">
+          故事分析、参考图、画格生成、图片编辑与旁白文案任务会显示在这里。
         </EmptyState>
       ) : (
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="muted text-left text-xs">
               <tr className="border-b border-[var(--border)]">
-                <th className="p-2">Output</th>
-                <th className="p-2">Kind</th>
-                <th className="p-2">Status</th>
-                <th className="p-2">Attempts</th>
-                <th className="p-2">Cost</th>
-                <th className="p-2">Latency</th>
-                <th className="p-2">Created</th>
-                <th className="p-2 text-right">Actions</th>
+                <th className="p-2">输出</th>
+                <th className="p-2">类型</th>
+                <th className="p-2">状态</th>
+                <th className="p-2">尝试次数</th>
+                <th className="p-2">费用</th>
+                <th className="p-2">耗时</th>
+                <th className="p-2">创建时间</th>
+                <th className="p-2 text-right">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -163,12 +160,12 @@ export function GenerationPage() {
                     {j.outputAssetId ? (
                       <AssetImage
                         assetId={j.outputAssetId}
-                        alt={`${kindLabel(j.kind)} output`}
+                        alt={`${kindLabel(j.kind)}输出`}
                         className="size-12 rounded"
                       />
                     ) : j.outputDeleted ? (
                       <div className="muted flex size-12 items-center justify-center rounded bg-[var(--panel-2)] text-[10px]">
-                        Deleted
+                        已删除
                       </div>
                     ) : (
                       <div className="size-12 rounded bg-[var(--panel-2)]" />
@@ -207,9 +204,9 @@ export function GenerationPage() {
                           className="btn-ghost"
                           disabled={cancel.isPending}
                           onClick={() => cancel.mutate(j.id)}
-                          aria-label="Cancel job"
+                          aria-label="取消任务"
                         >
-                          <XCircle className="size-4" /> Cancel
+                          <XCircle className="size-4" /> 取消
                         </button>
                       )}
                       {(j.status === "failed" || j.status === "cancelled") && (
@@ -218,9 +215,9 @@ export function GenerationPage() {
                           className="btn-ghost"
                           disabled={retry.isPending}
                           onClick={() => retry.mutate(j.id)}
-                          aria-label="Retry job"
+                          aria-label="重试任务"
                         >
-                          <RotateCcw className="size-4" /> Retry
+                          <RotateCcw className="size-4" /> 重试
                         </button>
                       )}
                     </div>

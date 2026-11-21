@@ -11,7 +11,7 @@ import { DescribeImage } from "./DescribeImage.tsx";
 export function DescribeImageButton({
   projectId,
   aspect,
-  label = "From image",
+  label = "从图片提取",
   title,
   onUse,
   className,

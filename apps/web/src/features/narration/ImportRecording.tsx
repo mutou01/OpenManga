@@ -66,8 +66,8 @@ export function ImportRecording({
       if (j.status === "completed") {
         const r = j.result as Result;
         setResult(r);
-        toast.success(`Recording imported: ${r.attached} of ${r.segments} segments have its audio`);
-      } else if (j.status === "failed") toast.error(new Error(j.failureReason ?? "The import failed"));
+        toast.success(`录音已导入，${r.segments} 个片段中有 ${r.attached} 个已匹配音频`);
+      } else if (j.status === "failed") toast.error(new Error(j.failureReason ?? "导入失败"));
       await qc.invalidateQueries({ queryKey: qk.narration(chapterId) });
       await qc.invalidateQueries({ queryKey: ["narration-progress", projectId] });
       return j.status;
@@ -90,42 +90,40 @@ export function ImportRecording({
         className="btn-secondary"
         onClick={() => setOpen(true)}
         disabled={Boolean(job)}
-        title="Use a narration recorded elsewhere: it is cut into the segments it reads"
+        title="导入外部录制的旁白，并按朗读内容切分到对应片段"
       >
-        <FileAudio className="size-4" /> Import recording
+        <FileAudio className="size-4" /> 导入录音
       </button>
       {job && (
         <div className="flex w-full items-center gap-2 rounded-lg border border-[var(--border)] p-2 text-sm">
           <Spinner />
           <span>
-            Importing the recording (started {new Date(job.startedAt).toLocaleTimeString()}) — transcribing takes about
-            half its length.
+            正在导入录音（开始于 {new Date(job.startedAt).toLocaleTimeString("zh-CN")}），转写耗时约为录音时长的一半。
           </span>
           <button type="button" className="btn-ghost ml-auto py-1" onClick={cancel}>
-            Cancel
+            取消
           </button>
         </div>
       )}
       {result && (
         <details className="w-full rounded-lg border border-[var(--border)] p-2 text-sm" open={result.missedCount > 0}>
           <summary className="cursor-pointer">
-            Imported {fmt.ms(result.recordingMs)} of audio: {result.attached} of {result.segments} segments
-            {result.missedCount ? `, ${result.missedCount} not found in the recording` : ""}
+            已导入 {fmt.ms(result.recordingMs)} 的音频，已匹配 {result.attached} / {result.segments} 个片段
+            {result.missedCount ? `，其中 ${result.missedCount} 个未在录音中找到` : ""}
             <button type="button" className="btn-ghost ml-2 py-0 text-xs" onClick={() => setResult(null)}>
-              Dismiss
+              关闭
             </button>
           </summary>
           {result.missedCount > 0 && (
             <>
               <p className="muted my-1 text-xs">
-                These kept the audio they had. Fix their text to match the recording and import again, or upload their
-                take on the segment.
+                这些片段保留了原有音频。请将文字改为与录音一致后重新导入，或为片段单独上传录音。
               </p>
               <ul className="space-y-1">
                 {result.missed.map((m) => (
                   <li key={m.segmentId} className="text-xs">
                     <span className="muted">
-                      {m.matched}/{m.words} words heard ·{" "}
+                      {m.matched}/{m.words} 个词已识别 ·{" "}
                     </span>
                     {m.text}
                   </li>
@@ -137,8 +135,8 @@ export function ImportRecording({
       )}
       <ConfirmDialog
         open={open}
-        title="Import a narration recording"
-        confirmLabel="Upload and import"
+        title="导入旁白录音"
+        confirmLabel="上传并导入"
         busy={uploading}
         disabled={!file}
         onClose={() => setOpen(false)}
@@ -146,17 +144,15 @@ export function ImportRecording({
       >
         <div className="space-y-3 text-sm">
           <p>
-            A recording of the narration exactly as written here, in order (any audio format). It is transcribed on this
-            server and cut at the pauses between segments; each segment found gets its part of the recording as its
-            audio. "Synthesize all missing" leaves imported audio alone.
+            请提供按此处文字和顺序朗读的旁白录音，支持任意音频格式。服务器会转写录音，并在片段间的停顿处切分，将匹配到的音频分配给对应片段。“合成所有缺失音频”会保留已导入的音频。
           </p>
           <label className="flex items-center gap-2">
             <input type="radio" checked={scope === "chapter"} onChange={() => setScope("chapter")} />
-            This chapter's narration
+            本章旁白
           </label>
           <label className="flex items-center gap-2">
             <input type="radio" checked={scope === "project"} onChange={() => setScope("project")} />
-            The whole project: every chapter, in order
+            整个项目，按章节顺序导入
           </label>
           <input
             type="file"

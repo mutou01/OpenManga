@@ -21,7 +21,7 @@ export type Diff = {
 export type Removals = { chapters: string[]; characters: string[]; locations: string[]; props: string[] };
 export const NO_REMOVALS: Removals = { chapters: [], characters: [], locations: [], props: [] };
 
-const work = (w: Work) => (w.pages ? ` — ${w.pages} page(s), ${w.drawnPanels} drawn panel(s)` : " — no pages yet");
+const work = (w: Work) => (w.pages ? ` · ${w.pages} 页，${w.drawnPanels} 格已绘制` : " · 暂无页面");
 
 export const useAnalysisDiff = (analysisId: string, enabled = true) =>
   useQuery({
@@ -83,22 +83,19 @@ export function AnalysisDiff({
   return (
     <div className="space-y-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
       <div>
-        <h3 className="font-medium">What this analysis changes in the project</h3>
-        <p className="muted text-xs">
-          Applying keeps every chapter that is already there, with its pages and artwork, and adds what is new. Nothing
-          is removed unless you tick it below and confirm.
-        </p>
+        <h3 className="font-medium">本次分析对项目的影响</h3>
+        <p className="muted text-xs">应用时会保留现有章节及其页面与画面，并补充新内容。勾选并确认后才会移除所选项。</p>
       </div>
-      {nothing && <p className="muted text-xs">Nothing changes: the project already matches this analysis.</p>}
-      <Section title="New chapters" items={d.chapters.added.map((c) => `${c.position}. ${c.title}`)} />
-      <Section title="Renamed chapters" items={d.chapters.renamed.map((c) => `${c.from} → ${c.to}${work(c)}`)} />
+      {nothing && <p className="muted text-xs">项目已与本次分析一致。</p>}
+      <Section title="新增章节" items={d.chapters.added.map((c) => `${c.position}. ${c.title}`)} />
+      <Section title="已改名的章节" items={d.chapters.renamed.map((c) => `${c.from} → ${c.to}${work(c)}`)} />
       <Section
-        title="Chapters whose story text changed (pages are kept; once applied, choose for each to keep its pages or re-plan it)"
+        title="故事文本有变化的章节（应用时保留页面，之后可逐章选择保留或重新规划）"
         items={d.chapters.kept.filter((c) => c.textChanged).map((c) => `${c.title}${work(c)}`)}
       />
       {d.chapters.removed.length > 0 && (
         <div>
-          <div className="text-xs font-medium">Chapters no longer in the story (kept unless ticked)</div>
+          <div className="text-xs font-medium">已不在故事中的章节（勾选后可移除）</div>
           <ul className="space-y-0.5 text-xs">
             {d.chapters.removed.map((c) => removable("chapters", c.id, `${c.title}${work(c)}`))}
           </ul>
@@ -106,11 +103,13 @@ export function AnalysisDiff({
       )}
       {(["characters", "locations", "props"] as const).map((k) => (
         <div key={k} className={clsx(!d[k].added.length && !d[k].removed.length && "hidden")}>
-          <div className="text-xs font-medium capitalize">{k === "locations" ? "places" : k}</div>
-          {d[k].added.length > 0 && <p className="text-xs">New: {d[k].added.join(", ")}</p>}
+          <div className="text-xs font-medium capitalize">
+            {{ characters: "角色", locations: "场景", props: "道具" }[k]}
+          </div>
+          {d[k].added.length > 0 && <p className="text-xs">新增：{d[k].added.join("、")}</p>}
           {d[k].removed.length > 0 && (
             <>
-              <p className="text-xs">No longer in the story (kept unless ticked; ticked ones go to the trash):</p>
+              <p className="text-xs">已不在故事中（勾选后可移至回收站）：</p>
               <ul className="space-y-0.5 text-xs">{d[k].removed.map((r) => removable(k, r.id, r.name))}</ul>
             </>
           )}

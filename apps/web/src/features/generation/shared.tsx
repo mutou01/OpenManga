@@ -2,37 +2,7 @@ import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 import { toast } from "../../components/ui.tsx";
 
-export const KIND_LABELS: Record<string, string> = {
-  story_analysis: "Story analysis",
-  story_rewrite: "Story rewrite",
-  chapter_plan: "Chapter planning",
-  page_prompts: "Prompt prep",
-  narration_text: "Narration text",
-  narration_lint: "Narration QA",
-  narration_fix: "Narration fixes",
-  audio_check: "Audio check",
-  narration_import: "Narration import",
-  story_coverage: "Story coverage",
-  narration_retime: "Narration timing",
-  social_copy: "Social copy",
-  character_reference: "Character ref",
-  location_reference: "Location ref",
-  prop_reference: "Prop ref",
-  style_reference: "Style ref",
-  panel_generation: "Panel",
-  panel_edit: "Panel edit",
-  cover: "Cover",
-  coverage_sheet: "Coverage sheet",
-  duplicate_scan: "Duplicate scan",
-  thumbnail: "Video thumbnail",
-  youtube_package: "YouTube package",
-  expert_extract: "Expert action",
-  bible_extract: "Bible extraction",
-  timeline_extract: "Timeline extraction",
-  lettering_translate: "Lettering translation",
-  video_edit: "Video edit",
-  continuity_check: "Continuity check",
-};
+export { KIND_LABELS, kindLabel } from "../../lib/locale.ts";
 
 export const JOB_STATUSES = [
   "queued",
@@ -44,9 +14,7 @@ export const JOB_STATUSES = [
   "cancelled",
 ] as const;
 
-export const kindLabel = (k: string) => KIND_LABELS[k] ?? k.replace(/_/g, " ");
-
-export function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
+export function CopyButton({ text, label = "复制" }: { text: string; label?: string }) {
   const [done, setDone] = useState(false);
   return (
     <button
@@ -62,7 +30,7 @@ export function CopyButton({ text, label = "Copy" }: { text: string; label?: str
         }
       }}
     >
-      {done ? <Check className="size-4" /> : <Copy className="size-4" />} {done ? "Copied" : label}
+      {done ? <Check className="size-4" /> : <Copy className="size-4" />} {done ? "已复制" : label}
     </button>
   );
 }
@@ -86,7 +54,7 @@ export function ProgressBar({ value, label }: { value: number; label?: string })
       aria-valuenow={pct}
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-label={label ?? "Progress"}
+      aria-label={label ?? "进度"}
       className="h-2 w-full overflow-hidden rounded-full bg-[var(--panel-2)]"
     >
       <div className="h-full bg-accent-500 transition-all" style={{ width: `${pct}%` }} />

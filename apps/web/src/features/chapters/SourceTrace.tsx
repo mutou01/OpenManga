@@ -34,7 +34,7 @@ export function SourceTrace({ projectId, chapterId }: { projectId: string; chapt
   const key = [...qk.chapter(chapterId), "source"];
   const q = useQuery({ queryKey: key, queryFn: () => get<Trace>(`/chapters/${chapterId}/source`), enabled: open });
   const retrace = useAction(() => post(`/chapters/${chapterId}/source/trace`), {
-    success: "Panels traced to the current text",
+    success: "画格已追溯到当前原文",
     onSuccess: () => void qc.invalidateQueries({ queryKey: key }),
   });
   const [hover, setHover] = useState<string | null>(null);
@@ -61,20 +61,19 @@ export function SourceTrace({ projectId, chapterId }: { projectId: string; chapt
       open={open}
       onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}
     >
-      <summary className="cursor-pointer font-semibold">Story source</summary>
+      <summary className="cursor-pointer font-semibold">故事原文</summary>
       <p className="muted mt-1 text-xs">
-        Which part of the chapter text each panel tells, traced without AI from the panels' beats and dialogue. Hover a
-        passage to see its panel, scene and narration; click a marker to open the panel.
+        根据画格的节拍和对白追溯其对应的章节原文。悬停原文可查看画格、场景及旁白，点击标记可打开画格。
       </p>
       {q.isLoading && <Spinner />}
-      {t && !t.text && <p className="muted mt-2 text-sm">This chapter has no text.</p>}
+      {t && !t.text && <p className="muted mt-2 text-sm">本章暂无原文。</p>}
       {t?.text && (
         <div className="mt-3 space-y-3">
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {t.revision && (
               <span className="muted">
-                Story revision {t.revision.number}
-                {t.revision.offset === null ? " (this chapter's text is not in it word for word)" : ""}
+                故事修订版 {t.revision.number}
+                {t.revision.offset === null ? "（本章原文与该修订版并非逐字对应）" : ""}
               </span>
             )}
             <button
@@ -83,14 +82,12 @@ export function SourceTrace({ projectId, chapterId }: { projectId: string; chapt
               disabled={retrace.isPending}
               onClick={() => retrace.mutate()}
             >
-              Trace again
+              重新追溯
             </button>
           </div>
           {t.changed > 0 && (
             <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-xs">
-              <div className="mb-1 font-medium">
-                {t.changed === 1 ? "1 panel tells" : `${t.changed} panels tell`} text that was revised after planning
-              </div>
+              <div className="mb-1 font-medium">规划后原文已修改，涉及 {t.changed} 个画格</div>
               <ul className="space-y-1">
                 {t.panels
                   .filter((p) => p.changed)
@@ -102,9 +99,9 @@ export function SourceTrace({ projectId, chapterId }: { projectId: string; chapt
                         search={{ panelId: p.panelId }}
                         className="font-medium underline"
                       >
-                        Page {p.page}, panel {p.panel}
+                        第 {p.page} 页，第 {p.panel} 格
                       </Link>
-                      <span className="muted"> was planned from: “{p.was}”</span>
+                      <span className="muted"> 规划依据为“{p.was}”</span>
                     </li>
                   ))}
               </ul>
@@ -121,9 +118,9 @@ export function SourceTrace({ projectId, chapterId }: { projectId: string; chapt
                   title={pc.panels
                     .map((p) =>
                       [
-                        `Page ${p.page}, panel ${p.panel}`,
-                        sceneOf(p.sceneId) && `Scene: ${sceneOf(p.sceneId)}`,
-                        ...narrationOf(p.panelId).map((n) => `Narration: ${n}`),
+                        `第 ${p.page} 页，第 ${p.panel} 格`,
+                        sceneOf(p.sceneId) && `场景：${sceneOf(p.sceneId)}`,
+                        ...narrationOf(p.panelId).map((n) => `旁白：${n}`),
                       ]
                         .filter(Boolean)
                         .join("\n"),
@@ -142,7 +139,7 @@ export function SourceTrace({ projectId, chapterId }: { projectId: string; chapt
                       to="/projects/$projectId/pages/$pageId"
                       params={{ projectId, pageId: p.pageId }}
                       search={{ panelId: p.panelId }}
-                      aria-label={`Open page ${p.page}, panel ${p.panel}`}
+                      aria-label={`打开第 ${p.page} 页第 ${p.panel} 格`}
                       className="mr-1 rounded bg-[var(--panel-2)] px-1 align-super text-[10px] font-medium no-underline"
                     >
                       {label(p)}

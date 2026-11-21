@@ -42,14 +42,12 @@ export function LayoutLibrary({
   };
   return (
     <section className="card space-y-3 p-4">
-      <h2 className="font-medium">Page layouts</h2>
+      <h2 className="font-medium">页面布局</h2>
       <p className="muted text-xs">
-        Your saved layouts (save one from any page: page editor → Page tab → Save as layout). Turn on the ones this
-        project uses: planning a chapter gives each new page one with its number of panels, in turn, and you can re-lay
-        existing pages with them here or on a chapter. Pages no layout fits keep the built-in templates.
+        在页面编辑器的“页面”选项卡中将布局保存到这里。启用本项目要使用的布局后，章节规划会按分镜数量轮流选用，也可在这里或章节中重新排版已有页面。没有匹配布局的页面继续使用内置模板。
       </p>
       {q.isLoading && <Spinner />}
-      {q.data && !all.length && <p className="muted text-sm">No saved layouts yet.</p>}
+      {q.data && !all.length && <p className="muted text-sm">暂无已保存的布局。</p>}
       <ul className="grid gap-2 sm:grid-cols-2">
         {all.map((l) => {
           const on = inProject.some((x) => x.id === l.id);
@@ -60,7 +58,7 @@ export function LayoutLibrary({
               <div className="min-w-0 flex-1 space-y-1">
                 <input
                   className="input py-1 text-sm"
-                  aria-label={`Name of ${l.name}`}
+                  aria-label={`${l.name} 的名称`}
                   defaultValue={l.name}
                   disabled={!inLibrary || disabled}
                   onBlur={(e) => {
@@ -82,14 +80,14 @@ export function LayoutLibrary({
                       onChange(e.target.checked ? [...inProject, l] : inProject.filter((x) => x.id !== l.id))
                     }
                   />
-                  Use in this project · {l.frames.length} panel{l.frames.length === 1 ? "" : "s"}
+                  在本项目中使用 · {l.frames.length} 个分镜{l.frames.length === 1 ? "" : ""}
                 </label>
               </div>
               {inLibrary && (
                 <button
                   type="button"
                   className="btn-ghost p-1"
-                  aria-label={`Delete ${l.name}`}
+                  aria-label={`删除 ${l.name}`}
                   disabled={busy || disabled}
                   onClick={() =>
                     void run(async () => {
@@ -111,25 +109,23 @@ export function LayoutLibrary({
         disabled={busy || disabled || !inProject.length}
         onClick={() => setConfirmApply(true)}
       >
-        Re-lay every page with these layouts
+        用这些布局重新排版所有页面
       </button>
       <ConfirmDialog
         open={confirmApply}
-        title="Re-lay every page of the project?"
-        confirmLabel="Re-lay pages"
+        title="重新排版本项目的所有页面？"
+        confirmLabel="重新排版"
         busy={busy}
         onClose={() => setConfirmApply(false)}
         onConfirm={() =>
           void run(async () => {
             const r = await post<{ changed: number; skipped: number }>(`/projects/${projectId}/apply-layouts`, {});
             setConfirmApply(false);
-            toast.success(`${r.changed} page(s) re-laid; ${r.skipped} kept (no layout with their number of panels)`);
+            toast.success(`已重新排版 ${r.changed} 页，保留 ${r.skipped} 页（没有匹配分镜数量的布局）`);
           })
         }
       >
-        Each page takes one of the layouts on with its number of panels, in turn; the panels keep their art and text. If
-        you just turned layouts on, wait until the page says Saved. Locked pages and pages no layout fits stay as they
-        are.
+        各页会按分镜数量轮流采用已启用的布局，并保留分镜图片和文字。刚启用布局时，请等页面显示“已保存”后再操作。已锁定或没有匹配布局的页面会保持原样。
       </ConfirmDialog>
     </section>
   );

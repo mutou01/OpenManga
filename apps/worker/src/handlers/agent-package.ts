@@ -40,6 +40,7 @@ import type { WorkerDeps } from "../context.ts";
 import { ZipWriter } from "../lib/zip.ts";
 
 type Project = typeof projects.$inferSelect;
+const readingDirections = { rtl: "从右到左", ltr: "从左到右", vertical: "竖向阅读" };
 const enc = (s: string) => new TextEncoder().encode(s);
 const pad = (n: number, w: number) => String(n).padStart(w, "0");
 const slug = (s: string) =>
@@ -79,7 +80,7 @@ export async function buildAgentPackage(
   const language = opts.language || project.language;
   const readiness = await projectReadiness(db, project.id, { chapterId, language });
   const warnings = readiness.issues.map(
-    (i) => `${i.chapterLabel ?? "Project"}: ${i.message}${i.severity === "info" ? " (info)" : ""}`,
+    (i) => `${i.chapterLabel ?? "项目"}：${i.message}${i.severity === "info" ? "（提示）" : ""}`,
   );
   const zip = new ZipWriter(join(opts.dir, "agent_package.zip"));
   const used = new Set<string>();
@@ -161,33 +162,31 @@ export async function buildAgentPackage(
       enc(
         [
           `# ${c.name} (\`${id}\`)`,
-          `Role: ${c.role}${aliases.length ? ` · Aliases: ${aliases.join(", ")}` : ""}`,
-          v ? `Design version: v${v.versionNumber} (${v.status})` : "",
-          refPath
-            ? `Reference image: \`${refPath}\`${ref?.status === "draft" ? " (draft, not yet approved)" : ""}`
-            : "Reference image: none",
+          `角色定位：${c.role}${aliases.length ? ` · 别名：${aliases.join("、")}` : ""}`,
+          v ? `设计版本：v${v.versionNumber}（${v.status}）` : "",
+          refPath ? `参考图：\`${refPath}\`${ref?.status === "draft" ? "（草稿，尚未审核）" : ""}` : "参考图：无",
           "",
           b?.summary ?? "",
           "",
-          "## Appearance",
+          "## 外观",
           ...Object.entries({
-            Presentation: b?.genderPresentation,
-            Age: b?.ageRange,
-            Height: b?.height,
-            Build: b?.build,
-            Face: b?.faceShape,
-            Skin: b?.skinTone,
-            Eyes: b?.eyes,
-            Hair: b?.hair,
-            "Facial hair": b?.facialHair,
-            Wardrobe: b?.wardrobe,
-            Personality: b?.personality,
-            Mannerisms: b?.visualMannerisms,
+            性别呈现: b?.genderPresentation,
+            年龄: b?.ageRange,
+            身高: b?.height,
+            体型: b?.build,
+            脸型: b?.faceShape,
+            肤色: b?.skinTone,
+            眼睛: b?.eyes,
+            头发: b?.hair,
+            面部毛发: b?.facialHair,
+            服装: b?.wardrobe,
+            性格: b?.personality,
+            典型动作: b?.visualMannerisms,
           })
             .filter(([, val]) => val)
             .map(([k, val]) => `- **${k}:** ${val}`),
-          b?.distinctiveFeatures?.length ? `- **Distinctive:** ${b.distinctiveFeatures.join("; ")}` : "",
-          v?.immutableTraits.length ? `- **Never changes:** ${v.immutableTraits.join("; ")}` : "",
+          b?.distinctiveFeatures?.length ? `- **显著特征：** ${b.distinctiveFeatures.join("; ")}` : "",
+          v?.immutableTraits.length ? `- **固定特征：** ${v.immutableTraits.join("; ")}` : "",
         ]
           .filter((l) => l !== undefined)
           .join("\n"),
@@ -235,7 +234,7 @@ export async function buildAgentPackage(
         enc(
           [
             `# ${e.name} (\`${id}\`)`,
-            refPath ? `Reference image: \`${refPath}\`` : "Reference image: none",
+            refPath ? `参考图：\`${refPath}\`` : "参考图：无",
             "",
             String(d?.summary ?? ""),
             "",
@@ -400,28 +399,28 @@ export async function buildAgentPackage(
           `${base}.md`,
           enc(
             [
-              `# Panel ${pnId}`,
-              `Chapter ${ch.order} · page ${pg.order} · panel ${i + 1} in reading order (${pg.readingDirection ?? project.readingDirection})`,
+              `# 画格 ${pnId}`,
+              `第 ${ch.order} 章 · 第 ${pg.order} 页 · 按阅读顺序第 ${i + 1} 格（${readingDirections[pg.readingDirection ?? project.readingDirection]}）`,
               "",
-              `- **Clean artwork (no lettering):** ${artPath ? `\`${artPath}\`` : "not generated yet"}`,
-              `- **As printed (with bubbles/SFX):** \`${letteredPath}\``,
-              `- **Story beat:** ${pn.storyBeat}`,
-              `- **Shot / camera:** ${pn.shotType}${pn.cameraAngle ? ` / ${pn.cameraAngle}` : ""}`,
-              spec?.action ? `- **Action:** ${spec.action}` : "",
-              spec?.emotion ? `- **Mood:** ${spec.emotion}` : "",
-              spec?.composition ? `- **Composition:** ${spec.composition}` : "",
-              `- **Location:** ${loc ? `${loc.name} (\`${loc.id}\`)` : "unspecified"}`,
-              `- **Characters:** ${chars.length ? chars.map((c) => `${c.name} (\`${c.id}\`)${c.expression ? ` — ${c.expression}` : ""}`).join("; ") : "none"}`,
+              `- **纯画面（无排字）：** ${artPath ? `\`${artPath}\`` : "尚未生成"}`,
+              `- **成稿（含对白框和音效）：** \`${letteredPath}\``,
+              `- **情节节点：** ${pn.storyBeat}`,
+              `- **景别与机位：** ${pn.shotType}${pn.cameraAngle ? ` / ${pn.cameraAngle}` : ""}`,
+              spec?.action ? `- **动作：** ${spec.action}` : "",
+              spec?.emotion ? `- **氛围：** ${spec.emotion}` : "",
+              spec?.composition ? `- **构图：** ${spec.composition}` : "",
+              `- **场景：** ${loc ? `${loc.name} (\`${loc.id}\`)` : "未指定"}`,
+              `- **角色：** ${chars.length ? chars.map((c) => `${c.name} (\`${c.id}\`)${c.expression ? ` — ${c.expression}` : ""}`).join("; ") : "无"}`,
               "",
-              "## Dialogue",
+              "## 对白",
               ...(dialogue.length
-                ? dialogue.map((d) => `- ${d.speaker ?? "(no speaker)"} [${d.type}]: “${d.text}”`)
-                : ["- none"]),
+                ? dialogue.map((d) => `- ${d.speaker ?? "（未指定说话者）"} [${d.type}]: “${d.text}”`)
+                : ["- 无"]),
               "",
-              "## Sound effects",
-              effects.length ? `- ${effects.join(", ")}` : "- none",
+              "## 音效",
+              effects.length ? `- ${effects.join(", ")}` : "- 无",
               "",
-              "Narration for this panel is listed in the chapter `narration/timeline.json` (field `panelId`).",
+              "此画格的旁白见本章的 `narration/timeline.json`，用 `panelId` 查找。",
             ]
               .filter((l) => l !== "")
               .join("\n"),
@@ -616,26 +615,26 @@ export async function buildAgentPackage(
       `${chDir}/chapter.md`,
       enc(
         [
-          `# Chapter ${ch.order}: ${ch.title} (\`${chId}\`)`,
+          `# 第 ${ch.order} 章 · ${ch.title} (\`${chId}\`)`,
           "",
           ch.summary,
-          ch.openingState ? `\n**Opening state:** ${ch.openingState}` : "",
-          ch.closingState ? `**Closing state:** ${ch.closingState}` : "",
+          ch.openingState ? `\n**开篇状态：** ${ch.openingState}` : "",
+          ch.closingState ? `**结尾状态：** ${ch.closingState}` : "",
           "",
-          "## Scenes",
+          "## 场景",
           ...sceneRows.flatMap((s) => [
             `### ${sceneId(s.id)} — ${s.title}`,
             s.summary,
-            [s.time && `Time: ${s.time}`, s.weather && `Weather: ${s.weather}`].filter(Boolean).join(" · "),
+            [s.time && `时间：${s.time}`, s.weather && `天气：${s.weather}`].filter(Boolean).join(" · "),
             ...beatRows.filter((b) => b.sceneId === s.id).map((b) => `- ${b.description}`),
             "",
           ]),
-          "## Pages",
+          "## 页面",
           ...pageDocs.map(
-            (p) => `- \`${p.id}\` → \`${p.image}\` (${p.panels.length} panels${p.purpose ? `, ${p.purpose}` : ""})`,
+            (p) => `- \`${p.id}\` → \`${p.image}\` （${p.panels.length} 个画格${p.purpose ? `，${p.purpose}` : ""}）`,
           ),
           "",
-          `Narration: ${timeline.length} segments${chapterAudio ? `, full track \`${chapterAudio.wav}\`` : " (no synthesized audio yet)"}; timing in \`${timelineFile}\`.`,
+          `旁白：${timeline.length} 段${chapterAudio ? `，完整音轨 \`${chapterAudio.wav}\`` : "（尚无合成音频）"}。时间信息见 \`${timelineFile}\`.`,
         ]
           .filter((l) => l !== undefined)
           .join("\n"),
@@ -705,7 +704,7 @@ export async function buildAgentPackage(
   await zip.add(
     "README.md",
     enc(
-      (warnings.length ? `> **Warnings**\n${warnings.map((w) => `> - ${w}`).join("\n")}\n\n` : "") +
+      (warnings.length ? `> **提示**\n${warnings.map((w) => `> - ${w}`).join("\n")}\n\n` : "") +
         readme(project, manifest.chapters.length),
     ),
   );
@@ -717,57 +716,51 @@ export async function buildAgentPackage(
 }
 
 function readme(project: Project, chapterCount: number) {
-  return `# ${project.title} — agent hand-off package
+  return `# ${project.title} · 智能体交接包
 
-Generated by OpenManga. Everything needed to assemble a comic, webtoon or narrated recap video is here,
-linked by stable, readable IDs. Start with \`manifest.json\`; every image and audio file also has a Markdown
-description next to it or in its chapter folder.
+由 OpenManga 生成。组装漫画、条漫或解说视频所需的素材都通过稳定、易读的标识关联。
+请先阅读 \`manifest.json\`。每个图像和音频文件旁边或所属章节目录里都有 Markdown 说明。
 
-## IDs
-| Pattern | Meaning |
+## 标识
+| 格式 | 含义 |
 | --- | --- |
-| \`ch01\` | chapter 1 |
-| \`ch01-sc02\` | scene 2 of chapter 1 |
-| \`ch01-p003\` | page 3 of chapter 1 |
-| \`ch01-p003-pn02\` | panel 2 on that page, **in reading order** (${project.readingDirection}) |
-| \`ch01-seg-0007\` | narration segment 7 of chapter 1 (chapter-wide order) |
-| \`char-<name>\`, \`loc-<name>\`, \`prop-<name>\` | characters, locations, props |
+| \`ch01\` | 第 1 章 |
+| \`ch01-sc02\` | 第 1 章的第 2 场 |
+| \`ch01-p003\` | 第 1 章的第 3 页 |
+| \`ch01-p003-pn02\` | 该页按阅读顺序排列的第 2 格（${readingDirections[project.readingDirection]}） |
+| \`ch01-seg-0007\` | 第 1 章按全章顺序排列的第 7 条旁白 |
+| \`char-<name>\`、\`loc-<name>\`、\`prop-<name>\` | 角色、地点和道具 |
 
-## Layout
+## 文件结构
 \`\`\`
-manifest.json                  all links (see below)
-story/story.md                 latest story text
-characters/<name>/             description.md + reference image (identity source of truth)
+manifest.json                  全部文件的索引（详见下文）
+story/story.md                 最新故事文本
+characters/<name>/             description.md 和作为角色形象基准的参考图
 locations/<name>/, props/<name>/
 chapters/NN-<title>/
-  chapter.md                   summary, scenes, beats, page list
-  source.md                    source text for this chapter
-  pages/page-NNN.png           final lettered page
-  pages/page-NNN.json          panel frames (normalized 0..1 and pixels) in reading order
-  panels/<panelId>.png         clean artwork (no text)
-  panels/<panelId>.lettered.png  panel cropped from the final page (with bubbles/SFX)
-  panels/<panelId>.md          shot, action, characters, location, dialogue, SFX
-  narration/<segmentId>.wav    one file per narration segment (24 kHz mono)
-  narration/narration.wav|mp3  full chapter narration track
-  narration/timeline.json      text, panelId, pageId, startMs, durationMs per segment
+  chapter.md                   摘要、场景、情节节点和页面列表
+  source.md                    本章的原文
+  pages/page-NNN.png           已嵌字的最终页面
+  pages/page-NNN.json          按阅读顺序排列的分镜边框（0 到 1 的归一化坐标及像素坐标）
+  panels/<panelId>.png         无字分镜图
+  panels/<panelId>.lettered.png  从最终页面裁出的分镜（含对话气泡和拟声词）
+  panels/<panelId>.md          镜头、动作、角色、地点、对白和拟声词
+  narration/<segmentId>.wav    每条旁白对应一个文件（24 kHz 单声道）
+  narration/narration.wav|mp3  全章旁白音轨
+  narration/timeline.json      每条旁白的文本、panelId、pageId、startMs 和 durationMs
 \`\`\`
 
 ## manifest.json
-- \`chapters[].pages[].panels[]\` are in reading order and include image paths, characters (with reference images),
-  location, dialogue (speaker, bubble type, text), SFX and \`narration.narrationSegmentIds\` plus
-  \`narration.narrationTiming\` (start/duration inside the chapter track).
-- \`chapters[].narration.timelineFile\` holds every segment. \`panelLinkInferred: true\` means the narration line had no
-  explicit panel and was attached to the nearest linked panel in reading order; treat it as a suggestion.
-- Segments without synthesized audio have \`audio: null\` and null timing.
+- \`chapters[].pages[].panels[]\` 按阅读顺序排列，包含图像路径、角色及参考图、地点、对白（说话人、气泡类型和文本）、拟声词、
+  \`narration.narrationSegmentIds\` 和 \`narration.narrationTiming\`（在章节音轨中的开始时间和持续时间）。
+- \`chapters[].narration.timelineFile\` 包含所有旁白。\`panelLinkInferred: true\` 表示这条旁白未指定分镜，程序沿阅读顺序关联了最近的已关联分镜，可作为参考。
+- 尚未合成音频的旁白标记为 \`audio: null\`，时间字段也为 \`null\`。
 
-## Suggested video assembly (${chapterCount} chapter${chapterCount === 1 ? "" : "s"})
-1. For each chapter, play \`narration/narration.wav\` (or the mp3) as the voice track.
-2. Walk panels in reading order. Show a panel from the earliest \`startMs\` of its narration segments until the next
-   panel's first segment starts; give panels without narration 2–3 seconds between their neighbours.
-3. Use \`<panelId>.lettered.png\` when dialogue should be readable on screen, the clean \`<panelId>.png\` when you add your
-   own captions (dialogue text is in the panel's \`dialogue\` list).
-4. Panel images can be larger or differently shaped than their page frames; \`frame\` in \`pages/page-NNN.json\` shows
-   how they were cropped on the printed page. Slow pan/zoom works well for still panels.
-5. Keep character identity consistent with \`characters/<name>/reference.*\` if you generate anything new.
+## 建议的视频组装方式（${chapterCount} 章）
+1. 以各章的 \`narration/narration.wav\` 或 MP3 作为旁白音轨。
+2. 按阅读顺序处理分镜。从当前格最早的旁白 \`startMs\` 开始显示，直到下一格的第一条旁白开始。为无旁白的分镜预留 2 至 3 秒。
+3. 需要显示嵌字对白时使用 \`<panelId>.lettered.png\`。自行添加字幕时使用无字的 \`<panelId>.png\`，对白见该分镜的 \`dialogue\` 列表。
+4. 分镜图的大小或比例可能与页面边框不同。\`pages/page-NNN.json\` 的 \`frame\` 记录了页面裁切位置。静态分镜可以加缓慢的平移或缩放。
+5. 生成新素材时，参考 \`characters/<name>/reference.*\` 保持角色形象一致。
 `;
 }

@@ -147,7 +147,7 @@ storyRoutes.patch("/story-revisions/:id", async (c) => {
   const content = input.content ?? rev.content;
   const { db } = c.get("deps");
   if (input.baseSha256 && input.baseSha256 !== rev.contentSha256 && !rev.lockedAt) {
-    throw conflict("This story was changed elsewhere. Reload to get the latest version before saving.");
+    throw conflict("故事已在其他位置更新。请重新加载最新版本后再保存。");
   }
   if (rev.lockedAt) {
     if (content === rev.content && (input.title ?? rev.title) === rev.title)
@@ -298,7 +298,7 @@ doc({
 });
 storyRoutes.get("/story-analyses/:id/diff", async (c) => {
   const a = await analysisWithAccess(c, uuidParam(c, "id"), "read");
-  if (!a.result) throw badRequest("Analysis has not completed");
+  if (!a.result) throw badRequest("分析尚未完成");
   return c.json({ diff: await analysisDiff(c.get("deps").db, a.id) });
 });
 
@@ -312,7 +312,7 @@ doc({
 });
 storyRoutes.patch("/story-analyses/:id", async (c) => {
   const a = await analysisWithAccess(c, uuidParam(c, "id"), "write");
-  if (a.status === "pending" || a.status === "failed") throw badRequest("Analysis has no result to edit");
+  if (a.status === "pending" || a.status === "failed") throw badRequest("暂无可编辑的分析结果");
   const { result } = await body(c, PatchAnalysis);
   const [row] = await c
     .get("deps")
@@ -334,7 +334,7 @@ doc({
 });
 storyRoutes.post("/story-analyses/:id/apply", async (c) => {
   const a = await analysisWithAccess(c, uuidParam(c, "id"), "write");
-  if (!a.result) throw badRequest("Analysis has not completed");
+  if (!a.result) throw badRequest("分析尚未完成");
   const { result } = await body(c, ApplyAnalysis);
   const created = await applyStoryAnalysis(c.get("deps").db, a.id, user(c).id, result);
   await recordAudit(c.get("deps").db, {
@@ -381,7 +381,7 @@ storyRoutes.post("/projects/:projectId/story/coverage", async (c) => {
   const input = await body(c, CoverageInput);
   const deps = c.get("deps");
   const revisionId = input.storyRevisionId ?? (await appliedRevisionId(c, project.id));
-  if (!revisionId) throw conflict("Analyse the story and apply the analysis first: coverage compares the plan with it");
+  if (!revisionId) throw conflict("请先分析故事并应用结果，覆盖检查会将规划与其对照");
   const [rev] = await deps.db
     .select({ p: storyRevisions.projectId })
     .from(storyRevisions)

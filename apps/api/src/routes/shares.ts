@@ -450,7 +450,7 @@ publicShareRoutes.post("/shares/:token/comments", guestLimit, async (c) => {
   if (input.threadId) {
     const [root] = await db.select().from(panelComments).where(eq(panelComments.id, input.threadId));
     if (!root || root.threadId || root.shareId !== s.id || root.panelId !== pn.id) throw notFound("Thread");
-    if (input.anchor) throw badRequest("A spot belongs on a thread's first comment");
+    if (input.anchor) throw badRequest("画面位置只能设置在讨论的首条评论上");
     participants = (
       await db.select({ u: panelComments.authorUserId }).from(panelComments).where(eq(panelComments.threadId, root.id))
     )

@@ -28,12 +28,7 @@ import { BulkGenerateButton, LayoutThumb } from "./BulkGenerate.tsx";
 function PagePreview({ page }: { page: ChapterDetailPage }) {
   const { width: W, height: H } = page;
   return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      className="block w-full bg-white"
-      role="img"
-      aria-label={`Page ${page.order} preview`}
-    >
+    <svg viewBox={`0 0 ${W} ${H}`} className="block w-full bg-white" role="img" aria-label={`第 ${page.order} 页预览`}>
       {page.panels.map((p) => {
         const x = p.frame.x * W;
         const y = p.frame.y * H;
@@ -105,14 +100,14 @@ export function PagesPage() {
 
   const addPage = useAction(
     (layoutTemplate: string) => post<{ page: { id: string } }>(`/chapters/${chapterId}/pages`, { layoutTemplate }),
-    { invalidate: inv, success: "Page added", onSuccess: () => setAdding(false) },
+    { invalidate: inv, success: "已添加页面", onSuccess: () => setAdding(false) },
   );
   const move = useAction((v: { id: string; order: number }) => patch(`/pages/${v.id}`, { order: v.order }), {
     invalidate: inv,
   });
   const remove = useAction((id: string) => del(`/pages/${id}`), {
     invalidate: inv,
-    success: "Page deleted",
+    success: "已删除页面",
     onSuccess: () => setDeleting(null),
   });
 
@@ -133,14 +128,14 @@ export function PagesPage() {
       <div className="p-6">
         <EmptyState
           icon={<LayoutGrid className="size-8" />}
-          title="No chapters yet"
+          title="暂无章节"
           action={
             <Link to="/projects/$projectId/chapters" params={{ projectId }} className="btn-primary">
-              Go to chapters
+              前往章节
             </Link>
           }
         >
-          Analyze your story or create a chapter, then plan its pages.
+          先分析故事或创建章节，再规划页面。
         </EmptyState>
       </div>
     );
@@ -152,12 +147,12 @@ export function PagesPage() {
   return (
     <div className="p-6">
       <PageHeader
-        title="Pages"
-        subtitle={chapter.data ? `${pages.length} pages · ${ready} / ${totalPanels} panels with artwork` : undefined}
+        title="页面"
+        subtitle={chapter.data ? `${pages.length} 页 · ${ready} / ${totalPanels} 个分镜已有图片` : undefined}
         actions={
           <>
             <label className="sr-only" htmlFor="chapter-select">
-              Chapter
+              章节
             </label>
             <select
               id="chapter-select"
@@ -173,7 +168,7 @@ export function PagesPage() {
             >
               {chapters.data.map((c) => (
                 <option key={c.id} value={c.id}>
-                  Ch. {c.order} — {c.title}
+                  第 {c.order} — {c.title}
                 </option>
               ))}
             </select>
@@ -181,10 +176,10 @@ export function PagesPage() {
               <PreviewVideoButton
                 projectId={projectId}
                 scope={{ chapterId }}
-                label="Play chapter"
+                label="播放章节"
                 title={(() => {
                   const c = chapters.data.find((x) => x.id === chapterId);
-                  return c ? `Preview — Chapter ${c.order}: ${c.title}` : "Preview";
+                  return c ? `预览 · 第 ${c.order} 章 ${c.title}` : "预览";
                 })()}
               />
             )}
@@ -192,7 +187,7 @@ export function PagesPage() {
               <BulkGenerateButton
                 projectId={projectId}
                 scope={{ chapterId }}
-                label="Generate chapter"
+                label="生成章节"
                 className="btn-secondary"
               />
             )}
@@ -203,11 +198,11 @@ export function PagesPage() {
                 search={{ chapterId }}
                 className="btn-secondary"
               >
-                <BookOpen className="size-4" /> Read strip
+                <BookOpen className="size-4" /> 阅读条漫
               </Link>
             )}
             <button type="button" className="btn-primary" onClick={() => setAdding(true)} disabled={!chapterId}>
-              <Plus className="size-4" /> Add page
+              <Plus className="size-4" /> 添加页面
             </button>
           </>
         }
@@ -218,18 +213,18 @@ export function PagesPage() {
       {chapter.data && !pages.length && (
         <EmptyState
           icon={<LayoutGrid className="size-8" />}
-          title="No pages in this chapter"
+          title="本章暂无页面"
           action={
             <Link
               to="/projects/$projectId/chapters/$chapterId"
               params={{ projectId, chapterId: chapterId! }}
               className="btn-secondary"
             >
-              Plan chapter with AI
+              用 AI 规划章节
             </Link>
           }
         >
-          Plan the chapter to create scenes, pages and panels automatically, or add a page manually.
+          规划章节可自动创建场景、页面与分镜，也可以手动添加页面。
         </EmptyState>
       )}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
@@ -239,7 +234,7 @@ export function PagesPage() {
               to="/projects/$projectId/pages/$pageId"
               params={{ projectId, pageId: p.id }}
               search={{}}
-              aria-label={`Open page ${p.order} in editor`}
+              aria-label={`在编辑器中打开第 ${p.order} 页`}
               className="block focus-visible:outline-2 focus-visible:outline-accent-500"
             >
               <PagePreview page={p} />
@@ -247,10 +242,10 @@ export function PagesPage() {
             <div className="flex items-center justify-between gap-1 p-2 text-sm">
               <div className="min-w-0">
                 <div className="flex items-center gap-1 font-medium">
-                  Page {p.order} <CommentBadge n={commentCounts?.pages[p.id]} />
+                  页面 {p.order} <CommentBadge n={commentCounts?.pages[p.id]} />
                 </div>
                 <div className="muted truncate text-xs">
-                  {p.readyCount}/{p.panelCount} ready
+                  {p.readyCount}/{p.panelCount} 已就绪
                 </div>
               </div>
               <StatusChip status={p.status} />
@@ -259,7 +254,7 @@ export function PagesPage() {
               <button
                 type="button"
                 className="btn-ghost p-1"
-                aria-label="Move page earlier"
+                aria-label="将页面前移"
                 disabled={i === 0 || move.isPending}
                 onClick={() => move.mutate({ id: p.id, order: p.order - 1 })}
               >
@@ -268,7 +263,7 @@ export function PagesPage() {
               <button
                 type="button"
                 className="btn-ghost p-1"
-                aria-label="Move page later"
+                aria-label="将页面后移"
                 disabled={i === pages.length - 1 || move.isPending}
                 onClick={() => move.mutate({ id: p.id, order: p.order + 1 })}
               >
@@ -277,7 +272,7 @@ export function PagesPage() {
               <button
                 type="button"
                 className="btn-ghost p-1 text-red-500"
-                aria-label="Delete page"
+                aria-label="删除页面"
                 onClick={() => setDeleting(p.id)}
               >
                 <Trash2 className="size-3.5" />
@@ -287,7 +282,7 @@ export function PagesPage() {
         ))}
       </div>
 
-      <Modal open={adding} onClose={() => setAdding(false)} title="Add page — choose a layout" wide>
+      <Modal open={adding} onClose={() => setAdding(false)} title="添加页面 · 选择布局" wide>
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
           {meta?.layouts.map((t) => (
             <button
@@ -305,14 +300,14 @@ export function PagesPage() {
       </Modal>
       <ConfirmDialog
         open={Boolean(deleting)}
-        title="Delete page?"
+        title="删除页面？"
         danger
-        confirmLabel="Delete page"
+        confirmLabel="删除页面"
         busy={remove.isPending}
         onClose={() => setDeleting(null)}
         onConfirm={() => deleting && remove.mutate(deleting)}
       >
-        The page, its panels and lettering are removed. Generated artwork stays in the asset library.
+        将删除此页及其分镜和对白排版。已生成图片仍保留在素材库中。
       </ConfirmDialog>
     </div>
   );

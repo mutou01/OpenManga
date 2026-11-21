@@ -80,15 +80,15 @@ export function TimelinePage() {
   return (
     <div className="mx-auto max-w-4xl p-4 sm:p-6">
       <PageHeader
-        title="Story timeline"
-        subtitle="What happens in story-time order, not the order chapters tell it: a flashback sits where it happened. Story days give elapsed time and, with a birth, ages; bible states show where they start."
+        title="故事时间线"
+        subtitle="按故事实际发生时间排列事件，倒叙会放在发生时的位置。故事天数用于计算间隔和年龄，故事设定集状态会显示其起始事件。"
         actions={
           <>
             <button type="button" className="btn-secondary" onClick={() => setExtracting(true)}>
-              <Sparkles className="size-4" /> Extract from story
+              <Sparkles className="size-4" /> 从故事提取
             </button>
             <button type="button" className="btn-primary" onClick={() => setEdit("new")}>
-              <Plus className="size-4" /> Add event
+              <Plus className="size-4" /> 添加事件
             </button>
           </>
         }
@@ -98,35 +98,30 @@ export function TimelinePage() {
       {d && (
         <>
           <Review key={d.extraction?.id} data={d} onDone={refresh} />
-          {!d.events.length && (
-            <EmptyState title="No events yet">
-              Add the story's events in the order they happen, or extract them from the chapters.
-            </EmptyState>
-          )}
+          {!d.events.length && <EmptyState title="暂无事件">按发生顺序添加故事事件，或从章节中提取。</EmptyState>}
           {statesAt(null).length > 0 && d.events.length > 0 && (
-            <StatesHere label="From the start" states={statesAt(null)} name={name} />
+            <StatesHere label="从开头开始" states={statesAt(null)} name={name} />
           )}
-          <ol className="space-y-1" aria-label="Timeline">
+          <ol className="space-y-1" aria-label="时间线">
             {d.events.map((e, i) => {
               const ch = chapter(e.chapterId);
               return (
                 <li key={e.id}>
                   {e.outOfOrder ? (
                     <div className="py-1 pl-4 text-xs text-amber-700 dark:text-amber-300">
-                      Day {e.day !== null ? fmtDay(e.day) : "?"} is earlier than an event above it: move it, or fix its
-                      day
+                      故事天数 {e.day !== null ? fmtDay(e.day) : "?"} 早于上方事件。请调整顺序或修改事件的 天数
                     </div>
                   ) : (
                     e.elapsed &&
                     e.since !== null &&
-                    e.since > 0 && <div className="muted py-1 pl-4 text-xs">{e.elapsed} later</div>
+                    e.since > 0 && <div className="muted py-1 pl-4 text-xs">{e.elapsed}后</div>
                   )}
                   <article className="card flex gap-3 p-3" aria-label={e.title}>
                     <div className="flex flex-col">
                       <button
                         type="button"
                         className="btn-ghost p-1"
-                        aria-label={`Move ${e.title} earlier`}
+                        aria-label={`提前“${e.title}”`}
                         disabled={i === 0}
                         onClick={() => move(i, -1)}
                       >
@@ -135,7 +130,7 @@ export function TimelinePage() {
                       <button
                         type="button"
                         className="btn-ghost p-1"
-                        aria-label={`Move ${e.title} later`}
+                        aria-label={`推后“${e.title}”`}
                         disabled={i === d.events.length - 1}
                         onClick={() => move(i, 1)}
                       >
@@ -144,10 +139,10 @@ export function TimelinePage() {
                     </div>
                     <div className="min-w-0 flex-1 space-y-1 text-sm">
                       <div className="flex flex-wrap items-baseline gap-x-2">
-                        {e.kind === "birth" && <Baby className="size-3.5 self-center" aria-label="birth" />}
+                        {e.kind === "birth" && <Baby className="size-3.5 self-center" aria-label="出生" />}
                         <span className="font-medium">{e.title}</span>
                         {e.when && <span className="muted text-xs">{e.when}</span>}
-                        {e.day !== null && <span className="muted text-xs">· day {fmtDay(e.day)}</span>}
+                        {e.day !== null && <span className="muted text-xs">· 故事天数 {fmtDay(e.day)}</span>}
                       </div>
                       {e.description && <p className="muted text-xs">{e.description}</p>}
                       <div className="flex flex-wrap gap-1 text-xs">
@@ -157,8 +152,8 @@ export function TimelinePage() {
                             params={{ projectId, chapterId: ch.id }}
                             className="chip hover:underline"
                           >
-                            ch. {ch.order}
-                            {e.sceneNumber ? `, scene ${e.sceneNumber}` : ""}
+                            章节 {ch.order}
+                            {e.sceneNumber ? `，第 ${e.sceneNumber} 场` : ""}
                           </Link>
                         )}
                         {e.characterIds.map((c) => (
@@ -174,7 +169,7 @@ export function TimelinePage() {
                       <button
                         type="button"
                         className="btn-ghost p-1.5"
-                        aria-label={`Edit ${e.title}`}
+                        aria-label={`编辑“${e.title}”`}
                         onClick={() => setEdit(e)}
                       >
                         <Pencil className="size-4" />
@@ -182,7 +177,7 @@ export function TimelinePage() {
                       <button
                         type="button"
                         className="btn-ghost p-1.5 text-red-500"
-                        aria-label={`Delete ${e.title}`}
+                        aria-label={`删除“${e.title}”`}
                         onClick={() => setRemoving(e)}
                       >
                         <Trash2 className="size-4" />
@@ -197,8 +192,8 @@ export function TimelinePage() {
           {extracting && <ExtractDialog data={d} onClose={() => setExtracting(false)} />}
           <ConfirmDialog
             open={Boolean(removing)}
-            title={`Delete "${removing?.title ?? ""}"?`}
-            confirmLabel="Delete"
+            title={`删除“${removing?.title ?? ""}”？`}
+            confirmLabel="删除"
             danger
             onClose={() => setRemoving(null)}
             onConfirm={async () => {
@@ -211,7 +206,7 @@ export function TimelinePage() {
               setRemoving(null);
             }}
           >
-            It is removed from the timeline. Chapters and the bible are not touched.
+            此事件将从时间线移除。
           </ConfirmDialog>
         </>
       )}
@@ -267,20 +262,20 @@ function EventForm({ data, event, onClose }: { data: Data; event: Event | null; 
     <Modal
       open
       onClose={onClose}
-      title={event ? "Edit event" : "Add event"}
+      title={event ? "编辑事件" : "添加事件"}
       footer={
         <>
           <button type="button" className="btn-secondary" onClick={onClose}>
-            Cancel
+            取消
           </button>
           <button type="button" className="btn-primary" disabled={busy || !f.title.trim()} onClick={save}>
-            {busy && <Spinner />} Save
+            {busy && <Spinner />} 保存
           </button>
         </>
       }
     >
       <div className="space-y-3 text-sm">
-        <Field label="What happens">
+        <Field label="事件内容">
           <input
             className="input"
             value={f.title}
@@ -289,7 +284,7 @@ function EventForm({ data, event, onClose }: { data: Data; event: Event | null; 
           />
         </Field>
         <div className="grid gap-3 sm:grid-cols-3">
-          <Field label="When" hint="In the story's words: “Spring 1203”, “the night of the storm”.">
+          <Field label="时间" hint="采用故事中的时间表述，例如“1203 年春天”“暴风雨之夜”。">
             <input
               className="input"
               value={f.when}
@@ -297,7 +292,7 @@ function EventForm({ data, event, onClose }: { data: Data; event: Event | null; 
               onChange={(e) => setF({ ...f, when: e.target.value })}
             />
           </Field>
-          <Field label="Story day" hint="One scale for the whole story; later is larger. Gives elapsed time and ages.">
+          <Field label="故事天数" hint="整个故事使用统一天数，数值越大表示越晚，用于计算间隔和年龄。">
             <input
               className="input"
               type="number"
@@ -306,18 +301,18 @@ function EventForm({ data, event, onClose }: { data: Data; event: Event | null; 
               onChange={(e) => setF({ ...f, day: e.target.value === "" ? null : Number(e.target.value) })}
             />
           </Field>
-          <Field label="Kind">
+          <Field label="类型">
             <select
               className="input"
               value={f.kind}
               onChange={(e) => setF({ ...f, kind: e.target.value as Event["kind"] })}
             >
-              <option value="event">Event</option>
-              <option value="birth">Birth (gives an age)</option>
+              <option value="event">事件</option>
+              <option value="birth">出生（用于计算年龄）</option>
             </select>
           </Field>
         </div>
-        <Field label="Details">
+        <Field label="详情">
           <textarea
             className="input min-h-16"
             value={f.description}
@@ -326,21 +321,21 @@ function EventForm({ data, event, onClose }: { data: Data; event: Event | null; 
           />
         </Field>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Told in">
+          <Field label="叙述章节">
             <select
               className="input"
               value={f.chapterId ?? ""}
               onChange={(e) => setF({ ...f, chapterId: e.target.value || null })}
             >
-              <option value="">Not told (only mentioned)</option>
+              <option value="">未叙述（仅提及）</option>
               {data.chapters.map((c) => (
                 <option key={c.id} value={c.id}>
-                  ch. {c.order}: {c.title}
+                  章节 {c.order}: {c.title}
                 </option>
               ))}
             </select>
           </Field>
-          <Field label="Scene number">
+          <Field label="场景编号">
             <input
               className="input"
               type="number"
@@ -352,7 +347,7 @@ function EventForm({ data, event, onClose }: { data: Data; event: Event | null; 
           </Field>
         </div>
         <fieldset>
-          <legend className="label">Who</legend>
+          <legend className="label">参与角色</legend>
           <div className="flex flex-wrap gap-x-3 gap-y-1">
             {data.characters.map((c) => (
               <label key={c.id} className="flex items-center gap-1.5">
@@ -371,7 +366,7 @@ function EventForm({ data, event, onClose }: { data: Data; event: Event | null; 
                 {c.name}
               </label>
             ))}
-            {!data.characters.length && <span className="muted text-xs">No characters yet.</span>}
+            {!data.characters.length && <span className="muted text-xs">暂无角色。</span>}
           </div>
         </fieldset>
       </div>
@@ -390,7 +385,7 @@ function ExtractDialog({ data, onClose }: { data: Data; onClose: () => void }) {
     try {
       await post(`/projects/${projectId}/timeline/extract`, { ...aiText(), chapterId: chapterId || undefined });
       await qc.invalidateQueries({ queryKey: key(projectId) });
-      toast.success("Extraction queued");
+      toast.success("提取任务已加入队列");
       onClose();
     } catch (e) {
       toast.error(e);
@@ -402,33 +397,28 @@ function ExtractDialog({ data, onClose }: { data: Data; onClose: () => void }) {
     <Modal
       open
       onClose={onClose}
-      title="Extract timeline from story"
+      title="从故事提取时间线"
       footer={
         <>
           <AiChip cap="text" className="mr-auto" />
           <button type="button" className="btn-secondary" onClick={onClose}>
-            Cancel
+            取消
           </button>
           <button type="button" className="btn-primary" disabled={busy || !data.chapters.length} onClick={run}>
-            {busy && <Spinner />} Extract
+            {busy && <Spinner />} 提取
           </button>
         </>
       }
     >
       <div className="space-y-3 text-sm">
-        <p>
-          The text model reads the chapters and proposes their events in story-time order, with dates and story days
-          where the text gives them, and births where it gives ages. Nothing is saved until you review it.
-        </p>
-        {!data.chapters.length && (
-          <p className="text-amber-600">Analyse and apply the story first: there are no chapters.</p>
-        )}
-        <Field label="Chapters">
+        <p>文本模型会读取章节，按故事时间排列事件，并从原文提取日期、故事天数及出生信息。审核后才会保存。</p>
+        {!data.chapters.length && <p className="text-amber-600">暂无章节，请先分析故事并应用分析结果。</p>}
+        <Field label="章节">
           <select className="input" value={chapterId} onChange={(e) => setChapterId(e.target.value)}>
-            <option value="">All chapters</option>
+            <option value="">所有章节</option>
             {data.chapters.map((c) => (
               <option key={c.id} value={c.id}>
-                ch. {c.order}: {c.title}
+                章节 {c.order}: {c.title}
               </option>
             ))}
           </select>
@@ -449,12 +439,12 @@ function Review({ data, onDone }: { data: Data; onDone: () => void }) {
   if (x.status !== "completed")
     return (
       <div className="card mb-4 flex flex-wrap items-center gap-2 p-3 text-sm">
-        <span>Timeline extraction</span>
+        <span>时间线提取</span>
         <StatusChip status={x.status} />
         {x.status === "failed" && <span className="muted">{x.failureReason}</span>}
         {x.status === "awaiting_input" && (
           <Link className="underline" to="/projects/$projectId/generation/$jobId" params={{ projectId, jobId: x.id }}>
-            Paste the answer
+            粘贴回答
           </Link>
         )}
       </div>
@@ -480,17 +470,17 @@ function Review({ data, onDone }: { data: Data; onDone: () => void }) {
     }
   };
   return (
-    <section className="card mb-4 space-y-3 p-3" aria-label="Review the extracted timeline">
+    <section className="card mb-4 space-y-3 p-3" aria-label="审核提取的时间线">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="mr-auto font-medium">Review the extracted timeline</h2>
+        <h2 className="mr-auto font-medium">审核提取的时间线</h2>
         <button type="button" className="btn-secondary" disabled={busy} onClick={() => apply(false)}>
-          Discard
+          丢弃
         </button>
         <button type="button" className="btn-primary" disabled={busy || keep === 0} onClick={() => apply(true)}>
-          {busy && <Spinner />} Save {keep} events
+          {busy && <Spinner />} 保存 {keep} 个事件
         </button>
       </div>
-      <p className="muted text-xs">Untick what you do not want. Dated events are merged in by their day.</p>
+      <p className="muted text-xs">取消勾选要舍弃的内容，有日期的事件会按故事天数合并。</p>
       <ul className="space-y-1 text-sm">
         {proposal.events.map((e, i) => (
           <li key={i}>
@@ -506,7 +496,7 @@ function Review({ data, onDone }: { data: Data; onDone: () => void }) {
                 }}
               />
               <span>
-                {e.kind === "birth" && <Baby className="mr-1 inline size-3.5" aria-label="birth" />}
+                {e.kind === "birth" && <Baby className="mr-1 inline size-3.5" aria-label="出生" />}
                 <strong>{e.title}</strong>{" "}
                 <span className="muted text-xs">
                   {[

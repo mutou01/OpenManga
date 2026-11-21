@@ -1,6 +1,39 @@
 import type { UsageSummary } from "../../api/types.ts";
 import { fmt } from "../../components/ui.tsx";
 
+const OPERATION_LABELS: Record<string, string> = {
+  character_reference: "角色参考图",
+  location_reference: "场景参考图",
+  prop_reference: "道具参考图",
+  style_reference: "风格参考图",
+  panel_generation: "画格生成",
+  panel_edit: "画格编辑",
+  cover: "封面",
+  coverage_sheet: "覆盖图",
+  duplicate_scan: "重复扫描",
+  story_analysis: "故事分析",
+  story_rewrite: "故事改写",
+  youtube_package: "YouTube 发布包",
+  chapter_plan: "章节规划",
+  page_prompts: "提示词准备",
+  narration_text: "旁白文本",
+  narration_lint: "旁白质检",
+  narration_fix: "旁白修复",
+  audio_check: "音频检查",
+  narration_import: "旁白导入",
+  story_coverage: "故事覆盖检查",
+  narration_retime: "旁白时间调整",
+  social_copy: "社交媒体文案",
+  expert_chat: "专家对话",
+  expert_image: "专家对话图像",
+  expert_extract: "专家操作",
+  bible_extract: "故事设定集",
+  timeline_extract: "故事时间线",
+  lettering_translate: "排字翻译",
+  video_edit: "文字指令剪辑",
+  continuity_check: "连贯性检查",
+};
+
 const PROVIDER_COLORS: Record<string, string> = {
   openai: "#3b6cf6",
   deepseek: "#10b981",
@@ -28,7 +61,7 @@ function DailyChart({ daily }: { daily: UsageSummary["daily"] }) {
   const providers = [...new Set(daily.map((d) => d.provider))];
   return (
     <div>
-      <div className="flex h-40 items-end gap-0.5" role="img" aria-label="Daily API cost for the last 30 days">
+      <div className="flex h-40 items-end gap-0.5" role="img" aria-label="最近 30 天每日 API 费用">
         {days.map((day) => {
           const parts = byDay.get(day) ?? [];
           const total = parts.reduce((s, x) => s + x.cost, 0);
@@ -48,10 +81,10 @@ function DailyChart({ daily }: { daily: UsageSummary["daily"] }) {
       <div className="muted mt-2 flex flex-wrap gap-3 text-xs">
         {providers.map((p) => (
           <span key={p} className="flex items-center gap-1">
-            <span className="size-2.5 rounded-sm" style={{ background: color(p) }} /> {p}
+            <span className="size-2.5 rounded-sm" style={{ background: color(p) }} /> {PROVIDER_LABELS[p] ?? p}
           </span>
         ))}
-        {!providers.length && <span>No spend in the last 30 days</span>}
+        {!providers.length && <span>最近 30 天无支出</span>}
       </div>
     </div>
   );
@@ -67,7 +100,8 @@ const PROVIDER_LABELS: Record<string, string> = {
   anthropic: "Anthropic",
   openrouter: "OpenRouter",
   elevenlabs: "ElevenLabs",
-  mock: "Mock",
+  mock: "模拟供应商",
+  kokoro: "Kokoro",
 };
 
 export function UsageDashboard({ data }: { data: UsageSummary }) {
@@ -75,19 +109,23 @@ export function UsageDashboard({ data }: { data: UsageSummary }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Today" value={fmt.usd(w.today?.costUsd)} hint={`${w.today?.calls ?? 0} calls`} />
-        <Stat label="Last 7 days" value={fmt.usd(w["7d"]?.costUsd)} hint={`${w["7d"]?.calls ?? 0} calls`} />
-        <Stat label="Last 30 days" value={fmt.usd(w["30d"]?.costUsd)} hint={`${w["30d"]?.calls ?? 0} calls`} />
-        <Stat label="Lifetime" value={fmt.usd(w.lifetime?.costUsd)} hint={`${w.lifetime?.calls ?? 0} calls`} />
+        <Stat label="今天" value={fmt.usd(w.today?.costUsd)} hint={`${w.today?.calls ?? 0} 次调用`} />
+        <Stat label="最近 7 天" value={fmt.usd(w["7d"]?.costUsd)} hint={`${w["7d"]?.calls ?? 0} 次调用`} />
+        <Stat label="最近 30 天" value={fmt.usd(w["30d"]?.costUsd)} hint={`${w["30d"]?.calls ?? 0} 次调用`} />
+        <Stat label="累计" value={fmt.usd(w.lifetime?.costUsd)} hint={`${w.lifetime?.calls ?? 0} 次调用`} />
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="Images" value={fmt.usd(data.breakdown.imagesUsd)} hint="image models" />
-        <Stat label="Text" value={fmt.usd(data.breakdown.textUsd)} hint="planning, prompts, narration" />
-        <Stat label="Narration (local TTS)" value="$0.00" hint="No external API cost" />
+        <Stat label="图像" value={fmt.usd(data.breakdown.imagesUsd)} hint="图像模型" />
+        <Stat label="文本" value={fmt.usd(data.breakdown.textUsd)} hint="规划、提示词、旁白" />
+        <Stat label="旁白（本地语音合成）" value="$0.00" hint="无外部 API 费用" />
         <Stat
-          label="Providers"
+          label="供应商"
           value={String(Object.keys(data.breakdown.byProvider).length)}
-          hint={Object.keys(data.breakdown.byProvider).join(", ") || "none yet"}
+          hint={
+            Object.keys(data.breakdown.byProvider)
+              .map((provider) => PROVIDER_LABELS[provider] ?? provider)
+              .join("、") || "暂无"
+          }
         />
       </div>
       {Object.keys(data.breakdown.byProvider).length > 0 && (
@@ -99,37 +137,35 @@ export function UsageDashboard({ data }: { data: UsageSummary }) {
             ))}
         </div>
       )}
-      {data.breakdown.mockUsd > 0 && (
-        <p className="muted text-xs">Mock provider cost: {fmt.usd(data.breakdown.mockUsd)}</p>
-      )}
+      {data.breakdown.mockUsd > 0 && <p className="muted text-xs">模拟供应商费用 {fmt.usd(data.breakdown.mockUsd)}</p>}
       {data.unpricedCalls > 0 && (
         <p className="rounded-md bg-amber-500/10 p-2 text-sm text-amber-700 dark:text-amber-300">
-          {data.unpricedCalls} call{data.unpricedCalls === 1 ? "" : "s"} could not be priced (no rate snapshot for that
-          model), so spend is understated. An administrator can add rates under Admin → Rates.
+          {data.unpricedCalls} 次调用无法计价（该模型缺少费率快照），因此费用统计偏低。管理员可在“管理 →
+          费率”中补充费率。
         </p>
       )}
 
       <section className="card p-4">
-        <h2 className="mb-3 font-medium">Daily cost (30 days)</h2>
+        <h2 className="mb-3 font-medium">每日费用（30 天）</h2>
         <DailyChart daily={data.daily} />
       </section>
 
       <section className="card overflow-x-auto p-4">
-        <h2 className="mb-2 font-medium">By operation</h2>
+        <h2 className="mb-2 font-medium">按操作统计</h2>
         <table className="w-full text-sm">
           <thead className="muted text-xs">
             <tr className="border-b border-[var(--border)]">
-              <th className={th}>Operation</th>
-              <th className={th}>Calls</th>
-              <th className={th}>Cost</th>
-              <th className={th}>Avg latency</th>
-              <th className={th}>Failures</th>
+              <th className={th}>操作</th>
+              <th className={th}>调用次数</th>
+              <th className={th}>费用</th>
+              <th className={th}>平均耗时</th>
+              <th className={th}>失败次数</th>
             </tr>
           </thead>
           <tbody>
             {data.operations.map((o) => (
               <tr key={o.operation} className="border-b border-[var(--border)] last:border-0">
-                <td className="p-2">{o.label}</td>
+                <td className="p-2">{OPERATION_LABELS[o.operation] ?? o.label}</td>
                 <td className="p-2">{fmt.num(o.calls)}</td>
                 <td className="p-2">{fmt.usd(o.cost)}</td>
                 <td className="p-2">{fmt.ms(o.avg_latency)}</td>
@@ -139,7 +175,7 @@ export function UsageDashboard({ data }: { data: UsageSummary }) {
             {!data.operations.length && (
               <tr>
                 <td className="muted p-2" colSpan={5}>
-                  No usage yet
+                  暂无用量
                 </td>
               </tr>
             )}
@@ -148,25 +184,25 @@ export function UsageDashboard({ data }: { data: UsageSummary }) {
       </section>
 
       <section className="card overflow-x-auto p-4">
-        <h2 className="mb-2 font-medium">By provider</h2>
+        <h2 className="mb-2 font-medium">按供应商统计</h2>
         <table className="w-full text-sm">
           <thead className="muted text-xs">
             <tr className="border-b border-[var(--border)]">
-              <th className={th}>Provider</th>
-              <th className={th}>Model</th>
-              <th className={th}>Calls</th>
-              <th className={th}>Text in</th>
-              <th className={th}>Text out</th>
-              <th className={th}>Cached</th>
-              <th className={th}>Image in</th>
-              <th className={th}>Image out</th>
-              <th className={th}>Cost</th>
+              <th className={th}>供应商</th>
+              <th className={th}>模型</th>
+              <th className={th}>调用次数</th>
+              <th className={th}>输入文本</th>
+              <th className={th}>输出文本</th>
+              <th className={th}>缓存</th>
+              <th className={th}>输入图像</th>
+              <th className={th}>输出图像</th>
+              <th className={th}>费用</th>
             </tr>
           </thead>
           <tbody>
             {data.providers.map((p) => (
               <tr key={`${p.provider}-${p.model}`} className="border-b border-[var(--border)] last:border-0">
-                <td className="p-2">{p.provider}</td>
+                <td className="p-2">{PROVIDER_LABELS[p.provider] ?? p.provider}</td>
                 <td className="p-2">{p.model}</td>
                 <td className="p-2">{fmt.num(p.calls)}</td>
                 <td className="p-2">{fmt.num(p.text_in)}</td>
@@ -183,19 +219,19 @@ export function UsageDashboard({ data }: { data: UsageSummary }) {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="card overflow-x-auto p-4">
-          <h2 className="font-medium">Reference size experiments</h2>
+          <h2 className="font-medium">参考图尺寸对比</h2>
           <p className="muted mb-2 text-xs">
-            Panel generations grouped by the prompt-reference derivative box. Compare image-input tokens, cost and
-            latency against consistency before changing OPENAI_REFERENCE_MAX_WIDTH/HEIGHT.
+            按提示词参考图的派生图尺寸分组统计画格生成。调整 OPENAI_REFERENCE_MAX_WIDTH/HEIGHT
+            前，请对比图像输入词元、费用、耗时和一致性。
           </p>
           <table className="w-full text-sm">
             <thead className="muted text-xs">
               <tr className="border-b border-[var(--border)]">
-                <th className={th}>Ref size</th>
-                <th className={th}>Generations</th>
-                <th className={th}>Avg image in</th>
-                <th className={th}>Avg cost</th>
-                <th className={th}>Avg latency</th>
+                <th className={th}>参考图尺寸</th>
+                <th className={th}>生成次数</th>
+                <th className={th}>平均图像输入</th>
+                <th className={th}>平均费用</th>
+                <th className={th}>平均耗时</th>
               </tr>
             </thead>
             <tbody>
@@ -211,7 +247,7 @@ export function UsageDashboard({ data }: { data: UsageSummary }) {
               {!data.referenceExperiments.length && (
                 <tr>
                   <td className="muted p-2" colSpan={5}>
-                    No referenced panel generations yet
+                    尚无使用参考图生成的画格
                   </td>
                 </tr>
               )}
@@ -219,22 +255,22 @@ export function UsageDashboard({ data }: { data: UsageSummary }) {
           </table>
         </section>
         <section className="card p-4">
-          <h2 className="mb-2 font-medium">Quality signals</h2>
+          <h2 className="mb-2 font-medium">质量指标</h2>
           <div className="grid grid-cols-3 gap-3 text-center">
             <div>
               <div className="text-2xl font-semibold">{data.quality.generatedPanels}</div>
-              <div className="muted text-xs">Generated panels</div>
+              <div className="muted text-xs">已生成画格</div>
             </div>
             <div>
               <div className="text-2xl font-semibold">{Math.round(data.quality.regenerationRate * 100)}%</div>
-              <div className="muted text-xs">Regeneration rate</div>
+              <div className="muted text-xs">重新生成率</div>
             </div>
             <div>
               <div className="text-2xl font-semibold">{Math.round(data.quality.acceptanceRate * 100)}%</div>
-              <div className="muted text-xs">Acceptance rate</div>
+              <div className="muted text-xs">采纳率</div>
             </div>
           </div>
-          <p className="muted mt-3 text-xs">Acceptance = generated panels marked approved or locked.</p>
+          <p className="muted mt-3 text-xs">采纳指已生成画格被标记为已审核或已锁定。</p>
         </section>
       </div>
     </div>

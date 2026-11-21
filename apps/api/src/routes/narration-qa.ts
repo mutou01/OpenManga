@@ -311,8 +311,7 @@ narrationQaRoutes.post("/chapters/:id/narration/fix", async (c) => {
     .from(narrationFindings)
     .where(and(inArray(narrationFindings.id, input.findingIds), eq(narrationFindings.chapterId, chapterId)));
   const usable = findings.filter((f) => !UNFIXABLE_KINDS.includes(f.kind) && f.lineIds.length);
-  if (!usable.length)
-    throw badRequest("None of these findings can be fixed by rewriting lines (silences and pace need lines added)");
+  if (!usable.length) throw badRequest("当前问题无法通过改写旁白解决。可增加旁白改善静音间隔或节奏。");
   await assertBudget(c, project.id);
   const run = await textRun(c, input.ai);
   const job = await deps.db.transaction((tx) =>
@@ -363,8 +362,7 @@ narrationQaRoutes.post("/chapters/:id/narration/fix/apply", async (c) => {
   const [job] = await deps.db.select().from(generationJobs).where(eq(generationJobs.id, input.jobId));
   if (job?.kind !== "narration_fix" || job.projectId !== project.id || job.input.chapterId !== chapterId)
     throw notFound("Narration fix");
-  if (job.status !== "completed" || !job.result)
-    throw conflict(`The fix is ${job.status}; apply it once it has completed`);
+  if (job.status !== "completed" || !job.result) throw conflict(`修订任务当前状态为 ${job.status}，完成后才可应用`);
   const language = String(job.input.language);
   const proposals = ((job.result.proposals ?? []) as Proposal[]).filter(
     (p) => !input.lineIds || input.lineIds.includes(p.lineId),

@@ -52,7 +52,7 @@ export const useVideoModels = () =>
 /** A model option's label: its name and what 5 s cost at the chosen resolution, or why it cannot run yet. */
 export function modelLabel(m: VideoModel & { usable: boolean }, resolution: VideoResolution) {
   const usd = estimateClipUsd(m, clipDuration(m, 5), clipResolution(m, resolution), false);
-  const price = m.provider === "local" ? "free" : `${fmt.usd(usd)} / ${clipDuration(m, 5)} s`;
+  const price = m.provider === "local" ? "免费" : `${fmt.usd(usd)} / ${clipDuration(m, 5)} s`;
   const key = providerCatalog(m.provider)?.label.replace(/ \(.*\)$/, "") ?? m.provider;
   return `${m.label} — ${price}${m.usable ? "" : ` (add a ${m.provider === "fal" ? "fal" : key} key)`}`;
 }
@@ -128,15 +128,17 @@ export function ClipPanel({
       }),
     {
       onSuccess: done,
-      success: runs.length > 1 ? "Making a clip with each model" : "Making the clip",
+      success: runs.length > 1 ? "正在用所选模型分别生成片段" : "正在生成片段",
     },
   );
   const use = useAction((assetId: string | null) => post(`/panels/${panelId}/clips/use`, { assetId }), {
     onSuccess: done,
-    success: (r) =>
-      (r as { activeAssetId: string | null }).activeAssetId ? "This shot plays that clip" : "Back to the still",
+    success: (r) => ((r as { activeAssetId: string | null }).activeAssetId ? "此镜头将播放所选片段" : "已改用静态图片"),
   });
-  const remove = useAction((assetId: string) => del(`/clips/${assetId}`), { onSuccess: done, success: "Clip trashed" });
+  const remove = useAction((assetId: string) => del(`/clips/${assetId}`), {
+    onSuccess: done,
+    success: "片段已移至回收站",
+  });
   const setVideo = useAction((v: Partial<ShotVideo>) => patch(`/panels/${panelId}`, { video: v }), {
     onSuccess: done,
   });
@@ -152,12 +154,11 @@ export function ClipPanel({
     <details className="rounded-lg border border-[var(--border)] p-2">
       <summary className="cursor-pointer text-sm font-medium">
         <Clapperboard className="mr-1 inline size-3.5" />
-        Video clip{active ? " · playing a clip" : ""}
+        视频片段{active ? " · 使用视频片段" : ""}
       </summary>
       <fieldset disabled={locked} className="mt-2 space-y-2 text-xs">
         <p className="muted">
-          Turn this shot into a moving clip. Videos then play it in place of the still and its camera move. Still motion
-          is free; paid models run on your key for their provider and are priced before they start.
+          导出视频时，用动态片段替代静态画格及其运镜。静态运镜免费，付费模型使用你配置的服务商密钥，并会在生成前显示报价。
         </p>
         {active && (
           <video
@@ -168,15 +169,15 @@ export function ClipPanel({
             muted
             loop
             playsInline
-            aria-label="This shot's clip"
+            aria-label="此镜头的视频片段"
           />
         )}
-        <Field label="Model">
+        <Field label="模型">
           <select
             className="input text-xs"
             value={model}
             onChange={(e) => setModel(e.target.value)}
-            aria-label="Video model"
+            aria-label="视频模型"
           >
             {all.map((x) => (
               <option key={x.id} value={x.id} disabled={!x.usable}>
@@ -187,7 +188,7 @@ export function ClipPanel({
         </Field>
         {m && <p className="muted">{m.note}</p>}
         <div className="grid grid-cols-3 gap-1.5">
-          <Field label="Length (s)">
+          <Field label="时长（秒）">
             <input
               className="input text-xs"
               type="number"
@@ -197,7 +198,7 @@ export function ClipPanel({
               onChange={(e) => setSeconds(Math.max(1, Math.min(MAX_SHOT_SECONDS, Number(e.target.value) || 5)))}
             />
           </Field>
-          <Field label="Resolution">
+          <Field label="分辨率">
             <select
               className="input text-xs"
               value={resolution}
@@ -208,12 +209,12 @@ export function ClipPanel({
               <option value="1080p">1080p</option>
             </select>
           </Field>
-          <Field label="Compare with">
+          <Field label="对比模型">
             <select
               className="input text-xs"
               value={compareWith}
               onChange={(e) => setCompareWith(e.target.value)}
-              aria-label="Compare with model"
+              aria-label="对比模型"
             >
               <option value="">—</option>
               {all
@@ -230,19 +231,18 @@ export function ClipPanel({
           <div className="space-y-1.5 rounded border border-[var(--border)] p-1.5">
             <div className="flex items-center gap-2">
               <span>
-                Made as <strong>{plan!.parts} parts</strong> of {plan!.part} s, each continuing from the last frame of
-                the one before
+                分为 <strong>{plan!.parts} 段</strong>，每段 {plan!.part} 秒。从上一段的尾帧接续。
               </span>
               <select
                 className="input ml-auto w-auto py-0.5 text-xs"
-                aria-label="Part length"
+                aria-label="分段时长"
                 value={partSeconds ?? ""}
                 onChange={(e) => setPartSeconds(e.target.value ? Number(e.target.value) : null)}
               >
-                <option value="">Longest ({Math.max(...m.durations)} s)</option>
+                <option value="">最长（{Math.max(...m.durations)} 秒）</option>
                 {m.durations.map((d) => (
                   <option key={d} value={d}>
-                    {d} s parts
+                    每段 {d} 秒
                   </option>
                 ))}
               </select>
@@ -251,8 +251,8 @@ export function ClipPanel({
               <input
                 key={k}
                 className="input text-xs"
-                aria-label={`Part ${k + 1}`}
-                placeholder={`${k * plan!.part}–${(k + 1) * plan!.part} s: ${k === 0 ? "how it starts" : k === plan!.parts - 1 ? "how it ends" : "what happens next"} (blank carries the action on)`}
+                aria-label={`第 ${k + 1} 段`}
+                placeholder={`${k * plan!.part}–${(k + 1) * plan!.part} 秒：${k === 0 ? "如何开始" : k === plan!.parts - 1 ? "如何结束" : "接下来发生什么"}（留空则自动接续）`}
                 maxLength={600}
                 value={partNotes[k] ?? ""}
                 onChange={(e) =>
@@ -269,14 +269,14 @@ export function ClipPanel({
         {m?.audio && (
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={audio} onChange={(e) => setAudio(e.target.checked)} />
-            Generate sound with the picture (costs more)
+            同时生成声音（费用更高）
           </label>
         )}
-        <Field label="What moves" hint="Blank: written from the shot's beat and directing.">
+        <Field label="动作描述" hint="留空时根据情节节点和导演设置生成。">
           <textarea
             key={`${panelId}-${data?.clipPrompt ?? ""}`}
             className="input min-h-14 text-xs"
-            placeholder="e.g. she turns to the window; curtains drift; slow push in"
+            placeholder="例如：她转向窗户，窗帘轻拂，镜头缓慢推进"
             defaultValue={data?.clipPrompt ?? ""}
             onBlur={(e) => {
               const v = e.target.value.trim() || null;
@@ -286,8 +286,8 @@ export function ClipPanel({
         </Field>
         <div className="flex items-center gap-2">
           <span className="muted">
-            {plan && `${plan.total} s at ${clipResolution(m!, resolution)}`}
-            {runs.length > 1 ? " each" : ""} · {estimate ? `~${fmt.usd(estimate)}` : "free"}
+            {plan && `${plan.total} 秒 · ${clipResolution(m!, resolution)}`}
+            {runs.length > 1 ? "（每个模型）" : ""} · {estimate ? `~${fmt.usd(estimate)}` : "免费"}
           </span>
           <button
             type="button"
@@ -295,13 +295,13 @@ export function ClipPanel({
             disabled={
               generate.isPending || !data?.hasArt || runs.some((r) => !all.find((x) => x.id === r.model)?.usable)
             }
-            title={data?.hasArt ? undefined : "Draw the shot first"}
+            title={data?.hasArt ? undefined : "请先绘制镜头"}
             onClick={() => generate.mutate()}
           >
-            {runs.length > 1 ? "Make both" : "Make clip"}
+            {runs.length > 1 ? "分别生成片段" : "生成片段"}
           </button>
         </div>
-        {!data?.hasArt && <p className="text-amber-600">Draw the shot first: clips are made from its image.</p>}
+        {!data?.hasArt && <p className="text-amber-600">请先绘制镜头，片段将由镜头图片生成。</p>}
         {data?.jobs
           .filter((j) => RUNNING.includes(j.status) || j.status === "failed")
           .slice(0, 4)
@@ -313,7 +313,7 @@ export function ClipPanel({
             </div>
           ))}
         {Boolean(data?.clips.length) && (
-          <ul className="space-y-1" aria-label="Clips">
+          <ul className="space-y-1" aria-label="视频片段">
             {data!.clips.map((c) => (
               <li key={c.assetId} className="flex items-center gap-1.5 rounded border border-[var(--border)] p-1">
                 <video
@@ -328,12 +328,11 @@ export function ClipPanel({
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">
                     {all.find((x) => x.id === c.model)?.label ?? c.model}
-                    {c.assetId === data!.activeAssetId && " · playing"}
+                    {c.assetId === data!.activeAssetId && " · 正在使用"}
                   </div>
                   <div className="muted">
-                    {c.durationMs ? `${(c.durationMs / 1000).toFixed(1)} s` : ""}
-                    {c.parts > 1 ? ` in ${c.parts} parts` : ""} · {c.resolution} ·{" "}
-                    {c.costUsd ? fmt.usd(c.costUsd) : "free"}
+                    {c.durationMs ? `${(c.durationMs / 1000).toFixed(1)} 秒` : ""}
+                    {c.parts > 1 ? ` · ${c.parts} 段` : ""} · {c.resolution} · {c.costUsd ? fmt.usd(c.costUsd) : "免费"}
                   </div>
                 </div>
                 {c.assetId !== data!.activeAssetId && (
@@ -342,13 +341,13 @@ export function ClipPanel({
                     className="btn-secondary px-2 py-0.5 text-xs"
                     onClick={() => use.mutate(c.assetId)}
                   >
-                    Use
+                    使用
                   </button>
                 )}
                 <button
                   type="button"
                   className="btn-ghost p-1"
-                  aria-label="Trash clip"
+                  aria-label="将片段移至回收站"
                   onClick={() => remove.mutate(c.assetId)}
                 >
                   <Trash2 className="size-3.5" />
@@ -360,28 +359,28 @@ export function ClipPanel({
         {active && (
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={() => use.mutate(null)}>
-              Use the still instead
+              改用静态图片
             </button>
             {active.audio && (
               <label className="flex items-center gap-1">
-                Clip sound
+                片段声音
                 <select
                   className="input py-0.5 text-xs"
                   value={data!.clipAudio}
                   onChange={(e) => setVideo.mutate({ clipAudio: e.target.value as "mute" | "mix" })}
                 >
-                  <option value="mute">Off</option>
-                  <option value="mix">Under the narration</option>
+                  <option value="mute">关闭</option>
+                  <option value="mix">与旁白混音</option>
                 </select>
               </label>
             )}
           </div>
         )}
-        <Field label="Text on screen" hint="Shown over this shot for its whole hold (an ad's offer or call to action).">
+        <Field label="画面文字" hint="在整个镜头中叠加显示，例如广告优惠或行动号召。">
           <input
             key={`${panelId}-${text?.text ?? ""}`}
             className="input text-xs"
-            placeholder="e.g. 30% OFF — TODAY ONLY"
+            placeholder="例如：限时七折，仅限今天"
             maxLength={200}
             defaultValue={text?.text ?? ""}
             onBlur={(e) => {
@@ -393,23 +392,23 @@ export function ClipPanel({
           <div className="grid grid-cols-2 gap-1.5">
             <select
               className="input text-xs"
-              aria-label="Text position"
+              aria-label="文字位置"
               value={text.position}
               onChange={(e) => setText({ position: e.target.value as OnScreenText["position"] })}
             >
-              <option value="top">Top</option>
-              <option value="center">Middle</option>
-              <option value="bottom">Bottom</option>
+              <option value="top">顶部</option>
+              <option value="center">居中</option>
+              <option value="bottom">底部</option>
             </select>
             <select
               className="input text-xs"
-              aria-label="Text style"
+              aria-label="文字样式"
               value={text.style}
               onChange={(e) => setText({ style: e.target.value as OnScreenText["style"] })}
             >
-              <option value="headline">Headline</option>
-              <option value="caption">Caption</option>
-              <option value="cta">Call to action (boxed)</option>
+              <option value="headline">标题</option>
+              <option value="caption">说明文字</option>
+              <option value="cta">行动号召（带边框）</option>
             </select>
           </div>
         )}

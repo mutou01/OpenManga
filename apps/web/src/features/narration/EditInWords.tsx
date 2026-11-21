@@ -5,6 +5,7 @@ import { useState } from "react";
 import { get, post } from "../../api/client.ts";
 import { useAction } from "../../api/hooks.ts";
 import { Spinner } from "../../components/ui.tsx";
+import { statusLabel } from "../../lib/locale.ts";
 import { AiChip, useAiBody } from "../ai/AiPicker.tsx";
 
 type Edit = { op: VideoEditOp; label: string; effect: string; changes: number };
@@ -40,7 +41,7 @@ export function EditInWords({ projectId }: { projectId: string }) {
   const propose = useAction(
     () => post<{ job: { id: string } }>(`/projects/${projectId}/video-edits`, { ...aiText(), instruction }),
     {
-      success: "Working out the edits",
+      success: "正在拟定剪辑方案",
       onSuccess: (r) => {
         setJobId(r.job.id);
         setOps(null);
@@ -53,7 +54,7 @@ export function EditInWords({ projectId }: { projectId: string }) {
         ops: current.filter((o): o is VideoEditOp => o !== null),
       }),
     {
-      success: (r) => `Applied ${r.applied.length} edit(s)`,
+      success: (r) => `已应用 ${r.applied.length} 项修改`,
       onSuccess: () => {
         setJobId(null);
         setInstruction("");
@@ -65,20 +66,20 @@ export function EditInWords({ projectId }: { projectId: string }) {
   const set = (i: number, op: VideoEditOp | null) => setOps(current.map((o, k) => (k === i ? op : o)));
   const kept = current.filter(Boolean).length;
   return (
-    <section className="card mb-6 space-y-3 p-3" aria-label="Edit in words">
+    <section className="card mb-6 space-y-3 p-3" aria-label="用文字剪辑视频">
       <div>
-        <h2 className="text-sm font-medium">Edit in words</h2>
+        <h2 className="text-sm font-medium">用文字剪辑视频</h2>
         <p className="muted text-xs">
-          Say what to change: “make chapter 4 faster”, “cut every silence over 900 ms”, “add a title card before chapter
-          8”. You get a list of edits with what each would change; nothing changes until you apply it.
+          描述剪辑要求，例如“加快第 4 章节奏”“删减超过 900 毫秒的停顿”“在第 8
+          章前添加标题卡”。系统会列出修改方案及影响，应用后生效。
         </p>
       </div>
       {!jobId && (
         <div className="flex flex-wrap items-center gap-2">
           <input
             className="input min-w-0 flex-1"
-            placeholder="What should change?"
-            aria-label="Instruction"
+            placeholder="希望修改什么？"
+            aria-label="剪辑要求"
             maxLength={2000}
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
@@ -91,35 +92,35 @@ export function EditInWords({ projectId }: { projectId: string }) {
             disabled={instruction.trim().length < 3 || propose.isPending}
             onClick={() => propose.mutate()}
           >
-            <Wand2 className="size-4" /> Propose edits
+            <Wand2 className="size-4" /> 拟定剪辑方案
           </button>
         </div>
       )}
       {jobId && !result && (
         <p className="muted flex items-center gap-2 text-xs">
           {job.data?.job.status === "failed" ? (
-            <span className="text-red-500">It failed: {job.data.job.failureReason}</span>
+            <span className="text-red-500">剪辑方案生成失败 {job.data.job.failureReason}</span>
           ) : (
             <>
-              <Spinner /> Working out the edits… ({job.data?.job.status ?? "queued"})
+              <Spinner /> 正在拟定剪辑方案…（{statusLabel(job.data?.job.status ?? "queued")}）
             </>
           )}
           <button type="button" className="btn-ghost text-xs" onClick={() => setJobId(null)}>
-            Back
+            返回
           </button>
         </p>
       )}
       {result && (
         <>
           {result.summary && <p className="text-sm">{result.summary}</p>}
-          <ul className="space-y-1 text-sm" aria-label="Proposed edits">
+          <ul className="space-y-1 text-sm" aria-label="剪辑方案">
             {edits.map((e, i) => {
               const op = current[i] ?? null;
               return (
                 <li key={i} className="flex flex-wrap items-center gap-2 rounded-md border border-[var(--border)] p-2">
                   <input
                     type="checkbox"
-                    aria-label={`Apply: ${e.label}`}
+                    aria-label={`应用 ${e.label}`}
                     checked={op !== null}
                     onChange={(ev) => set(i, ev.target.checked ? e.op : null)}
                   />
@@ -132,8 +133,8 @@ export function EditInWords({ projectId }: { projectId: string }) {
               );
             })}
           </ul>
-          {!edits.length && <p className="muted text-xs">No edits proposed.</p>}
-          {result.dropped.length > 0 && <p className="muted text-xs">Left out: {result.dropped.join("; ")}</p>}
+          {!edits.length && <p className="muted text-xs">没有可用的剪辑方案。</p>}
+          {result.dropped.length > 0 && <p className="muted text-xs">已略过 {result.dropped.join("; ")}</p>}
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -141,10 +142,10 @@ export function EditInWords({ projectId }: { projectId: string }) {
               disabled={!kept || apply.isPending}
               onClick={() => apply.mutate()}
             >
-              Apply {kept} edit(s)
+              应用 {kept} 项修改
             </button>
             <button type="button" className="btn-ghost" onClick={() => setJobId(null)}>
-              Reject
+              拒绝
             </button>
           </div>
         </>
@@ -159,25 +160,25 @@ function OpFields({ op, onChange }: { op: VideoEditOp; onChange: (op: VideoEditO
   if (op.op === "pauses")
     return (
       <span className="flex items-center gap-1 text-xs">
-        at most
+        最多
         <input
           className="input w-20 py-0.5 text-xs"
           type="number"
           min={0}
           max={10000}
           step={50}
-          aria-label="Longest pause (ms)"
+          aria-label="最长停顿（毫秒）"
           value={op.maxPauseMs ?? ""}
           onChange={(e) => onChange({ ...op, maxPauseMs: num(e.target.value) })}
         />
-        ms, ×
+        毫秒，倍率 ×
         <input
           className="input w-16 py-0.5 text-xs"
           type="number"
           min={0}
           max={4}
           step={0.1}
-          aria-label="Pause scale"
+          aria-label="停顿倍率"
           value={op.pauseScale ?? ""}
           onChange={(e) => onChange({ ...op, pauseScale: num(e.target.value) })}
         />
@@ -192,12 +193,12 @@ function OpFields({ op, onChange }: { op: VideoEditOp; onChange: (op: VideoEditO
           min={500}
           max={60000}
           step={100}
-          placeholder="export's"
-          aria-label="Minimum hold (ms)"
+          placeholder="使用导出设置"
+          aria-label="最短停留时间（毫秒）"
           value={op.holdMs ?? ""}
           onChange={(e) => onChange({ ...op, holdMs: num(e.target.value) })}
         />
-        ms
+        毫秒
       </span>
     );
   if (op.op === "card" && op.card)
@@ -205,7 +206,7 @@ function OpFields({ op, onChange }: { op: VideoEditOp; onChange: (op: VideoEditO
       <input
         className="input w-56 py-0.5 text-xs"
         maxLength={120}
-        aria-label="Card title"
+        aria-label="标题卡标题"
         value={op.card.title}
         onChange={(e) => onChange({ ...op, card: { ...op.card!, title: e.target.value } })}
       />

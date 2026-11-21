@@ -47,25 +47,25 @@ type JobView = { job: { id: string; kind: string; status: string; failureReason:
 type Proposal = { lineId: string; key: string; before: string; after: string };
 
 const KIND_LABEL: Record<string, string> = {
-  repeated_opening: "Repeated openings",
-  flat_rhythm: "Flat rhythm",
-  name_overuse: "Name used too often",
-  near_duplicate: "Near-duplicate lines",
-  restates_dialogue: "Restates the dialogue",
-  chapter_opening: "Chapter opens alike",
-  chapter_ending: "Chapter ends alike",
-  dense_shot: "Crowded shot",
-  silent_stretch: "Silent stretch",
-  pace: "Pace",
-  repeated_meaning: "Meaning repeated",
-  cross_chapter_repeat: "Repeats an earlier chapter",
-  fact_overexplained: "Fact explained again",
-  describes_frame: "Only describes the frame",
-  audio_silent: "Silent audio",
-  audio_clipping: "Clipping",
-  audio_gap: "Stall inside a line",
-  audio_level: "Level out of step",
-  audio_loudness: "Chapter loudness",
+  repeated_opening: "重复开头",
+  flat_rhythm: "节奏平淡",
+  name_overuse: "姓名使用过多",
+  near_duplicate: "旁白近似重复",
+  restates_dialogue: "复述对白",
+  chapter_opening: "章节开头雷同",
+  chapter_ending: "章节结尾雷同",
+  dense_shot: "镜头旁白过密",
+  silent_stretch: "长段无旁白",
+  pace: "语速",
+  repeated_meaning: "语义重复",
+  cross_chapter_repeat: "重复前文",
+  fact_overexplained: "重复解释事实",
+  describes_frame: "仅描述画面",
+  audio_silent: "音频静音",
+  audio_clipping: "音频削波",
+  audio_gap: "行内停顿过长",
+  audio_level: "音量不均",
+  audio_loudness: "章节响度",
 };
 const SEVERITY_STYLE: Record<string, string> = {
   high: "bg-red-500/15 text-red-700 dark:text-red-300",
@@ -73,7 +73,7 @@ const SEVERITY_STYLE: Record<string, string> = {
   low: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
 };
 const summary = (c: Comparison) =>
-  `${c.found} found · ${c.introduced} new · ${c.resolved} resolved since the last check`;
+  `发现 ${c.found} 项 · 新增 ${c.introduced} 项 · 自上次检查以来已解决 ${c.resolved} 项`;
 const sumComparisons = (rows: Comparison[]) =>
   rows.reduce(
     (a, r) => ({
@@ -134,13 +134,13 @@ export function NarrationQaPage() {
         if (job.status === "completed" && j.kind === "fix") {
           const proposals = (job.result as { proposals?: Proposal[] } | null)?.proposals ?? [];
           if (proposals.length) setReview({ jobId: j.id, chapterId: j.chapterId, proposals });
-          else toast.success("The model found nothing to change in those lines");
+          else toast.success("模型未发现这些旁白行需要修改");
         }
         if (job.status === "completed" && j.kind === "lint")
-          toast.success(`AI check: ${summary(job.result as Comparison)}`);
+          toast.success(`AI 检查：${summary(job.result as Comparison)}`);
         if (job.status === "completed" && j.kind === "audio")
-          toast.success(`Audio check: ${summary(job.result as Comparison)}`);
-        if (job.status === "failed") toast.error(new Error(job.failureReason ?? "The job failed"));
+          toast.success(`音频检查：${summary(job.result as Comparison)}`);
+        if (job.status === "failed") toast.error(new Error(job.failureReason ?? "任务失败"));
         if (["completed", "failed", "cancelled"].includes(job.status)) {
           setJobs((all) => all.filter((x) => x.id !== j.id));
           await qc.invalidateQueries({ queryKey: findingsKey });
@@ -153,7 +153,7 @@ export function NarrationQaPage() {
   const lintUrl = chapterId ? `/chapters/${chapterId}/narration/lint` : `/projects/${projectId}/narration/lint`;
   const runRules = useAction(() => post<{ rules: Comparison | Comparison[] }>(lintUrl, { language: lang }), {
     invalidate: [findingsKey],
-    success: (r) => `Checks: ${summary(Array.isArray(r.rules) ? sumComparisons(r.rules) : r.rules)}`,
+    success: (r) => `检查结果：${summary(Array.isArray(r.rules) ? sumComparisons(r.rules) : r.rules)}`,
   });
   const runAi = useAction(
     () =>
@@ -167,7 +167,7 @@ export function NarrationQaPage() {
       success: (r) => {
         const started = r.jobs ?? (r.job ? [r.job] : []);
         setJobs((all) => [...all, ...started.map((j) => ({ id: j.id, kind: "lint" as const, chapterId: j.targetId }))]);
-        return `AI check queued for ${started.length} chapter(s); paste-mode jobs wait in Generation`;
+        return `${started.length} 章的 AI 检查已排队，粘贴模式任务请前往生成页处理`;
       },
     },
   );
@@ -177,7 +177,7 @@ export function NarrationQaPage() {
       invalidate: [findingsKey],
       success: (r) => {
         setJobs((all) => [...all, { id: r.audioJob.id, kind: "audio", chapterId: r.audioJob.targetId }]);
-        return "Audio check queued";
+        return "音频检查已排队";
       },
     },
   );
@@ -191,7 +191,7 @@ export function NarrationQaPage() {
         language: lang,
         ...aiTts(),
       }),
-    { success: (r) => `${r.queued} segment(s) queued for a new take — check the audio again once they are done` },
+    { success: (r) => `${r.queued} 个片段已排队重新配音，完成后请再次检查音频` },
   );
   const setFindingStatus = useAction(
     (v: { id: string; status: "open" | "ignored" }) => patch(`/narration-findings/${v.id}`, { status: v.status }),
@@ -217,7 +217,7 @@ export function NarrationQaPage() {
       success: (started) => {
         setJobs((all) => [...all, ...started.map((s) => ({ ...s, kind: "fix" as const }))]);
         setSelected(new Set());
-        return `Fix queued for ${started.length} chapter(s): the proposal opens here for review`;
+        return `${started.length} 章的修复已排队，完成后将在此处打开方案供审阅`;
       },
     },
   );
@@ -225,19 +225,19 @@ export function NarrationQaPage() {
   const all = findings.data?.findings ?? [];
   const shown = all.filter((f) => f.status === status && (!kind || f.kind === kind));
   const lineText = new Map((findings.data?.lines ?? []).map((l) => [l.id, l]));
-  const chapterName = new Map((chapters.data?.chapters ?? []).map((c) => [c.id, `Ch. ${c.order} — ${c.title}`]));
+  const chapterName = new Map((chapters.data?.chapters ?? []).map((c) => [c.id, `第 ${c.order} 章 — ${c.title}`]));
   const busy = jobs.length > 0;
 
   return (
     <div className="mx-auto max-w-5xl p-4 sm:p-6">
       <PageHeader
-        title="Narration QA"
-        subtitle="Repetition, restated dialogue, crowded or silent shots and pace — reviewed, ignored or fixed line by line."
+        title="旁白质检"
+        subtitle="逐行审阅、忽略或修复重复旁白、复述对白、镜头旁白过密或缺失以及语速问题。"
         actions={
           <>
             <select
               className="input w-auto max-w-full"
-              aria-label="Chapter"
+              aria-label="章节"
               value={chapterId ?? ""}
               onChange={(e) =>
                 navigate({
@@ -247,22 +247,22 @@ export function NarrationQaPage() {
                 })
               }
             >
-              <option value="">All chapters</option>
+              <option value="">全部章节</option>
               {chapters.data?.chapters.map((c) => (
                 <option key={c.id} value={c.id}>
-                  Ch. {c.order} — {c.title}
+                  第 {c.order} 章 — {c.title}
                 </option>
               ))}
             </select>
             <select
               className="input w-auto"
-              aria-label="Narration language"
+              aria-label="旁白语言"
               value={lang}
               onChange={(e) => setLanguage(e.target.value)}
             >
               {NARRATION_LANGUAGES.map((l) => (
                 <option key={l.code} value={l.code}>
-                  {l.name}
+                  {new Intl.DisplayNames(["zh-CN"], { type: "language" }).of(l.code) ?? l.name}
                 </option>
               ))}
             </select>
@@ -272,7 +272,7 @@ export function NarrationQaPage() {
               search={chapterId ? { chapterId } : {}}
               className="btn-ghost"
             >
-              Narration →
+              旁白 →
             </Link>
           </>
         }
@@ -284,27 +284,27 @@ export function NarrationQaPage() {
           className="btn-primary"
           onClick={() => runRules.mutate()}
           disabled={runRules.isPending}
-          title="Counting and comparing checks: no model, nothing spent"
+          title="通过计数和对比进行规则检查，无需调用模型或付费"
         >
-          {runRules.isPending ? <Spinner /> : <ListChecks className="size-4" />} Run checks
+          {runRules.isPending ? <Spinner /> : <ListChecks className="size-4" />} 运行检查
         </button>
         <button
           type="button"
           className="btn-secondary"
           onClick={() => runAi.mutate()}
           disabled={runAi.isPending}
-          title="Meaning repeated in other words, facts explained again and lines that only describe the frame: a text job per chapter"
+          title="检查换词重复、重复解释事实以及仅描述画面的旁白，每章创建一个文本任务"
         >
-          <Sparkles className="size-4" /> Check with AI
+          <Sparkles className="size-4" /> AI 检查
         </button>
         <button
           type="button"
           className="btn-secondary"
           onClick={() => runAudio.mutate()}
           disabled={runAudio.isPending}
-          title="Silent, clipped or stalled takes, uneven levels and each chapter's loudness, measured in the voiced audio: no model, nothing spent"
+          title="测量已配音音频的静音、削波、停顿、音量不均与章节响度，无需调用模型或付费"
         >
-          <AudioLines className="size-4" /> Check audio
+          <AudioLines className="size-4" /> 检查音频
         </button>
         <AiChip cap="text" />
         {busy && (
@@ -312,9 +312,9 @@ export function NarrationQaPage() {
             to="/projects/$projectId/generation"
             params={{ projectId }}
             className="muted flex items-center gap-1 text-xs underline"
-            title="Paste-mode jobs wait for your answer there"
+            title="粘贴模式任务在生成页等待你提交结果"
           >
-            <Spinner className="size-3" /> {jobs.length} job(s) running · Generation
+            <Spinner className="size-3" /> {jobs.length} 个任务进行中 · 生成页
           </Link>
         )}
       </div>
@@ -323,9 +323,9 @@ export function NarrationQaPage() {
         value={tab}
         onChange={setTab}
         tabs={[
-          { value: "findings", label: `Findings (${findings.data?.counts.byStatus.open ?? 0} open)` },
-          { value: "density", label: "Density" },
-          { value: "loudness", label: "Loudness" },
+          { value: "findings", label: `问题（${findings.data?.counts.byStatus.open ?? 0} 项待处理）` },
+          { value: "density", label: "密度" },
+          { value: "loudness", label: "响度" },
         ]}
       />
 
@@ -346,7 +346,7 @@ export function NarrationQaPage() {
               className={clsx("chip", !kind && "ring-2 ring-accent-500")}
               onClick={() => setKind(null)}
             >
-              All open · {findings.data?.counts.byStatus.open ?? 0}
+              全部待处理 · {findings.data?.counts.byStatus.open ?? 0}
             </button>
             {Object.entries(findings.data?.counts.openByKind ?? {}).map(([k, n]) => (
               <button
@@ -362,16 +362,16 @@ export function NarrationQaPage() {
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <select
               className="input w-auto"
-              aria-label="Status"
+              aria-label="状态"
               value={status}
               onChange={(e) => {
                 setStatus(e.target.value as typeof status);
                 setSelected(new Set());
               }}
             >
-              <option value="open">Open ({findings.data?.counts.byStatus.open ?? 0})</option>
-              <option value="ignored">Ignored ({findings.data?.counts.byStatus.ignored ?? 0})</option>
-              <option value="fixed">Fixed ({findings.data?.counts.byStatus.fixed ?? 0})</option>
+              <option value="open">待处理（{findings.data?.counts.byStatus.open ?? 0}）</option>
+              <option value="ignored">已忽略（{findings.data?.counts.byStatus.ignored ?? 0}）</option>
+              <option value="fixed">已修复（{findings.data?.counts.byStatus.fixed ?? 0}）</option>
             </select>
             {status === "open" && (
               <button
@@ -379,17 +379,20 @@ export function NarrationQaPage() {
                 className="btn-secondary ml-auto"
                 disabled={!selected.size || fix.isPending}
                 onClick={() => fix.mutate()}
-                title="Rewrite only the selected findings' lines; you review the changes before anything is saved"
+                title="仅改写所选问题涉及的旁白行，审阅后再保存"
               >
-                <Wand2 className="size-4" /> Fix selected ({selected.size})
+                <Wand2 className="size-4" /> 修复所选 ({selected.size})
               </button>
             )}
           </div>
           {findings.isLoading ? (
             <Spinner />
           ) : !shown.length ? (
-            <EmptyState icon={<ListChecks className="size-8" />} title={`No ${status} findings`}>
-              {all.length ? "Nothing here with this filter." : "Run the checks to review this narration."}
+            <EmptyState
+              icon={<ListChecks className="size-8" />}
+              title={`暂无${{ open: "待处理", ignored: "已忽略", fixed: "已修复" }[status]}问题`}
+            >
+              {all.length ? "当前筛选条件下没有问题。" : "运行检查以审阅这些旁白。"}
             </EmptyState>
           ) : (
             <ul className="space-y-2">
@@ -399,15 +402,9 @@ export function NarrationQaPage() {
                     <input
                       type="checkbox"
                       className="mt-1 shrink-0"
-                      aria-label="Select to fix"
+                      aria-label="选择修复"
                       disabled={!f.fixable}
-                      title={
-                        f.fixable
-                          ? "Select to fix"
-                          : f.check === "audio"
-                            ? "Needs a new take of the audio, not a rewrite"
-                            : "Needs lines added or the voice changed, not a rewrite"
-                      }
+                      title={f.fixable ? "选择修复" : f.check === "audio" ? "需要重新配音" : "需要添加旁白行或更换音色"}
                       checked={selected.has(f.id)}
                       onChange={(e) => {
                         const next = new Set(selected);
@@ -420,8 +417,10 @@ export function NarrationQaPage() {
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex flex-wrap items-center gap-1.5 text-sm">
                       <span className="font-medium">{KIND_LABEL[f.kind] ?? f.kind}</span>
-                      <span className={clsx("chip", SEVERITY_STYLE[f.severity])}>{f.severity}</span>
-                      <span className="chip">{f.check === "ai" ? "AI" : f.check}</span>
+                      <span className={clsx("chip", SEVERITY_STYLE[f.severity])}>
+                        {{ high: "高", medium: "中", low: "低" }[f.severity]}
+                      </span>
+                      <span className="chip">{{ ai: "AI", rule: "规则", audio: "音频" }[f.check]}</span>
                       {!chapterId && (
                         <Link
                           to="/projects/$projectId/narration/qa"
@@ -429,19 +428,19 @@ export function NarrationQaPage() {
                           search={{ chapterId: f.chapterId }}
                           className="muted text-xs underline"
                         >
-                          {chapterName.get(f.chapterId) ?? "Chapter"}
+                          {chapterName.get(f.chapterId) ?? "章节"}
                         </Link>
                       )}
                     </div>
                     <p className="text-sm">{f.message}</p>
                     {f.lineIds.map((id) => (
                       <blockquote key={id} className="muted border-l-2 border-[var(--border)] pl-2 text-xs">
-                        {lineText.get(id)?.text ?? "(line deleted)"}
+                        {lineText.get(id)?.text ?? "（旁白行已删除）"}
                       </blockquote>
                     ))}
                     {f.relatedChapterIds.length > 0 && (
                       <p className="muted text-xs">
-                        Also: {f.relatedChapterIds.map((id) => chapterName.get(id) ?? "a chapter").join(", ")}
+                        相关章节：{f.relatedChapterIds.map((id) => chapterName.get(id) ?? "某章节").join("、")}
                       </p>
                     )}
                   </div>
@@ -451,10 +450,10 @@ export function NarrationQaPage() {
                         type="button"
                         className="btn-ghost text-xs"
                         disabled={revoice.isPending}
-                        title="Synthesize these lines again, even where the same take is cached"
+                        title="重新合成这些旁白行，包括已有缓存配音的片段"
                         onClick={() => revoice.mutate(f)}
                       >
-                        <Mic className="size-3.5" /> New take
+                        <Mic className="size-3.5" /> 重新配音
                       </button>
                     )}
                     {f.status === "ignored" || f.status === "fixed" ? (
@@ -463,7 +462,7 @@ export function NarrationQaPage() {
                         className="btn-ghost text-xs"
                         onClick={() => setFindingStatus.mutate({ id: f.id, status: "open" })}
                       >
-                        Reopen
+                        重新打开
                       </button>
                     ) : (
                       <button
@@ -471,7 +470,7 @@ export function NarrationQaPage() {
                         className="btn-ghost text-xs"
                         onClick={() => setFindingStatus.mutate({ id: f.id, status: "ignored" })}
                       >
-                        Ignore
+                        忽略
                       </button>
                     )}
                   </div>
@@ -484,7 +483,7 @@ export function NarrationQaPage() {
       {review && (
         <FixReview
           review={review}
-          chapter={chapterName.get(review.chapterId) ?? "Chapter"}
+          chapter={chapterName.get(review.chapterId) ?? "章节"}
           ttsBody={aiTts}
           onClose={() => setReview(null)}
           onApplied={(r) => {
@@ -536,8 +535,8 @@ function FixReview({
       }),
     {
       success: (r) =>
-        `Applied ${r.applied.length} line(s)${r.skipped.length ? `, skipped ${r.skipped.length} edited since` : ""}` +
-        `${r.revoiced ? ` · re-voicing ${r.revoiced} segment(s)` : ""} · checks: ${summary(r.rules)}`,
+        `已应用 ${r.applied.length} 行${r.skipped.length ? `，跳过期间已被编辑的 ${r.skipped.length} 行` : ""}` +
+        `${r.revoiced ? ` · 正在重新配音 ${r.revoiced} 个片段` : ""} · 检查结果：${summary(r.rules)}`,
       onSuccess: onApplied,
     },
   );
@@ -546,11 +545,11 @@ function FixReview({
       open
       wide
       onClose={onClose}
-      title={`Proposed fixes · ${chapter}`}
+      title={`修复方案 · ${chapter}`}
       footer={
         <>
           <button type="button" className="btn-secondary" onClick={onClose}>
-            Discard
+            放弃
           </button>
           <button
             type="button"
@@ -558,15 +557,12 @@ function FixReview({
             disabled={!accepted.size || apply.isPending}
             onClick={() => apply.mutate()}
           >
-            {apply.isPending && <Spinner />} Apply {accepted.size} line(s)
+            {apply.isPending && <Spinner />} 应用 {accepted.size} 行
           </button>
         </>
       }
     >
-      <p className="muted mb-3 text-sm">
-        Only the flagged lines are rewritten. After applying, the checks run again on the chapter so you can see whether
-        the fix brought new findings.
-      </p>
+      <p className="muted mb-3 text-sm">仅改写标记的旁白行。应用后将重新检查本章，以便确认修复是否引入了新问题。</p>
       <ul className="space-y-3">
         {review.proposals.map((p) => (
           <li key={p.lineId} className="rounded-lg border border-[var(--border)] p-3">
@@ -581,7 +577,7 @@ function FixReview({
                   setAccepted(next);
                 }}
               />
-              Line {p.key.slice(1)}
+              第 {p.key.slice(1)} 行
             </label>
             <p className="rounded bg-red-500/10 p-2 text-sm text-red-800 line-through decoration-red-500/60 dark:text-red-200">
               {p.before}
@@ -595,12 +591,12 @@ function FixReview({
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
         <label className="flex items-center gap-2">
           <input type="checkbox" checked={revoice} onChange={(e) => setRevoice(e.target.checked)} />
-          Re-voice the changed sentences
+          重新合成修改过的句子
         </label>
         {revoice && <AiChip cap="tts" />}
         <label className="flex items-center gap-2">
           <input type="checkbox" checked={recheck} onChange={(e) => setRecheck(e.target.checked)} />
-          Check again with AI (same model as the fix)
+          再次使用 AI 检查（使用修复时的同一模型）
         </label>
       </div>
     </Modal>
@@ -625,12 +621,12 @@ function DensityView({
         <table className="w-full min-w-[34rem] text-sm">
           <thead className="muted text-left text-xs">
             <tr>
-              <th className="p-2">Chapter</th>
-              <th className="p-2 text-right">Words</th>
-              <th className="p-2 text-right">Shots</th>
-              <th className="p-2 text-right">Words / shot</th>
-              <th className="p-2 text-right">Silent shots</th>
-              <th className="p-2 text-right">Words / min</th>
+              <th className="p-2">章节</th>
+              <th className="p-2 text-right">词数</th>
+              <th className="p-2 text-right">镜头数</th>
+              <th className="p-2 text-right">每镜头词数</th>
+              <th className="p-2 text-right">无旁白镜头</th>
+              <th className="p-2 text-right">每分钟词数</th>
             </tr>
           </thead>
           <tbody>
@@ -641,7 +637,7 @@ function DensityView({
               return (
                 <tr key={c.id} className="border-t border-[var(--border)]">
                   <td className="p-2">
-                    Ch. {c.order} — {c.title}
+                    第 {c.order} 章 — {c.title}
                   </td>
                   <td className="p-2 text-right tabular-nums">{c.words}</td>
                   <td className="p-2 text-right tabular-nums">{c.shotCount}</td>
@@ -659,18 +655,18 @@ function DensityView({
         </table>
       </div>
       <p className="muted text-xs">
-        Target: about {data.target.wordsPerShot} words a shot and {data.target.wordsPerMinute} words a minute. Words a
-        minute come from current audio only; "—" until the chapter is voiced.
+        目标为每镜头约 {data.target.wordsPerShot} 个词、每分钟约 {data.target.wordsPerMinute} 个词。
+        每分钟词数仅依据当前音频计算，章节配音前显示“—”。
       </p>
       {one?.shots && (
         <div className="card p-3">
-          <h2 className="mb-2 text-sm font-medium">Shot by shot</h2>
+          <h2 className="mb-2 text-sm font-medium">逐镜头统计</h2>
           <div className="overflow-x-auto">
             <div className="flex h-28 items-end gap-px" style={{ minWidth: `${one.shots.length * 6}px` }}>
               {one.shots.map((s, i) => (
                 <div
                   key={s.id}
-                  title={`Shot ${i + 1}: ${s.words} words${s.silent ? " (silent)" : ""}`}
+                  title={`镜头 ${i + 1}：${s.words} 个词${s.silent ? "（无旁白）" : ""}`}
                   className={clsx(
                     "min-w-[4px] flex-1 rounded-t-sm",
                     s.silent
@@ -684,12 +680,10 @@ function DensityView({
               ))}
             </div>
           </div>
-          <p className="muted mt-2 text-xs">
-            Bars are words per shot; amber shots have no narration, red ones carry more than twice the target.
-          </p>
+          <p className="muted mt-2 text-xs">柱形表示每镜头词数，琥珀色表示无旁白，红色表示超过目标词数的两倍。</p>
         </div>
       )}
-      {chapterId && !one?.shots?.length && <p className="muted text-sm">This chapter has no planned shots yet.</p>}
+      {chapterId && !one?.shots?.length && <p className="muted text-sm">本章尚未规划镜头。</p>}
     </div>
   );
 }
@@ -708,8 +702,8 @@ function LoudnessView({
   const list = chapters.filter((c) => (chapterId ? c.id === chapterId : by.has(c.id)));
   if (!rows.length)
     return (
-      <EmptyState icon={<AudioLines className="size-8" />} title="Not measured yet">
-        Run <b>Check audio</b> to measure each voiced chapter's loudness and true peak.
+      <EmptyState icon={<AudioLines className="size-8" />} title="尚未测量">
+        运行<b>检查音频</b>以测量各已配音章节的响度与真峰值。
       </EmptyState>
     );
   const num = (n: number | null, unit: string) => (n === null ? "—" : `${n.toFixed(1)} ${unit}`);
@@ -719,11 +713,11 @@ function LoudnessView({
         <table className="w-full min-w-[30rem] text-sm">
           <thead className="muted text-left text-xs">
             <tr>
-              <th className="p-2">Chapter</th>
-              <th className="p-2 text-right">Loudness</th>
-              <th className="p-2 text-right">Range</th>
-              <th className="p-2 text-right">True peak</th>
-              <th className="p-2 text-right">Measured</th>
+              <th className="p-2">章节</th>
+              <th className="p-2 text-right">响度</th>
+              <th className="p-2 text-right">响度范围</th>
+              <th className="p-2 text-right">真峰值</th>
+              <th className="p-2 text-right">测量日期</th>
             </tr>
           </thead>
           <tbody>
@@ -732,7 +726,7 @@ function LoudnessView({
               return (
                 <tr key={c.id} className="border-t border-[var(--border)]">
                   <td className="p-2">
-                    Ch. {c.order} — {c.title}
+                    第 {c.order} 章 — {c.title}
                   </td>
                   <td className="p-2 text-right tabular-nums">{num(r?.lufs ?? null, "LUFS")}</td>
                   <td className="p-2 text-right tabular-nums">{num(r?.lra ?? null, "LU")}</td>
@@ -745,7 +739,7 @@ function LoudnessView({
                     {num(r?.truePeakDb ?? null, "dBTP")}
                   </td>
                   <td className="muted p-2 text-right text-xs">
-                    {r?.measuredAt ? new Date(r.measuredAt).toLocaleDateString() : "—"}
+                    {r?.measuredAt ? new Date(r.measuredAt).toLocaleDateString("zh-CN") : "—"}
                   </td>
                 </tr>
               );
@@ -754,9 +748,8 @@ function LoudnessView({
         </table>
       </div>
       <p className="muted text-xs">
-        Measured on the voiced narration with its pauses (EBU R128). A video export normalises the whole film to -14
-        LUFS with peaks under -1.5 dBTP, so what matters here is that chapters sit close together; a true peak above -1
-        dBTP (amber) is close to clipping before normalisation.
+        依据含停顿的旁白音频测量（EBU R128）。视频导出会将全片响度归一化为 -14 LUFS，峰值低于 -1.5 dBTP。
+        各章响度应尽量接近，真峰值高于 -1 dBTP 时以琥珀色标记，表示归一化前已接近削波。
       </p>
     </div>
   );

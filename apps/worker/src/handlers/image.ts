@@ -25,9 +25,9 @@ type Input = typeof generationInputs.$inferSelect;
 
 /** Load the exact bytes that were planned: small derivatives for refs, full resolution for target/mask. */
 export async function loadInputFile(deps: WorkerDeps, input: Input): Promise<ImageInputFile> {
-  if (!input.assetId) throw new InputError(`Input ${input.label} has no asset`);
+  if (!input.assetId) throw new InputError(`输入项 ${input.label} 缺少素材`);
   const asset = await deps.assets.get(input.assetId);
-  if (!asset) throw new InputError(`Reference asset for ${input.label} was deleted`);
+  if (!asset) throw new InputError(`输入项 ${input.label} 的参考素材已删除`);
   if (!input.variantId) return { data: await deps.assets.read(asset), mime: asset.mimeType, label: input.label };
   const [variant] = await deps.db.select().from(assetVariants).where(eq(assetVariants.id, input.variantId));
   if (variant && (await deps.assets.storage.exists(variant.storageKey))) {
@@ -139,8 +139,8 @@ export async function inputsOf(deps: WorkerDeps, jobId: string) {
 export async function panelGeneration(deps: WorkerDeps, job: ProjectJob) {
   const panelId = job.targetId!;
   const [panel] = await deps.db.select().from(panels).where(eq(panels.id, panelId));
-  if (!panel) throw new InputError("Panel no longer exists");
-  if (!job.compiledPrompt) throw new InputError("Job has no compiled prompt");
+  if (!panel) throw new InputError("画格已不存在");
+  if (!job.compiledPrompt) throw new InputError("任务缺少已编译的提示词");
   const inputs = await inputsOf(deps, job.id);
   const references: ImageInputFile[] = [];
   for (const i of inputs) references.push(await loadInputFile(deps, i));
@@ -282,7 +282,7 @@ export async function panelEdit(deps: WorkerDeps, job: ProjectJob) {
   const inputs = await inputsOf(deps, job.id);
   const targetInput = inputs.find((i) => i.role === "target");
   const maskInput = inputs.find((i) => i.role === "mask");
-  if (!targetInput || !maskInput) throw new InputError("Edit job is missing its target or mask");
+  if (!targetInput || !maskInput) throw new InputError("编辑任务缺少目标图片或遮罩");
   const target = await loadInputFile(deps, targetInput);
   const maskFile = await loadInputFile(deps, maskInput);
   const t = await probeImage(target.data);
@@ -331,7 +331,7 @@ const SUBJECT_ASSET: Record<string, AssetType> = {
 /** Canonical references are generated at full provider resolution and never downscaled. */
 export async function referenceGeneration(deps: WorkerDeps, job: ProjectJob) {
   const kind = String(job.input.kind) as ReferenceKind;
-  if (!job.compiledPrompt) throw new InputError("Job has no compiled prompt");
+  if (!job.compiledPrompt) throw new InputError("任务缺少已编译的提示词");
   // An outfit reference is drawn from the approved design, and its prompt says so: "reference image 1 is this
   // character's approved design — reproduce that same person". That image is recorded as the job's input, and it has
   // to be sent; without it the model is told to copy a face it never sees, and every outfit drifts into a stranger.

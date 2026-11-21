@@ -1,12 +1,12 @@
 import { EDGE_STYLES, type EdgeStyle } from "@openmanga/schemas";
 
 const LABEL: Record<EdgeStyle["style"], string> = {
-  straight: "Straight",
-  wavy: "Wavy",
-  torn: "Torn paper",
-  rough: "Rough cut",
-  brush: "Brush stroke",
-  burnt: "Burnt",
+  straight: "直线",
+  wavy: "波浪",
+  torn: "撕纸",
+  rough: "粗切",
+  brush: "笔触",
+  burnt: "烧灼",
 };
 
 /**
@@ -49,11 +49,11 @@ export function EdgePicker({
       </label>
       {value && value.style !== "straight" && (
         <label className="text-xs">
-          <span className="label">Depth</span>
+          <span className="label">深度</span>
           <input
             type="range"
             className="w-32"
-            aria-label={`${label} depth`}
+            aria-label={`${label}深度`}
             min={0.1}
             max={1}
             step={0.05}

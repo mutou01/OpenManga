@@ -27,22 +27,21 @@ export const RETRYABLE: ProviderErrorCode[] = [
 ];
 
 const USER_MESSAGES: Record<ProviderErrorCode, string> = {
-  timeout: "The AI provider took too long to respond. The job will be retried.",
-  rate_limited: "The AI provider is rate limiting requests. The job will be retried shortly.",
-  server_error: "The AI provider had a temporary server error.",
-  network: "Could not reach the AI provider (network error).",
-  auth: "The AI provider rejected our credentials. An administrator must check the API key.",
-  quota: "The AI provider account has insufficient balance or quota.",
-  invalid_request: "The AI provider rejected the request as invalid.",
-  content_policy: "The request was blocked by the provider's content policy. Adjust the prompt and try again.",
-  invalid_response: "The AI provider returned an unusable response.",
-  invalid_json: "The AI returned malformed structured data that could not be repaired.",
-  offline: "The local speech service is offline.",
-  model_loading: "The local speech model is still loading. Try again in a moment.",
-  synthesis_error: "Speech synthesis failed for this text.",
-  cancelled: "The job was cancelled.",
-  batch_queue_full:
-    "The provider's batch queue for this model is full. The batch is submitted once earlier batches finish.",
+  timeout: "AI 服务商响应超时，任务将自动重试。",
+  rate_limited: "AI 服务商正在限制请求频率，任务稍后将自动重试。",
+  server_error: "AI 服务商暂时出现服务器错误。",
+  network: "网络错误，无法连接 AI 服务商。",
+  auth: "AI 服务商拒绝了凭据，请联系管理员检查 API 密钥。",
+  quota: "AI 服务商账号余额或配额不足。",
+  invalid_request: "AI 服务商判定请求无效，已拒绝处理。",
+  content_policy: "请求被服务商的内容政策拦截，请调整提示词后重试。",
+  invalid_response: "AI 服务商返回的响应无法使用。",
+  invalid_json: "AI 返回了无法修复的结构化数据。",
+  offline: "本地语音服务离线。",
+  model_loading: "本地语音模型仍在加载，请稍后重试。",
+  synthesis_error: "这段文本的语音合成失败。",
+  cancelled: "任务已取消。",
+  batch_queue_full: "该模型的服务商批次队列已满。先前批次完成后将自动提交本批次。",
 };
 
 export class ProviderError extends Error {

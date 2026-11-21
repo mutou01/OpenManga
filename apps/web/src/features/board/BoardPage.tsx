@@ -8,6 +8,7 @@ import type { CastCard, LocationCard, PropCard } from "../../api/types.ts";
 import { AssetImage, EmptyState, ErrorBox, PageHeader, Spinner, StatusChip, toast } from "../../components/ui.tsx";
 import { useAiBody } from "../ai/AiPicker.tsx";
 import { useProjectId } from "../project/ProjectLayout.tsx";
+import { imageAspectLabel } from "../vision/aspect-labels.ts";
 import { useLocationStates } from "../world/LocationStates.tsx";
 
 export type BoardItem = {
@@ -63,17 +64,17 @@ export function BoardPage() {
   return (
     <div className="mx-auto max-w-6xl p-4 sm:p-6">
       <PageHeader
-        title="Reference board"
-        subtitle="Images for mood and look. Drop one onto a character, outfit, place, prop or the style as a reference to approve, use it as a panel's layout guide from the page editor, or have one aspect of it described."
+        title="参考看板"
+        subtitle="收集氛围和视觉参考图片。可将图片用于角色、服装、地点、道具或画风的待审核参考图，也可在页面编辑器中用作分镜布局引导图，或描述其中某个维度。"
         actions={
           <label className={`btn-primary cursor-pointer ${uploading ? "pointer-events-none opacity-50" : ""}`}>
-            {uploading ? <Spinner /> : <ImagePlus className="size-4" />} Add images
+            {uploading ? <Spinner /> : <ImagePlus className="size-4" />} 添加图片
             <input
               type="file"
               multiple
               className="sr-only"
               accept="image/png,image/jpeg,image/webp"
-              aria-label="Add images to the board"
+              aria-label="向参考看板添加图片"
               onChange={(e) => {
                 if (e.target.files?.length) void upload(e.target.files);
                 e.target.value = "";
@@ -85,9 +86,7 @@ export function BoardPage() {
       {q.isLoading && <Spinner />}
       <ErrorBox error={q.error} onRetry={() => q.refetch()} />
       {q.data && !q.data.length && (
-        <EmptyState title="The board is empty">
-          Add images you want the art to borrow from: a mood, a light, a costume.
-        </EmptyState>
+        <EmptyState title="参考看板为空">添加可供创作参考的图片，例如氛围、光照或服装。</EmptyState>
       )}
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {q.data?.map((it) => (
@@ -112,11 +111,11 @@ function aspectText(v: unknown): string {
 }
 
 const TARGETS = [
-  ["character", "Character"],
-  ["outfit", "Outfit"],
-  ["location", "Location"],
-  ["prop", "Prop"],
-  ["style", "Project style"],
+  ["character", "角色"],
+  ["outfit", "服装"],
+  ["location", "地点"],
+  ["prop", "道具"],
+  ["style", "项目画风"],
 ] as const;
 
 function BoardCard({ item, projectId }: { item: BoardItem; projectId: string }) {
@@ -127,7 +126,7 @@ function BoardCard({ item, projectId }: { item: BoardItem; projectId: string }) 
   const [aspect, setAspect] = useState<ImageAspectKey>("lighting");
   const describe = useAction(() => post(`/assets/${item.assetId}/describe`, { aspects: [aspect], ...aiText() }), {
     ...inv,
-    success: "Description queued",
+    success: "描述任务已加入队列",
   });
   const d = item.described;
   const summaries = d?.description
@@ -137,31 +136,31 @@ function BoardCard({ item, projectId }: { item: BoardItem; projectId: string }) 
       ].filter(([, s]) => s)
     : [];
   return (
-    <li className="card flex flex-col gap-2 p-2" aria-label="Board image">
+    <li className="card flex flex-col gap-2 p-2" aria-label="看板图片">
       <AssetImage
         assetId={item.assetId}
-        alt={item.note || "Board image"}
+        alt={item.note || "看板图片"}
         className="aspect-[4/3] w-full rounded"
         fit="contain"
       />
       <textarea
         className="input min-h-10 text-xs"
-        placeholder="Why this image: the light, the coat, the mood…"
+        placeholder="记录参考原因，例如光照、外套或氛围……"
         defaultValue={item.note}
-        aria-label="Note"
+        aria-label="备注"
         onBlur={(e) => e.target.value !== item.note && note.mutate(e.target.value)}
       />
       <UseAs item={item} projectId={projectId} />
       <div className="flex items-center gap-1">
         <select
           className="input py-1 text-xs"
-          aria-label="Aspect to describe"
+          aria-label="描述维度"
           value={aspect}
           onChange={(e) => setAspect(e.target.value as ImageAspectKey)}
         >
           {IMAGE_ASPECTS.map((a) => (
             <option key={a.key} value={a.key}>
-              {a.label}
+              {imageAspectLabel(a.key)}
             </option>
           ))}
         </select>
@@ -171,12 +170,12 @@ function BoardCard({ item, projectId }: { item: BoardItem; projectId: string }) 
           disabled={describe.isPending}
           onClick={() => describe.mutate()}
         >
-          Describe
+          描述图片
         </button>
         <button
           type="button"
           className="btn-ghost ml-auto p-1 text-red-500"
-          aria-label="Remove from board"
+          aria-label="从看板移除"
           onClick={() => remove.mutate()}
         >
           <Trash2 className="size-4" />
@@ -184,12 +183,13 @@ function BoardCard({ item, projectId }: { item: BoardItem; projectId: string }) 
       </div>
       {d && !summaries.length && (
         <div className="flex items-center gap-1 text-xs">
-          <StatusChip status={d.status} /> <span className="muted">describing {d.aspects.join(", ")}</span>
+          <StatusChip status={d.status} />{" "}
+          <span className="muted">正在描述 {d.aspects.map(imageAspectLabel).join("、")}</span>
         </div>
       )}
       {summaries.map(([a, s]) => (
         <p key={a} className="rounded bg-[var(--panel-2)] p-2 text-xs">
-          <span className="font-medium">{IMAGE_ASPECTS.find((x) => x.key === a)?.label ?? "Overview"}:</span> {s}
+          <span className="font-medium">{imageAspectLabel(a)}:</span> {s}
         </p>
       ))}
     </li>
@@ -252,7 +252,7 @@ function UseAs({ item, projectId }: { item: BoardItem; projectId: string }) {
               ? { target, versionId: chosen?.versionId, ...(extra ? { locationStateId: extra } : {}) }
               : { target, versionId: chosen?.versionId },
       ),
-    { success: "Added as a draft reference: approve it on its page" },
+    { success: "已添加为参考图草稿，请到对应页面审核" },
   );
   const ready =
     target === "style"
@@ -262,7 +262,7 @@ function UseAs({ item, projectId }: { item: BoardItem; projectId: string }) {
     <div className="flex flex-wrap items-center gap-1 text-xs">
       <select
         className="input w-auto py-1 text-xs"
-        aria-label="Use as a reference of"
+        aria-label="参考图用途"
         value={target}
         onChange={(e) => {
           setTarget(e.target.value as typeof target);
@@ -279,14 +279,14 @@ function UseAs({ item, projectId }: { item: BoardItem; projectId: string }) {
       {target !== "style" && (
         <select
           className="input min-w-0 flex-1 py-1 text-xs"
-          aria-label="Which one"
+          aria-label="选择对象"
           value={subjectId}
           onChange={(e) => {
             setSubjectId(e.target.value);
             setExtra("");
           }}
         >
-          <option value="">Pick…</option>
+          <option value="">请选择……</option>
           {subjects.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
@@ -297,11 +297,11 @@ function UseAs({ item, projectId }: { item: BoardItem; projectId: string }) {
       {target === "outfit" && subjectId && (
         <select
           className="input py-1 text-xs"
-          aria-label="Outfit"
+          aria-label="服装"
           value={extra}
           onChange={(e) => setExtra(e.target.value)}
         >
-          <option value="">Outfit…</option>
+          <option value="">选择服装……</option>
           {outfits.data?.map((o) => (
             <option key={o.id} value={o.id}>
               {o.name}
@@ -312,11 +312,11 @@ function UseAs({ item, projectId }: { item: BoardItem; projectId: string }) {
       {target === "location" && subjectId && Boolean(states.data?.length) && (
         <select
           className="input py-1 text-xs"
-          aria-label="State"
+          aria-label="状态"
           value={extra}
           onChange={(e) => setExtra(e.target.value)}
         >
-          <option value="">As designed</option>
+          <option value="">原始设计</option>
           {states.data?.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
@@ -330,7 +330,7 @@ function UseAs({ item, projectId }: { item: BoardItem; projectId: string }) {
         disabled={!ready || use.isPending}
         onClick={() => use.mutate()}
       >
-        Use as reference
+        用作参考图
       </button>
     </div>
   );

@@ -28,7 +28,7 @@ export function AnalysisReview({
   useEffect(() => setDraft(analysis.result as StoryAnalysis | null), [analysis.id, analysis.result]);
   useEffect(() => setRemovals(NO_REMOVALS), [analysis.id]);
   const diff = useAnalysisDiff(analysis.id, analysis.status !== "applied");
-  if (!draft) return <p className="muted text-sm">This analysis has no result.</p>;
+  if (!draft) return <p className="muted text-sm">此次分析没有结果。</p>;
   const applied = analysis.status === "applied";
   const set = <K extends keyof StoryAnalysis>(k: K, v: StoryAnalysis[K]) => setDraft({ ...draft, [k]: v });
   const setChar = (i: number, c: Partial<Char>) =>
@@ -44,7 +44,7 @@ export function AnalysisReview({
     try {
       await patch(`/story-analyses/${analysis.id}`, { result: draft });
       await qc.invalidateQueries({ queryKey: qk.story(projectId) });
-      toast.success("Analysis edits saved");
+      toast.success("已保存分析修改");
     } catch (e) {
       toast.error(e);
     } finally {
@@ -69,7 +69,7 @@ export function AnalysisReview({
         ["props", "props"],
       ] as const)
         for (const id of removals[kind]) await del(`/${path}/${id}`).catch((e) => failed.push(String(e?.message ?? e)));
-      if (failed.length) toast.error(`${failed.length} removal(s) were refused: ${failed[0]}`);
+      if (failed.length) toast.error(`有 ${failed.length} 项未能移除：${failed[0]}`);
       setRemovals(NO_REMOVALS);
       for (const key of [
         qk.story(projectId),
@@ -82,7 +82,7 @@ export function AnalysisReview({
       ])
         await qc.invalidateQueries({ queryKey: key });
       toast.success(
-        `Created ${r.created.characters} characters, ${r.created.locations} locations, ${r.created.props} props, ${r.created.chapters} chapters`,
+        `已创建 ${r.created.characters} 个角色、${r.created.locations} 个场景、${r.created.props} 个道具和 ${r.created.chapters} 个章节`,
       );
       onApplied?.(r.created);
     } catch (e) {
@@ -96,13 +96,10 @@ export function AnalysisReview({
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-2">
         <StatusChip status={analysis.status} />
-        <span className="muted text-xs">
-          Edit anything below. Applying creates draft records you can keep refining; existing characters with the same
-          name are not duplicated.
-        </span>
+        <span className="muted text-xs">可修改下方内容。应用后会创建可继续编辑的草稿，并复用已有的同名角色。</span>
         <div className="ml-auto flex gap-2">
           <button type="button" className="btn-secondary" onClick={save} disabled={busy !== null}>
-            {busy === "save" && <Spinner />} Save edits
+            {busy === "save" && <Spinner />} 保存修改
           </button>
           <button
             type="button"
@@ -110,8 +107,7 @@ export function AnalysisReview({
             onClick={() => (ticked ? setConfirming(true) : apply())}
             disabled={busy !== null}
           >
-            {busy === "apply" ? <Spinner /> : <Check className="size-4" />}{" "}
-            {applied ? "Apply again" : "Apply to project"}
+            {busy === "apply" ? <Spinner /> : <Check className="size-4" />} {applied ? "重新应用" : "应用到项目"}
           </button>
         </div>
       </div>
@@ -119,71 +115,71 @@ export function AnalysisReview({
       {!applied && <AnalysisDiff analysisId={analysis.id} removals={removals} onRemovals={setRemovals} />}
       <ConfirmDialog
         open={confirming}
-        title="Apply and remove?"
-        confirmLabel={`Apply and remove ${ticked}`}
+        title="应用分析并移除所选内容？"
+        confirmLabel={`应用并移除 ${ticked} 项`}
         danger
         onClose={() => setConfirming(false)}
         onConfirm={() => void apply()}
       >
-        <p className="mb-2">The analysis is applied, then these are removed:</p>
+        <p className="mb-2">应用分析后将移除以下内容：</p>
         <ul className="list-inside list-disc text-sm">
           {diff.data?.chapters.removed
             .filter((c) => removals.chapters.includes(c.id))
             .map((c) => (
               <li key={c.id}>
-                Chapter “{c.title}”, deleted with its {c.pages} page(s) and {c.drawnPanels} drawn panel(s)
+                章节“{c.title}”及其 {c.pages} 页、{c.drawnPanels} 个已绘制的画格将一并删除
               </li>
             ))}
           {(["characters", "locations", "props"] as const).flatMap((k) =>
             (diff.data?.[k].removed ?? [])
               .filter((r) => removals[k].includes(r.id))
-              .map((r) => <li key={r.id}>{r.name}, moved to the trash with its reference images</li>),
+              .map((r) => <li key={r.id}>{r.name}及其参考图将移到回收站</li>),
           )}
         </ul>
       </ConfirmDialog>
 
       <section className="card space-y-3 p-4">
-        <h3 className="font-medium">Summary</h3>
+        <h3 className="font-medium">摘要</h3>
         <textarea
           className="input min-h-20"
           value={draft.summary}
           onChange={(e) => set("summary", e.target.value)}
-          aria-label="Summary"
+          aria-label="摘要"
         />
         <div className="grid gap-3 sm:grid-cols-3">
-          <Field label="Genre">
+          <Field label="题材">
             <input className="input" value={draft.genre} onChange={(e) => set("genre", e.target.value)} />
           </Field>
-          <Field label="Subgenre">
+          <Field label="细分题材">
             <input className="input" value={draft.subgenre} onChange={(e) => set("subgenre", e.target.value)} />
           </Field>
-          <Field label="Tone">
+          <Field label="基调">
             <input className="input" value={draft.tone} onChange={(e) => set("tone", e.target.value)} />
           </Field>
-          <Field label="Setting">
+          <Field label="背景">
             <input className="input" value={draft.setting} onChange={(e) => set("setting", e.target.value)} />
           </Field>
-          <Field label="Period">
+          <Field label="时代">
             <input className="input" value={draft.period} onChange={(e) => set("period", e.target.value)} />
           </Field>
-          <Field label="Pacing">
+          <Field label="节奏">
             <input className="input" value={draft.pacing} onChange={(e) => set("pacing", e.target.value)} />
           </Field>
         </div>
-        <Field label="Themes">
+        <Field label="主题">
           <TagInput value={draft.themes} onChange={(v) => set("themes", v)} />
         </Field>
-        <Field label="Visual motifs">
+        <Field label="视觉意象">
           <TagInput value={draft.visualMotifs} onChange={(v) => set("visualMotifs", v)} />
         </Field>
-        <Field label="World rules">
+        <Field label="世界规则">
           <TagInput value={draft.world.worldRules} onChange={(v) => set("world", { ...draft.world, worldRules: v })} />
         </Field>
       </section>
 
       <section className="card p-4">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="font-medium">Characters ({draft.characters.length})</h3>
+          <h3 className="font-medium">角色（{draft.characters.length}）</h3>
           <button
             type="button"
             className="btn-secondary"
@@ -192,7 +188,7 @@ export function AnalysisReview({
                 ...draft.characters,
                 {
                   key: `character-${draft.characters.length + 1}`,
-                  name: "New character",
+                  name: "新角色",
                   aliases: [],
                   role: "supporting",
                   bible: draft.characters[0]?.bible
@@ -202,7 +198,7 @@ export function AnalysisReview({
               ])
             }
           >
-            <Plus className="size-4" /> Add
+            <Plus className="size-4" /> 添加
           </button>
         </div>
         <div className="grid gap-3 lg:grid-cols-2">
@@ -213,22 +209,29 @@ export function AnalysisReview({
                   className="input font-medium"
                   value={c.name}
                   onChange={(e) => setChar(i, { name: e.target.value })}
-                  aria-label="Character name"
+                  aria-label="角色名称"
                 />
                 <select
                   className="input w-36"
                   value={c.role}
                   onChange={(e) => setChar(i, { role: e.target.value as Char["role"] })}
-                  aria-label="Role"
+                  aria-label="角色定位"
                 >
-                  {["protagonist", "antagonist", "supporting", "minor"].map((r) => (
-                    <option key={r}>{r}</option>
+                  {Object.entries({
+                    protagonist: "主角",
+                    antagonist: "反派",
+                    supporting: "配角",
+                    minor: "次要角色",
+                  }).map(([r, name]) => (
+                    <option key={r} value={r}>
+                      {name}
+                    </option>
                   ))}
                 </select>
                 <button
                   type="button"
                   className="btn-ghost text-red-500"
-                  aria-label={`Remove ${c.name}`}
+                  aria-label={`移除 ${c.name}`}
                   onClick={() =>
                     set(
                       "characters",
@@ -240,10 +243,10 @@ export function AnalysisReview({
                 </button>
               </div>
               <div className="mt-2 space-y-2">
-                <Field label="Aliases (resolved to this character)">
+                <Field label="别名（关联到此角色）">
                   <TagInput value={c.aliases} onChange={(v) => setChar(i, { aliases: v })} />
                 </Field>
-                <Field label="Summary">
+                <Field label="摘要">
                   <textarea
                     className="input min-h-14"
                     value={c.bible.summary}
@@ -251,28 +254,28 @@ export function AnalysisReview({
                   />
                 </Field>
                 <div className="grid grid-cols-2 gap-2">
-                  <Field label="Hair">
+                  <Field label="头发">
                     <input
                       className="input"
                       value={c.bible.hair}
                       onChange={(e) => setBible(i, { hair: e.target.value })}
                     />
                   </Field>
-                  <Field label="Eyes">
+                  <Field label="眼睛">
                     <input
                       className="input"
                       value={c.bible.eyes}
                       onChange={(e) => setBible(i, { eyes: e.target.value })}
                     />
                   </Field>
-                  <Field label="Age">
+                  <Field label="年龄">
                     <input
                       className="input"
                       value={c.bible.ageRange}
                       onChange={(e) => setBible(i, { ageRange: e.target.value })}
                     />
                   </Field>
-                  <Field label="Build">
+                  <Field label="体型">
                     <input
                       className="input"
                       value={c.bible.build}
@@ -280,14 +283,14 @@ export function AnalysisReview({
                     />
                   </Field>
                 </div>
-                <Field label="Wardrobe">
+                <Field label="服装">
                   <input
                     className="input"
                     value={c.bible.wardrobe}
                     onChange={(e) => setBible(i, { wardrobe: e.target.value })}
                   />
                 </Field>
-                <Field label="Immutable traits">
+                <Field label="固定特征">
                   <TagInput value={c.bible.immutableTraits} onChange={(v) => setBible(i, { immutableTraits: v })} />
                 </Field>
               </div>
@@ -298,7 +301,7 @@ export function AnalysisReview({
 
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="card p-4">
-          <h3 className="mb-2 font-medium">Locations ({draft.locations.length})</h3>
+          <h3 className="mb-2 font-medium">场景（{draft.locations.length}）</h3>
           <ul className="space-y-2">
             {draft.locations.map((l, i) => (
               <li key={`${l.key}-${i}`} className="flex gap-2">
@@ -311,12 +314,12 @@ export function AnalysisReview({
                       draft.locations.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)),
                     )
                   }
-                  aria-label="Location name"
+                  aria-label="场景名称"
                 />
                 <button
                   type="button"
                   className="btn-ghost text-red-500"
-                  aria-label={`Remove ${l.name}`}
+                  aria-label={`移除 ${l.name}`}
                   onClick={() =>
                     set(
                       "locations",
@@ -329,7 +332,7 @@ export function AnalysisReview({
               </li>
             ))}
           </ul>
-          <h3 className="mt-4 mb-2 font-medium">Recurring props</h3>
+          <h3 className="mt-4 mb-2 font-medium">反复出现的道具</h3>
           <ul className="space-y-1 text-sm">
             {draft.props.map((p, i) => (
               <li key={`${p.key}-${i}`} className="flex items-center gap-2">
@@ -342,16 +345,16 @@ export function AnalysisReview({
                       draft.props.map((x, j) => (j === i ? { ...x, recurring: e.target.checked } : x)),
                     )
                   }
-                  aria-label={`${p.name} is recurring`}
+                  aria-label={`${p.name}是反复出现的道具`}
                 />
                 {p.name}
               </li>
             ))}
-            {!draft.props.length && <li className="muted">None detected</li>}
+            {!draft.props.length && <li className="muted">未发现道具</li>}
           </ul>
         </div>
         <div className="card p-4">
-          <h3 className="mb-2 font-medium">Chapters ({draft.chapters.length})</h3>
+          <h3 className="mb-2 font-medium">章节（{draft.chapters.length}）</h3>
           <ol className="space-y-2">
             {draft.chapters.map((c, i) => (
               <li key={i} className="space-y-1">
@@ -364,13 +367,13 @@ export function AnalysisReview({
                       draft.chapters.map((x, j) => (j === i ? { ...x, title: e.target.value } : x)),
                     )
                   }
-                  aria-label="Chapter title"
+                  aria-label="章节标题"
                 />
                 <p className="muted text-xs">{c.summary}</p>
               </li>
             ))}
           </ol>
-          <h3 className="mt-4 mb-2 font-medium">Major plot beats</h3>
+          <h3 className="mt-4 mb-2 font-medium">主要情节节点</h3>
           <ol className="list-decimal space-y-1 pl-5 text-sm">
             {draft.plotBeats.map((b, i) => (
               <li key={i}>{b.summary}</li>

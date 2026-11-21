@@ -33,20 +33,20 @@ export function ChannelProfilesPage() {
   const [deleting, setDeleting] = useState<ChannelProfile | null>(null);
   const remove = useAction((id: string) => del(`/channel-profiles/${id}`), {
     invalidate: [["channel-profiles"]],
-    success: "Profile deleted",
+    success: "配置已删除",
   });
   const presetName = (key: string | null) =>
     !key
-      ? "no preset"
+      ? "无预设"
       : key.startsWith("template:")
-        ? `template ${presets.data?.templates.find((t) => `template:${t.id}` === key)?.name ?? "(deleted)"}`
+        ? `模板 ${presets.data?.templates.find((t) => `template:${t.id}` === key)?.name ?? "（已删除）"}`
         : (presets.data?.presets.find((p) => p.key === key)?.name ?? key);
   if (draft) return <ProfileEditor draft={draft} presets={presets.data} onDone={() => setDraft(null)} />;
   return (
     <div className="mx-auto max-w-4xl space-y-4 p-4 sm:p-6">
       <PageHeader
-        title="Channel profiles"
-        subtitle="Your channel's identity, applied to new projects: narrator, branding, thumbnail and YouTube rules, export shape."
+        title="频道配置"
+        subtitle="应用到新项目的频道设置，包括旁白、品牌标识、缩略图、YouTube 规则及导出格式。"
         actions={
           <button
             type="button"
@@ -61,19 +61,18 @@ export function ChannelProfilesPage() {
               })
             }
           >
-            <Plus className="size-4" /> New profile
+            <Plus className="size-4" /> 新建配置
           </button>
         }
       />
       <p className="muted text-sm">
-        A <strong>template</strong> or preset sets up a kind of project: type, format, style. A <strong>profile</strong>{" "}
-        is who publishes it, and can name a preset or template to start from. Choosing a profile in the new-project
-        wizard copies both in; a project keeps its own copy, and <em>Re-apply profile</em> on its overview brings later
-        profile changes over. You can also save a profile from a project's settings.
+        <strong>模板</strong>或预设用于设置项目类型、格式和风格。<strong>频道配置</strong>
+        用于设置发布身份，也可指定起始预设或模板。在新建项目向导中选择频道配置会一并复制这些设置。项目保留独立副本，可在概览中选择
+        <em>重新应用配置</em>来同步后续修改，也可从项目设置中保存频道配置。
       </p>
       {profiles.isLoading && <Spinner />}
       {profiles.data && !profiles.data.profiles.length && (
-        <EmptyState title="No profiles yet">Create one, or save one from a project's settings.</EmptyState>
+        <EmptyState title="暂无频道配置">创建配置，或从项目设置中保存配置。</EmptyState>
       )}
       <ul className="grid gap-3 sm:grid-cols-2">
         {profiles.data?.profiles.map((p) => {
@@ -91,7 +90,7 @@ export function ChannelProfilesPage() {
                 <div className="truncate font-medium">{p.name}</div>
                 {p.description && <div className="muted line-clamp-2 text-xs">{p.description}</div>}
                 <div className="muted mt-1 text-xs">
-                  Starts from {presetName(p.preset)} · {Object.keys(p.settings).length} settings
+                  起始预设 {presetName(p.preset)} · {Object.keys(p.settings).length} 项设置
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <button
@@ -107,13 +106,13 @@ export function ChannelProfilesPage() {
                       })
                     }
                   >
-                    Edit
+                    编辑
                   </button>
                   <Link to="/projects/new" search={{ profile: p.id }} className="btn-secondary text-xs">
-                    New project
+                    新建项目
                   </Link>
                   <button type="button" className="btn-ghost text-xs text-red-500" onClick={() => setDeleting(p)}>
-                    Delete
+                    删除
                   </button>
                 </div>
               </div>
@@ -124,21 +123,21 @@ export function ChannelProfilesPage() {
       <ConfirmDialog
         open={Boolean(deleting)}
         danger
-        title={`Delete profile "${deleting?.name}"?`}
-        confirmLabel="Delete"
+        title={`删除频道配置“${deleting?.name}”？`}
+        confirmLabel="删除"
         onClose={() => setDeleting(null)}
         onConfirm={() => {
           if (deleting) remove.mutate(deleting.id);
           setDeleting(null);
         }}
       >
-        Projects made from it keep their settings and their copy of its logo.
+        已使用此配置的项目会保留各自的设置和标志副本。
       </ConfirmDialog>
     </div>
   );
 }
 
-const KEEP = "Keep the project's";
+const KEEP = "沿用项目设置";
 
 function ProfileEditor({ draft, presets, onDone }: { draft: Draft; presets?: Presets; onDone: () => void }) {
   const [d, setD] = useState(draft);
@@ -155,7 +154,7 @@ function ProfileEditor({ draft, presets, onDone }: { draft: Draft; presets?: Pre
       const body = { name: d.name.trim(), description: d.description, preset: d.preset, settings: s };
       return d.id ? patch(`/channel-profiles/${d.id}`, body) : post("/channel-profiles", body);
     },
-    { invalidate: [["channel-profiles"]], success: "Profile saved", onSuccess: onDone },
+    { invalidate: [["channel-profiles"]], success: "配置已保存", onSuccess: onDone },
   );
   const select = <K extends "imageQuality" | "referencePolicy" | "batchPolicy">(
     k: K,
@@ -191,12 +190,12 @@ function ProfileEditor({ draft, presets, onDone }: { draft: Draft; presets?: Pre
   return (
     <div className="mx-auto max-w-4xl space-y-4 p-4 sm:p-6">
       <PageHeader
-        title={d.id ? `Edit ${draft.name}` : "New channel profile"}
-        subtitle="Settings left on “keep” stay as the preset or project has them."
+        title={d.id ? `编辑 ${draft.name}` : "新建频道配置"}
+        subtitle="选择“沿用项目设置”的选项将沿用预设或项目中的值。"
         actions={
           <>
             <button type="button" className="btn-secondary" onClick={onDone}>
-              Cancel
+              取消
             </button>
             <button
               type="button"
@@ -204,13 +203,13 @@ function ProfileEditor({ draft, presets, onDone }: { draft: Draft; presets?: Pre
               disabled={!d.name.trim() || save.isPending}
               onClick={() => save.mutate()}
             >
-              {save.isPending && <Spinner />} Save profile
+              {save.isPending && <Spinner />} 保存配置
             </button>
           </>
         }
       />
       <section className="card grid gap-3 p-4 sm:grid-cols-2">
-        <Field label="Name">
+        <Field label="名称">
           <input
             className="input"
             maxLength={80}
@@ -219,13 +218,13 @@ function ProfileEditor({ draft, presets, onDone }: { draft: Draft; presets?: Pre
             autoFocus
           />
         </Field>
-        <Field label="Starts from" hint="The preset or template new projects are set up with: type, format, style.">
+        <Field label="起始预设" hint="新项目使用的预设或模板，包括类型、格式和风格。">
           <select
             className="input"
             value={d.preset ?? ""}
             onChange={(e) => setD({ ...d, preset: e.target.value || null })}
           >
-            <option value="">No preset (choose in the wizard)</option>
+            <option value="">无预设（在向导中选择）</option>
             {presets?.presets.map((p) => (
               <option key={p.key} value={p.key}>
                 {p.name}
@@ -233,13 +232,13 @@ function ProfileEditor({ draft, presets, onDone }: { draft: Draft; presets?: Pre
             ))}
             {presets?.templates.map((t) => (
               <option key={t.id} value={`template:${t.id}`}>
-                Template: {t.name}
+                模板 · {t.name}
               </option>
             ))}
           </select>
         </Field>
         <div className="sm:col-span-2">
-          <Field label="Description">
+          <Field label="描述">
             <textarea
               className="input min-h-14"
               maxLength={500}
@@ -251,29 +250,29 @@ function ProfileEditor({ draft, presets, onDone }: { draft: Draft; presets?: Pre
       </section>
 
       <section className="card grid gap-3 p-4 sm:grid-cols-3">
-        <h2 className="font-medium sm:col-span-3">Production</h2>
-        <Field label="Image quality">
+        <h2 className="font-medium sm:col-span-3">制作</h2>
+        <Field label="图像质量">
           {select("imageQuality", [
-            ["low", "Low"],
-            ["medium", "Medium"],
-            ["high", "High"],
+            ["low", "低"],
+            ["medium", "中"],
+            ["high", "高"],
           ])}
         </Field>
-        <Field label="References to generate">
+        <Field label="生成参考图的范围">
           {select("referencePolicy", [
-            ["all", "All"],
-            ["main", "Main cast and recurring places"],
+            ["all", "全部"],
+            ["main", "主要角色和常用场景"],
           ])}
         </Field>
-        <Field label="Production runs spend">
+        <Field label="制作费用策略">
           {select("batchPolicy", [
-            ["interactive", "Everything now"],
-            ["images", "Images in batches"],
-            ["hybrid", "Text in batches"],
-            ["cheapest", "Everything in batches"],
+            ["interactive", "全部立即生成"],
+            ["images", "图像批量生成"],
+            ["hybrid", "文本批量生成"],
+            ["cheapest", "全部批量生成"],
           ])}
         </Field>
-        <Field label="Target runtime">
+        <Field label="目标时长">
           <select
             className="input"
             value={rt === undefined ? "" : rt === null ? "none" : "set"}
@@ -289,23 +288,23 @@ function ProfileEditor({ draft, presets, onDone }: { draft: Draft; presets?: Pre
             }
           >
             <option value="">{KEEP}</option>
-            <option value="none">No target</option>
-            <option value="set">Aim for a length</option>
+            <option value="none">不设目标</option>
+            <option value="set">设置目标时长</option>
           </select>
         </Field>
         {rt && (
           <div className="grid grid-cols-2 gap-3 sm:col-span-2 sm:grid-cols-4">
-            <Field label="Minutes">{rtNum("minutes", 1, 600)}</Field>
-            <Field label="Words/min">{rtNum("wordsPerMinute", 80, 260)}</Field>
-            <Field label="Shortest shot (s)">{rtNum("minShotSeconds", 1, 30, 0.5)}</Field>
-            <Field label="Longest shot (s)">{rtNum("maxShotSeconds", 2, 60, 0.5)}</Field>
+            <Field label="分钟">{rtNum("minutes", 1, 600)}</Field>
+            <Field label="每分钟词数">{rtNum("wordsPerMinute", 80, 260)}</Field>
+            <Field label="最短镜头（秒）">{rtNum("minShotSeconds", 1, 30, 0.5)}</Field>
+            <Field label="最长镜头（秒）">{rtNum("maxShotSeconds", 2, 60, 0.5)}</Field>
           </div>
         )}
       </section>
 
       <section className="card grid gap-3 p-4 sm:grid-cols-2">
-        <h2 className="font-medium sm:col-span-2">Narrator</h2>
-        <Field label="Voice">
+        <h2 className="font-medium sm:col-span-2">旁白</h2>
+        <Field label="音色">
           <select
             className="input"
             value={s.narrationVoice ?? ""}
@@ -322,7 +321,7 @@ function ProfileEditor({ draft, presets, onDone }: { draft: Draft; presets?: Pre
             ))}
           </select>
         </Field>
-        <Field label="Speed (0.5–2×)" hint="Empty keeps the project's.">
+        <Field label="语速（0.5–2 倍）" hint="留空则沿用项目设置。">
           <input
             className="input"
             type="number"
